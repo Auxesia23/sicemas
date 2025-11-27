@@ -2,10 +2,11 @@ package main
 
 import (
 	"log"
+	"situs-keagamaan/internal/app/handlers"
+	"situs-keagamaan/internal/app/repositories"
+	"situs-keagamaan/internal/app/services"
+	"situs-keagamaan/internal/cache"
 	"situs-keagamaan/internal/database"
-	"situs-keagamaan/internal/handlers"
-	"situs-keagamaan/internal/repositories"
-	"situs-keagamaan/internal/services"
 	"time"
 
 	"github.com/go-playground/validator/v10"
@@ -28,7 +29,7 @@ func main() {
 
 	validate := validator.New(validator.WithRequiredStructEnabled())
 
-	cache := repositories.NewCache(rdb)
+	cache := cache.NewCache(rdb)
 	userRepo := repositories.NewUserRepo(db)
 
 	userService := services.NewUserService(userRepo, cache)

@@ -2,7 +2,7 @@ package main
 
 import (
 	"log"
-	"situs-keagamaan/internal/handlers"
+	"situs-keagamaan/internal/app/handlers"
 	"time"
 
 	"github.com/gofiber/fiber/v2"

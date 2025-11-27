@@ -1,0 +1,33 @@
+package dto
+
+import (
+	"time"
+
+	"github.com/google/uuid"
+)
+
+type UserRegister struct {
+	NIP          string `json:"nip" validate:"required,min=18"`
+	NamaLengkap  string `json:"nama_lengkap" validate:"required"`
+	Email        string `json:"email" validate:"required,email"`
+	NomorTelepon string `json:"nomor_telepon" validate:"required"`
+}
+
+type UserResponse struct {
+	ID           uuid.UUID `json:"id"`
+	NIP          string    `json:"nip"`
+	NamaLengkap  string    `json:"nama_lengkap"`
+	Email        string    `json:"email"`
+	NomorTelepon string    `json:"nomor_telepon"`
+	CreatedAt    time.Time `json:"created_at"`
+	UpdatedAt    time.Time `json:"updated_at"`
+}
+
+type UserLogin struct {
+	NIP string `json:"nip" validate:"required"`
+}
+
+type UserVerifyOTP struct {
+	NIP string `json:"nip" validate:"required"`
+	OTP string `json:"otp" validate:"required,min=6"`
+}

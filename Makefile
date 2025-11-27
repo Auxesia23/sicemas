@@ -12,10 +12,16 @@ DB_HOST ?= localhost
 DB_PORT ?= 5432
 
 # Path to the migrations directory
-MIGRATION_DIR=./migrations
+MIGRATION_DIR=./internal/database/migrations
 
 # Goose command
 GOOSE_CMD=goose -dir $(MIGRATION_DIR) postgres "user=$(DB_USER) password=$(DB_PASSWORD) dbname=$(DB_NAME) host=$(DB_HOST) port=$(DB_PORT) sslmode=disable"
+
+.PHONY: migrate-create
+migrate-create:
+	@echo "Creating new goose migration..."
+	goose create -dir $(MIGRATION_DIR) $(NAME) sql
+
 
 # Perintah untuk menjalankan semua migrasi yang tertunda
 .PHONY: migrate-up

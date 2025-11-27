@@ -3,13 +3,13 @@ package utils
 import (
 	"errors"
 	"os"
-	"situs-keagamaan/internal/models"
+	"situs-keagamaan/internal/entity"
 	"time"
 
 	"github.com/golang-jwt/jwt/v5"
 )
 
-func GenerateAccessToken(user *models.User) (string, error) {
+func GenerateAccessToken(user *entity.User) (string, error) {
 	var secret []byte
 	secret = []byte(os.Getenv("JWT_SECRET"))
 

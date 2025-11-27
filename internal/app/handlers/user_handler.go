@@ -1,8 +1,8 @@
 package handlers
 
 import (
-	"situs-keagamaan/internal/models"
-	"situs-keagamaan/internal/services"
+	"situs-keagamaan/internal/app/services"
+	"situs-keagamaan/internal/dto"
 	"time"
 
 	"github.com/go-playground/validator/v10"
@@ -28,7 +28,7 @@ func NewUserHandler(userService services.UserService, validate *validator.Valida
 }
 
 func (h *userHandlerImpl) RegisterUser(c *fiber.Ctx) error {
-	var body models.UserRegister
+	var body dto.UserRegister
 	if err := c.BodyParser(&body); err != nil {
 		return c.Status(fiber.StatusBadRequest).SendString(err.Error())
 	}
@@ -43,7 +43,7 @@ func (h *userHandlerImpl) RegisterUser(c *fiber.Ctx) error {
 }
 
 func (h *userHandlerImpl) LoginUser(c *fiber.Ctx) error {
-	var body models.UserLogin
+	var body dto.UserLogin
 	if err := c.BodyParser(&body); err != nil {
 		return c.Status(400).SendString(err.Error())
 	}
@@ -58,7 +58,7 @@ func (h *userHandlerImpl) LoginUser(c *fiber.Ctx) error {
 }
 
 func (h *userHandlerImpl) VerifyOTP(c *fiber.Ctx) error {
-	var body models.UserVerifyOTP
+	var body dto.UserVerifyOTP
 	if err := c.BodyParser(&body); err != nil {
 		return c.Status(400).SendString(err.Error())
 	}
