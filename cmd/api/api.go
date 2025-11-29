@@ -3,20 +3,24 @@ package main
 import (
 	"log"
 	"situs-keagamaan/internal/app/handlers"
+	"situs-keagamaan/internal/middlewares"
 	"time"
 
+	"github.com/gofiber/contrib/casbin"
 	"github.com/gofiber/fiber/v2"
 )
 
 type server struct {
 	cfg         config
-	userHandler handlers.UserHandler
+	middlewares *middlewares.Middlewares
+	handlers    handlers.Handlers
 }
 
-func newServer(cfg config, userHandler handlers.UserHandler) *server {
+func newServer(cfg config, middlewares *middlewares.Middlewares, handlers handlers.Handlers) *server {
 	return &server{
 		cfg,
-		userHandler,
+		middlewares,
+		handlers,
 	}
 }
 
@@ -41,9 +45,15 @@ func (s *server) run() {
 
 	auth := app.Group("/auth")
 	{
-		auth.Post("/register", s.userHandler.RegisterUser)
-		auth.Post("/login", s.userHandler.LoginUser)
-		auth.Post("/verify-otp", s.userHandler.VerifyOTP)
+		auth.Post("/login", s.handlers.Auth.Login)
+		auth.Post("/verify-otp", s.handlers.Auth.VerifyOTP)
+	}
+
+	users := app.Group("/users")
+	{
+		users.Use(s.middlewares.Auth.JWTAuthenticator)
+		users.Use(s.middlewares.Auth.CasbinAuthz().RequiresRoles([]string{"dev"}, casbin.WithValidationRule(casbin.MatchAllRule)))
+		users.Post("/", s.handlers.User.Register)
 	}
 
 	log.Fatal(app.Listen(s.cfg.Addr))

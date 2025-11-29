@@ -4,18 +4,11 @@ ifneq (,$(wildcard ./.env))
     export
 endif
 
-# Database credentials (jika tidak ada di .env)
-DB_USER ?= kua_ciemas
-DB_PASSWORD ?= kua_ciemas_top_secret
-DB_NAME ?= situs_keagamaan
-DB_HOST ?= localhost
-DB_PORT ?= 5432
-
 # Path to the migrations directory
 MIGRATION_DIR=./internal/database/migrations
 
 # Goose command
-GOOSE_CMD=goose -dir $(MIGRATION_DIR) postgres "user=$(DB_USER) password=$(DB_PASSWORD) dbname=$(DB_NAME) host=$(DB_HOST) port=$(DB_PORT) sslmode=disable"
+GOOSE_CMD=goose -dir $(MIGRATION_DIR) postgres "$(DB_URI)"
 
 .PHONY: migrate-create
 migrate-create:
@@ -45,10 +38,10 @@ migrate-status:
 .PHONY: run
 run:
 	@echo "Starting server..."
-	@go run cmd/*.go
+	@go run cmd/api/*.go
 
 # Perintah untuk build server
 .PHONY: build
 build:
 	@echo "Building server"
-	@go build -o ./bin/app cmd/*.go
+	@go build -o ./bin/app cmd/api/*.go

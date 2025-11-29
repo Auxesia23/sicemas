@@ -26,11 +26,11 @@ func NewUserRepo(db *sqlx.DB) UserRepo {
 
 func (r *userRepiImpl) Create(ctx context.Context, in *dto.UserRegister, index []byte) error {
 	query := `
-		INSERT INTO users (nip_index,nama_lengkap,nip,email,nomor_telepon)
-		VALUES($1,$2,$3,$4,$5);
+		INSERT INTO users (nip_index,nama_lengkap,peran,nip,email,nomor_telepon)
+		VALUES($1,$2,$3,$4,$5,$6);
 	`
 
-	_, err := r.DB.ExecContext(ctx, query, index, in.NamaLengkap, in.NIP, in.Email, in.NomorTelepon)
+	_, err := r.DB.ExecContext(ctx, query, index, in.NamaLengkap, in.Peran, in.NIP, in.Email, in.NomorTelepon)
 	if err != nil {
 		return err
 	}
@@ -52,8 +52,8 @@ func (r *userRepiImpl) ReadAll(ctx context.Context) (*[]entity.User, error) {
 
 func (r *userRepiImpl) ReadOne(ctx context.Context, index []byte) (*entity.User, error) {
 	query := `
-		SELECT * FROM
-		users
+		SELECT *
+		FROM users
 		WHERE nip_index = $1
 		LIMIT 1;
 	`

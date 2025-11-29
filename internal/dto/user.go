@@ -9,6 +9,7 @@ import (
 type UserRegister struct {
 	NIP          string `json:"nip" validate:"required,min=18"`
 	NamaLengkap  string `json:"nama_lengkap" validate:"required"`
+	Peran        string `json:"peran" validate:"required"`
 	Email        string `json:"email" validate:"required,email"`
 	NomorTelepon string `json:"nomor_telepon" validate:"required"`
 }
@@ -17,6 +18,7 @@ type UserResponse struct {
 	ID           uuid.UUID `json:"id"`
 	NIP          string    `json:"nip"`
 	NamaLengkap  string    `json:"nama_lengkap"`
+	Peran        string    `json:"peran"`
 	Email        string    `json:"email"`
 	NomorTelepon string    `json:"nomor_telepon"`
 	CreatedAt    time.Time `json:"created_at"`

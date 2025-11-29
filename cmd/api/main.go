@@ -5,8 +5,11 @@ import (
 	"situs-keagamaan/internal/app/handlers"
 	"situs-keagamaan/internal/app/repositories"
 	"situs-keagamaan/internal/app/services"
+	"situs-keagamaan/internal/auth"
 	"situs-keagamaan/internal/cache"
 	"situs-keagamaan/internal/database"
+	"situs-keagamaan/internal/geoip"
+	"situs-keagamaan/internal/middlewares"
 	"time"
 
 	"github.com/go-playground/validator/v10"
@@ -22,19 +25,42 @@ func main() {
 	if err != nil {
 		log.Fatal(err.Error())
 	}
-	rdb, err := database.InitRedis()
+	rdb, err := cache.InitRedis()
+	if err != nil {
+		log.Fatal(err.Error())
+	}
+	enforcer, err := auth.NewEnforcer()
+	if err != nil {
+		log.Fatal(err.Error())
+	}
+	locator, err := geoip.NewLocator()
 	if err != nil {
 		log.Fatal(err.Error())
 	}
 
+	// Initiate validator
 	validate := validator.New(validator.WithRequiredStructEnabled())
 
+	// Initiate cache implementatiom
 	cache := cache.NewCache(rdb)
+
+	// Initiate repository layer
 	userRepo := repositories.NewUserRepo(db)
 
+	// Initiate service layer
 	userService := services.NewUserService(userRepo, cache)
+	authService := services.NewAuthService(userRepo, cache)
 
+	// Initiate handler layer
 	userHandler := handlers.NewUserHandler(userService, validate)
+	authHandler := handlers.NewAuthHandler(authService, validate)
+	// handler compositor
+	handlers := handlers.NewHandlers(userHandler, authHandler)
+
+	// Initiate middleware
+	authMiddleware := middlewares.NewAuthMiddleware(enforcer, locator)
+	// middlewares compositor
+	middlewares := middlewares.NewMiddlewares(authMiddleware)
 
 	cfg := config{
 		Addr:         ":8080",
@@ -43,7 +69,7 @@ func main() {
 		IdleTimeout:  20 * time.Second,
 	}
 
-	server := newServer(cfg, userHandler)
+	server := newServer(cfg, middlewares, *handlers)
 
 	server.run()
 }
