@@ -46,14 +46,19 @@ func (s *server) run() {
 	auth := app.Group("/auth")
 	{
 		auth.Post("/login", s.handlers.Auth.Login)
-		auth.Post("/verify-otp", s.handlers.Auth.VerifyOTP)
+		auth.Post("/verify-otp", s.middlewares.Auth.GetContext, s.handlers.Auth.VerifyOTP)
+		auth.Post("/logout", s.handlers.Auth.Logout)
 	}
 
 	users := app.Group("/users")
 	{
 		users.Use(s.middlewares.Auth.JWTAuthenticator)
-		users.Use(s.middlewares.Auth.CasbinAuthz().RequiresRoles([]string{"dev"}, casbin.WithValidationRule(casbin.MatchAllRule)))
-		users.Post("/", s.handlers.User.Register)
+		users.Use(s.middlewares.Auth.ZeroTrustValidator)
+
+		users.Post("/",
+			s.middlewares.Auth.CasbinAuthz().RequiresRoles([]string{"dev"}, casbin.WithValidationRule(casbin.MatchAllRule)),
+			s.handlers.User.Register,
+		)
 	}
 
 	log.Fatal(app.Listen(s.cfg.Addr))

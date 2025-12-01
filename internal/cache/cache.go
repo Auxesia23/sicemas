@@ -3,7 +3,6 @@ package cache
 import (
 	"context"
 	"encoding/json"
-	"fmt"
 	"time"
 
 	"github.com/redis/go-redis/v9"
@@ -40,9 +39,6 @@ func (r *cacheImpl) Set(ctx context.Context, key string, data any, ttl time.Dura
 func (r *cacheImpl) Get(ctx context.Context, key string, dest any) error {
 	val, err := r.RDB.Get(ctx, key).Result()
 	if err != nil {
-		if err == redis.Nil {
-			return fmt.Errorf("Data not found")
-		}
 		return err
 	}
 	return json.Unmarshal([]byte(val), &dest)

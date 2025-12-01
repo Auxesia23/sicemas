@@ -2,17 +2,23 @@ package services
 
 import (
 	"context"
+	"database/sql"
 	"fmt"
+	apperror "situs-keagamaan/internal/app/appError"
 	"situs-keagamaan/internal/app/repositories"
 	"situs-keagamaan/internal/cache"
 	"situs-keagamaan/internal/dto"
 	"situs-keagamaan/internal/utils"
 	"time"
+
+	"github.com/google/uuid"
+	"github.com/redis/go-redis/v9"
 )
 
 type AuthService interface {
 	Login(ctx context.Context, in *dto.UserLogin) error
-	VerifyOTP(ctx context.Context, in *dto.UserVerifyOTP) (*dto.Token, error)
+	VerifyOTP(ctx context.Context, in *dto.UserVerifyOTP, loginContext *dto.SessionRequest) (*dto.Token, error)
+	Logout(ctx context.Context, refreshToken, accessToken string) error
 }
 
 type authServiceImpl struct {
@@ -31,34 +37,122 @@ func (s *authServiceImpl) Login(ctx context.Context, in *dto.UserLogin) error {
 	index := utils.HashIndex(in.NIP)
 	user, err := s.userRepo.ReadOne(ctx, index)
 	if err != nil {
-		return err
+		if err == sql.ErrNoRows {
+			return apperror.NewNotFound("User dengan NIP ini tidak ditemukan.")
+		}
+		return apperror.NewInternal("Terjadi Kesalahan.")
 	}
 
 	otp := utils.GenerateOTP6()
-	s.cache.Set(ctx, fmt.Sprintf("otp:%v", user.ID), otp, 5*time.Minute)
-	fmt.Printf("WA : %v | OTP : %v\nEMAIL : %v | OTP : %v\n", utils.Decrypt(user.NomorTelepon), otp, utils.Decrypt(user.Email), otp)
-
+	err = s.cache.Set(ctx, fmt.Sprintf("otp:%v", user.ID), otp, 5*time.Minute)
+	if err != nil {
+		return apperror.NewInternal("Terjadi kesalah.")
+	}
+	fmt.Println("OTP : ", otp)
 	return nil
 }
 
-func (s *authServiceImpl) VerifyOTP(ctx context.Context, in *dto.UserVerifyOTP) (*dto.Token, error) {
+func (s *authServiceImpl) VerifyOTP(ctx context.Context, in *dto.UserVerifyOTP, loginContext *dto.SessionRequest) (*dto.Token, error) {
 	index := utils.HashIndex(in.NIP)
 	user, err := s.userRepo.ReadOne(ctx, index)
 	if err != nil {
-		return nil, err
+		if err == sql.ErrNoRows {
+			return nil, apperror.NewNotFound("User dengan NIP ini tidak ditemukan.")
+		}
+		return nil, apperror.NewInternal("Terjadi Kesalahan.")
 	}
+
 	var otp string
 	if err := s.cache.Get(ctx, fmt.Sprintf("otp:%v", user.ID), &otp); err != nil {
-		return nil, err
+		if err == redis.Nil {
+			return nil, apperror.NewUnauthorized("Tidak ada OTP untuk user ini.")
+		}
+		return nil, apperror.NewInternal("Terjadi Kesalahan.")
 	}
 	if otp != in.OTP {
-		return nil, fmt.Errorf("OTP salah atau tidak ditemukan")
+		return nil, apperror.NewBadRequest("Kode OTP salah.")
 	}
-	defer s.cache.Delete(ctx, fmt.Sprintf("otp:%v", user.ID))
-	accesToken, _ := utils.GenerateAccessToken(user)
+
+	refreshTokenId, err := uuid.NewV7()
+	if err != nil {
+		return nil, apperror.NewInternal("Terjadi Kesalahan.")
+	}
+	refreshToken, err := utils.GenerateRefreshToken(user, refreshTokenId)
+	if err != nil {
+		return nil, apperror.NewInternal("Terjadi Kesalahan.")
+	}
+
+	accesTokenId, err := uuid.NewV7()
+	if err != nil {
+		return nil, apperror.NewInternal("Terjadi Kesalahan.")
+	}
+	accesToken, err := utils.GenerateAccessToken(user, refreshTokenId, accesTokenId)
+	if err != nil {
+		return nil, apperror.NewInternal("Terjadi Kesalahan.")
+	}
+
+	sessionKey := fmt.Sprintf("rt:%v:%v", user.ID, refreshTokenId)
+	sessionValue := &dto.SessionValue{
+		UserID:      user.ID,
+		SID:         refreshTokenId,
+		UserAgent:   loginContext.UserAgent,
+		IPAddress:   loginContext.IPAddress,
+		GeoLocation: loginContext.GeoLocation,
+		DeviceID:    loginContext.DeviceID,
+	}
+	err = s.cache.Set(ctx, sessionKey, sessionValue, 7*24*time.Hour)
+	if err != nil {
+		return nil, apperror.NewInternal("Terjadi Kesalahan.")
+	}
+
 	token := &dto.Token{
 		AccessToken:  accesToken,
-		RefreshToken: accesToken,
+		RefreshToken: refreshToken,
 	}
+
+	s.cache.Delete(ctx, fmt.Sprintf("otp:%v", user.ID))
 	return token, nil
+}
+
+func (s *authServiceImpl) RefreshToken(ctx context.Context, refreshToken string, context dto.SessionRequest) (*dto.Token, error) {
+	claim, err := utils.ParseRefreshToken(refreshToken)
+	if err != nil {
+		return nil, apperror.NewUnauthorized("Sesi tidak valid!")
+	}
+
+	oldRefreshJti := fmt.Sprintf("rt:%v:%v", claim.Subject, claim.ID)
+	var session dto.SessionValue
+	err = s.cache.Get(ctx, oldRefreshJti, &session)
+	if err != nil {
+		if err == redis.Nil {
+			return nil, apperror.NewUnauthorized("Sesi tidak valid!")
+		}
+		return nil, apperror.NewInternal("Terjadi kesalahan.")
+	}
+
+	newRefreshJti, err := uuid.NewV7()
+	if err != nil {
+		return nil, apperror.NewInternal("Terjadi kesalahan.")
+	}
+	newAccessJti, err := uuid.NewV7()
+	if err != nil {
+		return nil, apperror.NewInternal("Terjadi kesalahan.")
+	}
+
+	return nil, nil
+}
+
+func (s *authServiceImpl) Logout(ctx context.Context, refreshToken, accessToken string) error {
+	claim, _ := utils.ParseRefreshToken(refreshToken)
+	if accessToken != "" {
+		err := s.cache.Set(ctx, fmt.Sprintf("blocked:%v", accessToken), true, time.Minute*5)
+		if err != nil {
+			return apperror.NewInternal("Terjadi Kesalahan")
+		}
+	}
+	err := s.cache.Delete(ctx, fmt.Sprintf("rt:%v:%v", claim.Subject, claim.ID))
+	if err != nil {
+		return apperror.NewInternal("Terjadi Kesalahan")
+	}
+	return nil
 }

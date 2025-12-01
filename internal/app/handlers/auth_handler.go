@@ -1,8 +1,10 @@
 package handlers
 
 import (
+	apperror "situs-keagamaan/internal/app/appError"
 	"situs-keagamaan/internal/app/services"
 	"situs-keagamaan/internal/dto"
+	"strings"
 	"time"
 
 	"github.com/go-playground/validator/v10"
@@ -12,6 +14,7 @@ import (
 type AuthHandler interface {
 	Login(c *fiber.Ctx) error
 	VerifyOTP(c *fiber.Ctx) error
+	Logout(c *fiber.Ctx) error
 }
 
 type authHandlerImpl struct {
@@ -27,6 +30,10 @@ func NewAuthHandler(authService services.AuthService, validate *validator.Valida
 }
 
 func (h *authHandlerImpl) Login(c *fiber.Ctx) error {
+	refreshToken := c.Cookies("refresh_token")
+	if refreshToken != "" {
+		return c.Status(fiber.StatusBadRequest).SendString("Anda sudah login dan dalam sesi aktif")
+	}
 	var body dto.UserLogin
 	if err := c.BodyParser(&body); err != nil {
 		return c.Status(400).SendString(err.Error())
@@ -35,13 +42,15 @@ func (h *authHandlerImpl) Login(c *fiber.Ctx) error {
 		return c.Status(400).SendString(err.Error())
 	}
 	if err := h.authService.Login(c.Context(), &body); err != nil {
-		return c.Status(500).SendString(err.Error())
+		e := err.(*apperror.AppError)
+		return c.Status(e.Status).SendString(e.Error())
 	}
 
 	return c.SendStatus(200)
 }
 
 func (h *authHandlerImpl) VerifyOTP(c *fiber.Ctx) error {
+	context := c.Locals("context").(*dto.SessionRequest)
 	var body dto.UserVerifyOTP
 	if err := c.BodyParser(&body); err != nil {
 		return c.Status(400).SendString(err.Error())
@@ -49,20 +58,42 @@ func (h *authHandlerImpl) VerifyOTP(c *fiber.Ctx) error {
 	if err := h.validate.Struct(&body); err != nil {
 		return c.Status(400).SendString(err.Error())
 	}
-	token, err := h.authService.VerifyOTP(c.Context(), &body)
+	token, err := h.authService.VerifyOTP(c.Context(), &body, context)
 	if err != nil {
-		return c.Status(400).SendString(err.Error())
+		e := err.(*apperror.AppError)
+		return c.Status(e.Status).SendString(e.Error())
 	}
 
 	c.Cookie(&fiber.Cookie{
-		Name:     "acces_token",
+		Name:     "refresh_token",
 		Value:    token.RefreshToken,
 		Path:     "/",
-		Expires:  time.Now().Add(5 * time.Minute),
+		Expires:  time.Now().Add(time.Hour * 24 * 7),
 		HTTPOnly: true,
 		Secure:   true,
 	})
 	return c.Status(200).JSON(fiber.Map{
 		"access_token": token.AccessToken,
 	})
+}
+
+func (h *authHandlerImpl) Logout(c *fiber.Ctx) error {
+	authHeader := c.Get("Authorization")
+	bearerToken := strings.Split(authHeader, " ")
+	refreshToken := c.Cookies("refresh_token")
+	if refreshToken == "" {
+		return c.Status(200).SendString("Kamu belum login si..")
+	}
+
+	if err := h.authService.Logout(c.Context(), refreshToken, bearerToken[1]); err != nil {
+		e := err.(*apperror.AppError)
+		return c.Status(e.Status).SendString(e.Error())
+	}
+	c.Cookie(&fiber.Cookie{
+		Name:    "refresh_token",
+		Value:   "",
+		Path:    "/",
+		Expires: time.Now().Add(-time.Hour),
+	})
+	return c.SendStatus(200)
 }

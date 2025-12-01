@@ -2,6 +2,7 @@ package auth
 
 import (
 	_ "embed"
+	"fmt"
 	"os"
 
 	"github.com/casbin/casbin/v2"
@@ -31,6 +32,8 @@ func NewEnforcer() (*casbin.Enforcer, error) {
 	}
 
 	e.EnableAutoSave(true)
+	groups, _ := e.GetUsersForRole("dev")
+	fmt.Println("GROUPS : ", groups)
 
 	return e, nil
 }

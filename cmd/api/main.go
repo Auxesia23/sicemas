@@ -58,7 +58,7 @@ func main() {
 	handlers := handlers.NewHandlers(userHandler, authHandler)
 
 	// Initiate middleware
-	authMiddleware := middlewares.NewAuthMiddleware(enforcer, locator)
+	authMiddleware := middlewares.NewAuthMiddleware(enforcer, locator, cache)
 	// middlewares compositor
 	middlewares := middlewares.NewMiddlewares(authMiddleware)
 
