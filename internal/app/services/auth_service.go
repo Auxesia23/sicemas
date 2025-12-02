@@ -18,6 +18,7 @@ import (
 type AuthService interface {
 	Login(ctx context.Context, in *dto.UserLogin) error
 	VerifyOTP(ctx context.Context, in *dto.UserVerifyOTP, loginContext *dto.SessionRequest) (*dto.Token, error)
+	RefreshToken(ctx context.Context, refreshToken string, requestContext *dto.SessionRequest) (*dto.Token, error)
 	Logout(ctx context.Context, refreshToken, accessToken string) error
 }
 
@@ -114,20 +115,33 @@ func (s *authServiceImpl) VerifyOTP(ctx context.Context, in *dto.UserVerifyOTP, 
 	return token, nil
 }
 
-func (s *authServiceImpl) RefreshToken(ctx context.Context, refreshToken string, context dto.SessionRequest) (*dto.Token, error) {
+func (s *authServiceImpl) RefreshToken(ctx context.Context, refreshToken string, requestContext *dto.SessionRequest) (*dto.Token, error) {
 	claim, err := utils.ParseRefreshToken(refreshToken)
 	if err != nil {
 		return nil, apperror.NewUnauthorized("Sesi tidak valid!")
 	}
 
-	oldRefreshJti := fmt.Sprintf("rt:%v:%v", claim.Subject, claim.ID)
-	var session dto.SessionValue
-	err = s.cache.Get(ctx, oldRefreshJti, &session)
+	user, err := s.userRepo.ReadById(ctx, claim.Subject)
+	if err != nil {
+		if err == sql.ErrNoRows {
+			return nil, apperror.NewNotFound("Sesi tidak valid, user tidak ditemukan.")
+		}
+		return nil, apperror.NewInternal("Terjadi Kesalahan")
+	}
+
+	oldSessionKey := fmt.Sprintf("rt:%v:%v", claim.Subject, claim.ID)
+	var oldSession dto.SessionValue
+	err = s.cache.Get(ctx, oldSessionKey, &oldSession)
 	if err != nil {
 		if err == redis.Nil {
 			return nil, apperror.NewUnauthorized("Sesi tidak valid!")
 		}
 		return nil, apperror.NewInternal("Terjadi kesalahan.")
+	}
+
+	trustScore := utils.CalculateTrustScore(requestContext, &oldSession)
+	if trustScore <= 70 {
+		return nil, apperror.NewUnauthorized("Terdeteksi perubahan signifikan pada sesi anda!")
 	}
 
 	newRefreshJti, err := uuid.NewV7()
@@ -138,8 +152,34 @@ func (s *authServiceImpl) RefreshToken(ctx context.Context, refreshToken string,
 	if err != nil {
 		return nil, apperror.NewInternal("Terjadi kesalahan.")
 	}
+	newSessionKey := fmt.Sprintf("rt:%v:%v", claim.Subject, newRefreshJti)
+	newSession := &dto.SessionValue{
+		UserID:      user.ID,
+		SID:         newRefreshJti,
+		UserAgent:   requestContext.UserAgent,
+		IPAddress:   requestContext.IPAddress,
+		GeoLocation: requestContext.GeoLocation,
+		DeviceID:    requestContext.DeviceID,
+	}
 
-	return nil, nil
+	err = s.cache.Set(ctx, newSessionKey, newSession, 7*24*time.Hour)
+	if err != nil {
+		return nil, apperror.NewInternal("Terjadi kesalahan.")
+	}
+
+	newAccessToken, err := utils.GenerateAccessToken(user, newAccessJti, newRefreshJti)
+	newRefreshToken, err := utils.GenerateRefreshToken(user, newRefreshJti)
+
+	token := &dto.Token{
+		AccessToken:  newAccessToken,
+		RefreshToken: newRefreshToken,
+	}
+
+	err = s.cache.Delete(ctx, oldSessionKey)
+	if err != nil {
+		return nil, apperror.NewInternal("Terjadi Kesalahan")
+	}
+	return token, nil
 }
 
 func (s *authServiceImpl) Logout(ctx context.Context, refreshToken, accessToken string) error {

@@ -12,6 +12,7 @@ type UserRepo interface {
 	Create(ctx context.Context, in *dto.UserRegister, index []byte) error
 	ReadAll(ctx context.Context) (*[]entity.User, error)
 	ReadOne(ctx context.Context, index []byte) (*entity.User, error)
+	ReadById(ctx context.Context, id string) (*entity.User, error)
 }
 
 type userRepiImpl struct {
@@ -60,6 +61,22 @@ func (r *userRepiImpl) ReadOne(ctx context.Context, index []byte) (*entity.User,
 
 	var dest entity.User
 	if err := r.DB.GetContext(ctx, &dest, query, index); err != nil {
+		return nil, err
+	}
+
+	return &dest, nil
+}
+
+func (r *userRepiImpl) ReadById(ctx context.Context, id string) (*entity.User, error) {
+	query := `
+		SELECT *
+		FROM users
+		WHERE id = $1
+		LIMIT 1;
+	`
+
+	var dest entity.User
+	if err := r.DB.GetContext(ctx, &dest, query, id); err != nil {
 		return nil, err
 	}
 

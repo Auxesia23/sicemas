@@ -14,6 +14,7 @@ import (
 type AuthHandler interface {
 	Login(c *fiber.Ctx) error
 	VerifyOTP(c *fiber.Ctx) error
+	Refresh(c *fiber.Ctx) error
 	Logout(c *fiber.Ctx) error
 }
 
@@ -59,6 +60,31 @@ func (h *authHandlerImpl) VerifyOTP(c *fiber.Ctx) error {
 		return c.Status(400).SendString(err.Error())
 	}
 	token, err := h.authService.VerifyOTP(c.Context(), &body, context)
+	if err != nil {
+		e := err.(*apperror.AppError)
+		return c.Status(e.Status).SendString(e.Error())
+	}
+
+	c.Cookie(&fiber.Cookie{
+		Name:     "refresh_token",
+		Value:    token.RefreshToken,
+		Path:     "/",
+		Expires:  time.Now().Add(time.Hour * 24 * 7),
+		HTTPOnly: true,
+		Secure:   true,
+	})
+	return c.Status(200).JSON(fiber.Map{
+		"access_token": token.AccessToken,
+	})
+}
+
+func (h *authHandlerImpl) Refresh(c *fiber.Ctx) error {
+	requestContext := c.Locals("context").(*dto.SessionRequest)
+	refreshToken := c.Cookies("refresh_token")
+	if refreshToken == "" {
+		return c.Status(fiber.StatusUnauthorized).SendString("Refresh token tidak ada atau kadaluarsa. Silahkan login kembali!")
+	}
+	token, err := h.authService.RefreshToken(c.Context(), refreshToken, requestContext)
 	if err != nil {
 		e := err.(*apperror.AppError)
 		return c.Status(e.Status).SendString(e.Error())

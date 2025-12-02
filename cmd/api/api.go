@@ -47,6 +47,7 @@ func (s *server) run() {
 	{
 		auth.Post("/login", s.handlers.Auth.Login)
 		auth.Post("/verify-otp", s.middlewares.Auth.GetContext, s.handlers.Auth.VerifyOTP)
+		auth.Post("/refresh", s.middlewares.Auth.GetContext, s.handlers.Auth.Refresh)
 		auth.Post("/logout", s.handlers.Auth.Logout)
 	}
 
