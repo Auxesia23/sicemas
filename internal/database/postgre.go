@@ -18,7 +18,13 @@ func InitDB() (*sqlx.DB, error) {
 
 	db.SetMaxOpenConns(100)
 	db.SetMaxIdleConns(10)
-
 	log.Println("Postgre Connected Succesfuly")
+
+	log.Println("Inserting Seeders")
+	seeder := NewSeeder(db)
+	err = seeder.UserSeeder()
+	if err != nil {
+		return nil, err
+	}
 	return db, nil
 }
