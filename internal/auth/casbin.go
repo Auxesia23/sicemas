@@ -30,6 +30,8 @@ func NewEnforcer() (*casbin.Enforcer, error) {
 		return nil, err
 	}
 
+	e.AddGroupingPolicy("019ae4f9-7ca4-7e69-a1dc-a56a6416d05e", "admin")
+	e.AddPolicy("admin", "user", "create")
 	e.EnableAutoSave(true)
 
 	return e, nil

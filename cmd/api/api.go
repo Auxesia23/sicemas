@@ -57,7 +57,7 @@ func (s *server) run() {
 		users.Use(s.middlewares.Auth.ZeroTrustValidator)
 
 		users.Post("/",
-			s.middlewares.Auth.CasbinAuthz().RequiresRoles([]string{"admin"}, casbin.WithValidationRule(casbin.MatchAllRule)),
+			s.middlewares.Auth.CasbinAuthz().RequiresPermissions([]string{"user:create"}, casbin.WithValidationRule(casbin.MatchAllRule)),
 			s.handlers.User.Register,
 		)
 	}

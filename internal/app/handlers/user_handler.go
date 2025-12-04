@@ -1,6 +1,7 @@
 package handlers
 
 import (
+	apperror "situs-keagamaan/internal/app/appError"
 	"situs-keagamaan/internal/app/services"
 	"situs-keagamaan/internal/dto"
 
@@ -33,7 +34,8 @@ func (h *userHandlerImpl) Register(c *fiber.Ctx) error {
 		return c.Status(400).SendString(err.Error())
 	}
 	if err := h.userService.Register(c.Context(), &body); err != nil {
-		return c.Status(fiber.StatusInternalServerError).SendString(err.Error())
+		e := err.(*apperror.AppError)
+		return c.Status(e.Status).SendString(e.Error())
 	}
 
 	return c.SendStatus(fiber.StatusCreated)

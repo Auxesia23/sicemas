@@ -19,7 +19,7 @@ type AuthService interface {
 	Login(ctx context.Context, in *dto.UserLogin) error
 	VerifyOTP(ctx context.Context, in *dto.UserVerifyOTP, loginContext *dto.SessionRequest) (*dto.Token, error)
 	RefreshToken(ctx context.Context, refreshToken string, requestContext *dto.SessionRequest) (*dto.Token, error)
-	Logout(ctx context.Context, refreshToken, accessToken string) error
+	Logout(ctx context.Context, refreshToken string, accessToken *string) error
 }
 
 type authServiceImpl struct {
@@ -182,10 +182,10 @@ func (s *authServiceImpl) RefreshToken(ctx context.Context, refreshToken string,
 	return token, nil
 }
 
-func (s *authServiceImpl) Logout(ctx context.Context, refreshToken, accessToken string) error {
+func (s *authServiceImpl) Logout(ctx context.Context, refreshToken string, accessToken *string) error {
 	claim, _ := utils.ParseRefreshToken(refreshToken)
-	if accessToken != "" {
-		err := s.cache.Set(ctx, fmt.Sprintf("blocked:%v", accessToken), true, time.Minute*5)
+	if accessToken != nil {
+		err := s.cache.Set(ctx, fmt.Sprintf("blocked:%v", *accessToken), true, time.Minute*5)
 		if err != nil {
 			return apperror.NewInternal("Terjadi Kesalahan")
 		}

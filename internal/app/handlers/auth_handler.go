@@ -1,6 +1,7 @@
 package handlers
 
 import (
+	"log"
 	apperror "situs-keagamaan/internal/app/appError"
 	"situs-keagamaan/internal/app/services"
 	"situs-keagamaan/internal/dto"
@@ -106,12 +107,21 @@ func (h *authHandlerImpl) Refresh(c *fiber.Ctx) error {
 func (h *authHandlerImpl) Logout(c *fiber.Ctx) error {
 	authHeader := c.Get("Authorization")
 	bearerToken := strings.Split(authHeader, " ")
+	var token *string
+	if authHeader == "" {
+		token = nil
+		log.Println("Token Kosong")
+	} else {
+		token = &bearerToken[1]
+		log.Println("Token Ada")
+	}
+
 	refreshToken := c.Cookies("refresh_token")
 	if refreshToken == "" {
 		return c.Status(200).SendString("Kamu belum login si..")
 	}
 
-	if err := h.authService.Logout(c.Context(), refreshToken, bearerToken[1]); err != nil {
+	if err := h.authService.Logout(c.Context(), refreshToken, token); err != nil {
 		e := err.(*apperror.AppError)
 		return c.Status(e.Status).SendString(e.Error())
 	}
