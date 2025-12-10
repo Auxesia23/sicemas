@@ -11,7 +11,7 @@ import (
 	"github.com/lib/pq"
 )
 
-type Seeder struct {
+type seeder struct {
 	db *sqlx.DB
 }
 
@@ -24,13 +24,13 @@ type userSeed struct {
 	NomorTelepon string
 }
 
-func NewSeeder(db *sqlx.DB) *Seeder {
-	return &Seeder{
+func newSeeder(db *sqlx.DB) *seeder {
+	return &seeder{
 		db,
 	}
 }
 
-func (s *Seeder) UserSeeder() error {
+func (s *seeder) UserSeeder() error {
 	ctx, cancel := context.WithTimeout(context.Background(), time.Second*5)
 	defer cancel()
 	users := []*userSeed{

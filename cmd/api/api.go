@@ -53,6 +53,9 @@ func (s *server) run() {
 
 	users := app.Group("/users")
 	{
+		users.Get("/me", func(c *fiber.Ctx) error {
+			return c.SendStatus(200)
+		})
 		users.Use(s.middlewares.Auth.JWTAuthenticator)
 		users.Use(s.middlewares.Auth.ZeroTrustValidator)
 

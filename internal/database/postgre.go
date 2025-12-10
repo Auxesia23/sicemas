@@ -21,7 +21,7 @@ func InitDB() (*sqlx.DB, error) {
 	log.Println("Postgre Connected Succesfuly")
 
 	log.Println("Inserting Seeders")
-	seeder := NewSeeder(db)
+	seeder := newSeeder(db)
 	err = seeder.UserSeeder()
 	if err != nil {
 		return nil, err

@@ -12,6 +12,7 @@ import (
 	"github.com/casbin/casbin/v2"
 	fcasbin "github.com/gofiber/contrib/casbin"
 	"github.com/gofiber/fiber/v2"
+	"github.com/redis/go-redis/v9"
 )
 
 type AuthMiddleware interface {
@@ -60,18 +61,45 @@ func (m *authMiddlewareImpl) JWTAuthenticator(c *fiber.Ctx) error {
 
 func (m *authMiddlewareImpl) ZeroTrustValidator(c *fiber.Ctx) error {
 	jwtClaim := c.Locals("claim").(*dto.AccessToken)
-	fmt.Printf("JTI : %v\nUSER ID : %v\n", jwtClaim.ID, jwtClaim.Subject)
 
 	var ipStr string
 	ipStr = c.Get("X-Forwarded-For")
 	if ipStr == "" {
 		ipStr = c.IP()
 	}
-	ip, _ := netip.ParseAddr(ipStr)
-	locationn, _ := m.locator.Lookup(ip)
+	ip, err := netip.ParseAddr(ipStr)
+	if err != nil {
+		return c.Status(500).SendString("Terjadi kesalahan!")
+	}
+
+	locationn, err := m.locator.Lookup(ip)
+	if err != nil {
+		return c.Status(500).SendString("Terjadi kesalahan!")
+	}
 
 	userAgent := string(c.Context().UserAgent())
-	fmt.Printf("IP Addr : %v\nUser Agent : %v\nCountry : %v\nCity : %v\n", ipStr, userAgent, locationn.Country, locationn.City)
+	deviceId := c.Get("X-Device-Id")
+
+	requestContect := &dto.SessionRequest{
+		UserAgent:   userAgent,
+		IPAddress:   ipStr,
+		GeoLocation: locationn.City,
+		DeviceID:    deviceId,
+	}
+	var curentSession dto.SessionValue
+	err = m.cache.Get(c.Context(), fmt.Sprintf("rt:%v:%v", jwtClaim.Subject, jwtClaim.SID), &curentSession)
+	if err != nil {
+		if err == redis.Nil {
+			return c.SendStatus(fiber.StatusUnauthorized)
+		}
+		return c.Status(500).SendString("Terjadi kesalahan!")
+	}
+
+	trustScore := utils.CalculateTrustScore(requestContect, &curentSession)
+	if trustScore <= 70 {
+		return c.Status(fiber.StatusForbidden).SendString("Terjadi perbuhana konteks dalam sesi!")
+	}
+
 	return c.Next()
 }
 
@@ -93,7 +121,10 @@ func (m *authMiddlewareImpl) GetContext(c *fiber.Ctx) error {
 	if ipStr == "" {
 		ipStr = c.IP()
 	}
-	ip, _ := netip.ParseAddr(ipStr)
+	ip, err := netip.ParseAddr(ipStr)
+	if err != nil {
+		return c.Status(500).SendString("Terjadi kesalahan!")
+	}
 
 	deviceId := c.Get("X-Device-Id")
 	fmt.Println("DEVICE ID : ", deviceId)
