@@ -72,7 +72,8 @@ func (h *authHandlerImpl) VerifyOTP(c *fiber.Ctx) error {
 		Path:     "/",
 		Expires:  time.Now().Add(time.Hour * 24 * 7),
 		HTTPOnly: true,
-		Secure:   true,
+		Secure:   false,
+		SameSite: "lax",
 	})
 	return c.Status(200).JSON(fiber.Map{
 		"access_token": token.AccessToken,
@@ -97,7 +98,8 @@ func (h *authHandlerImpl) Refresh(c *fiber.Ctx) error {
 		Path:     "/",
 		Expires:  time.Now().Add(time.Hour * 24 * 7),
 		HTTPOnly: true,
-		Secure:   true,
+		Secure:   false,
+		SameSite: "lax",
 	})
 	return c.Status(200).JSON(fiber.Map{
 		"access_token": token.AccessToken,

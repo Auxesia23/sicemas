@@ -38,6 +38,19 @@ func main() {
 		log.Fatal(err.Error())
 	}
 
+	// Seeder data
+	seeder := database.NewSeeder(db, enforcer)
+	// User seeder
+	if err := seeder.UserSeeder(); err != nil {
+		log.Fatal(err.Error())
+	}
+	// Policiy seeder
+	seeder.PolicySeeder()
+	// Role seeder
+	if err := seeder.RoleSeeder(); err != nil {
+		log.Fatal(err.Error())
+	}
+
 	// Initiate validator
 	validate := validator.New(validator.WithRequiredStructEnabled())
 
@@ -46,16 +59,21 @@ func main() {
 
 	// Initiate repository layer
 	userRepo := repositories.NewUserRepo(db)
+	roleRepo := repositories.NewRoleRepo(db)
 
 	// Initiate service layer
 	userService := services.NewUserService(userRepo, cache)
 	authService := services.NewAuthService(userRepo, cache)
+	roleService := services.NewRoleService(roleRepo)
+	policyService := services.NewPolicyService(enforcer)
 
 	// Initiate handler layer
 	userHandler := handlers.NewUserHandler(userService, validate)
 	authHandler := handlers.NewAuthHandler(authService, validate)
+	roleHandler := handlers.NewRoleHandler(roleService, validate)
+	policyHandler := handlers.NewPolicyHandler(policyService, validate)
 	// handler compositor
-	handlers := handlers.NewHandlers(userHandler, authHandler)
+	handlers := handlers.NewHandlers(userHandler, authHandler, roleHandler, policyHandler)
 
 	// Initiate middleware
 	authMiddleware := middlewares.NewAuthMiddleware(enforcer, locator, cache)

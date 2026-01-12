@@ -2,7 +2,6 @@ package auth
 
 import (
 	_ "embed"
-	"fmt"
 	"os"
 
 	"github.com/casbin/casbin/v2"
@@ -31,16 +30,6 @@ func NewEnforcer() (*casbin.Enforcer, error) {
 		return nil, err
 	}
 
-	seeder := newSeeder(e)
-	seeder.PolicySeeder()
-
-	e.AddGroupingPolicy("019ae4f9-7ca4-7e69-a1dc-a56a6416d05e", "admin")
-
-	roles, _ := e.GetAllRoles()
-	fmt.Println("All roles :")
-	for i, role := range roles {
-		fmt.Printf("%v. %v\n", i+1, role)
-	}
 	e.EnableAutoSave(true)
 
 	return e, nil

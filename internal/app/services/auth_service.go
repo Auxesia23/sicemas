@@ -87,7 +87,8 @@ func (s *authServiceImpl) VerifyOTP(ctx context.Context, in *dto.UserVerifyOTP, 
 	if err != nil {
 		return nil, apperror.NewInternal("Terjadi Kesalahan.")
 	}
-	accesToken, err := utils.GenerateAccessToken(user, refreshTokenId, accesTokenId)
+
+	accesToken, err := utils.GenerateAccessToken(user, accesTokenId, refreshTokenId)
 	if err != nil {
 		return nil, apperror.NewInternal("Terjadi Kesalahan.")
 	}

@@ -72,7 +72,7 @@ func (m *authMiddlewareImpl) ZeroTrustValidator(c *fiber.Ctx) error {
 		return c.Status(500).SendString("Terjadi kesalahan!")
 	}
 
-	locationn, err := m.locator.Lookup(ip)
+	location, err := m.locator.Lookup(ip)
 	if err != nil {
 		return c.Status(500).SendString("Terjadi kesalahan!")
 	}
@@ -83,7 +83,7 @@ func (m *authMiddlewareImpl) ZeroTrustValidator(c *fiber.Ctx) error {
 	requestContect := &dto.SessionRequest{
 		UserAgent:   userAgent,
 		IPAddress:   ipStr,
-		GeoLocation: locationn.City,
+		GeoLocation: location.City,
 		DeviceID:    deviceId,
 	}
 	var curentSession dto.SessionValue
@@ -97,7 +97,7 @@ func (m *authMiddlewareImpl) ZeroTrustValidator(c *fiber.Ctx) error {
 
 	trustScore := utils.CalculateTrustScore(requestContect, &curentSession)
 	if trustScore <= 70 {
-		return c.Status(fiber.StatusForbidden).SendString("Terjadi perbuhana konteks dalam sesi!")
+		return c.Status(fiber.StatusForbidden).SendString("Terjadi perbuhan konteks dalam sesi!")
 	}
 
 	return c.Next()
@@ -127,7 +127,6 @@ func (m *authMiddlewareImpl) GetContext(c *fiber.Ctx) error {
 	}
 
 	deviceId := c.Get("X-Device-Id")
-	fmt.Println("DEVICE ID : ", deviceId)
 	locationn, _ := m.locator.Lookup(ip)
 	userAgent := string(c.Context().UserAgent())
 
@@ -139,5 +138,6 @@ func (m *authMiddlewareImpl) GetContext(c *fiber.Ctx) error {
 	}
 
 	c.Locals("context", loginContext)
+	fmt.Printf("IP Addr : %v\nLocation : %v\nUser Agent : %v\nDevice ID : %v\n", ipStr, locationn.City, userAgent, deviceId)
 	return c.Next()
 }
