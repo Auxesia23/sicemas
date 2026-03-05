@@ -7,7 +7,6 @@ import (
 	"situs-keagamaan/internal/dto"
 	"situs-keagamaan/internal/geoip"
 	"situs-keagamaan/internal/utils"
-	"strings"
 
 	"github.com/casbin/casbin/v2"
 	fcasbin "github.com/gofiber/contrib/casbin"
@@ -37,20 +36,16 @@ func NewAuthMiddleware(enforcer *casbin.Enforcer, locator geoip.Locator, cache c
 }
 
 func (m *authMiddlewareImpl) JWTAuthenticator(c *fiber.Ctx) error {
-	authHeader := c.Get("Authorization")
-	if authHeader == "" {
-		return c.SendStatus(fiber.StatusUnauthorized)
-	}
-	token := strings.Split(authHeader, " ")
-	if token[0] != "Bearer" {
+	token := c.Cookies("access_token")
+	if token == "" {
 		return c.SendStatus(fiber.StatusUnauthorized)
 	}
 	var blocked bool
-	m.cache.Get(c.Context(), fmt.Sprintf("blocked:%v", token[1]), &blocked)
+	m.cache.Get(c.Context(), fmt.Sprintf("blocked:%v", token), &blocked)
 	if blocked {
 		return c.SendStatus(fiber.StatusUnauthorized)
 	}
-	claim, err := utils.ParseAccessToken(token[1])
+	claim, err := utils.ParseAccessToken(token)
 	if err != nil {
 		return c.SendStatus(fiber.StatusUnauthorized)
 	}
@@ -120,6 +115,9 @@ func (m *authMiddlewareImpl) GetContext(c *fiber.Ctx) error {
 	ipStr = c.Get("X-Forwarded-For")
 	if ipStr == "" {
 		ipStr = c.IP()
+	}
+	if ipStr == "::1" || ipStr == "0:0:0:0:0:0:0:1" {
+		ipStr = "127.0.0.1"
 	}
 	ip, err := netip.ParseAddr(ipStr)
 	if err != nil {

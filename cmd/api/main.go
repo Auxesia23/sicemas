@@ -62,7 +62,7 @@ func main() {
 	roleRepo := repositories.NewRoleRepo(db)
 
 	// Initiate service layer
-	userService := services.NewUserService(userRepo, cache)
+	userService := services.NewUserService(userRepo, enforcer, cache)
 	authService := services.NewAuthService(userRepo, cache)
 	roleService := services.NewRoleService(roleRepo)
 	policyService := services.NewPolicyService(enforcer)

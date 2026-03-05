@@ -4,6 +4,7 @@ import (
 	"context"
 	"database/sql"
 	"fmt"
+	"log"
 	apperror "situs-keagamaan/internal/app/appError"
 	"situs-keagamaan/internal/app/repositories"
 	"situs-keagamaan/internal/cache"
@@ -141,6 +142,7 @@ func (s *authServiceImpl) RefreshToken(ctx context.Context, refreshToken string,
 	}
 
 	trustScore := utils.CalculateTrustScore(requestContext, &oldSession)
+	log.Printf("Score : %f", trustScore)
 	if trustScore <= 70 {
 		return nil, apperror.NewUnauthorized("Terdeteksi perubahan signifikan pada sesi anda!")
 	}

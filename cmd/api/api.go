@@ -3,7 +3,6 @@ package main
 import (
 	"log"
 	"situs-keagamaan/internal/app/handlers"
-	"situs-keagamaan/internal/dto"
 	"situs-keagamaan/internal/middlewares"
 	"time"
 
@@ -62,16 +61,11 @@ func (s *server) run() {
 	users := app.Group("/users")
 	{
 		users.Use(s.middlewares.Auth.JWTAuthenticator)
+
+		users.Get("/me", s.handlers.User.Profile)
+
 		users.Use(s.middlewares.Auth.ZeroTrustValidator)
 
-		users.Get("/me", s.middlewares.Auth.JWTAuthenticator, func(c *fiber.Ctx) error {
-			jwtClaim := c.Locals("claim").(*dto.AccessToken)
-
-			return c.Status(200).JSON(fiber.Map{
-				"nama": jwtClaim.NamaLengkap,
-				"id":   jwtClaim.Subject,
-			})
-		})
 		users.Get("/",
 			s.middlewares.Auth.CasbinAuthz().RequiresPermissions([]string{"user:read"}, casbin.WithValidationRule(casbin.MatchAllRule)),
 			s.handlers.User.GetAllUser,

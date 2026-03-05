@@ -22,7 +22,8 @@ type userSeed struct {
 	NIP          string
 	NIPIndex     []byte
 	NamaLengkap  string
-	Peran        string
+	Jabatan      string
+	UnitKerja    string
 	Email        string
 	NomorTelepon string
 }
@@ -42,14 +43,16 @@ func (s *seeder) UserSeeder() error {
 			NIP:          "200308232022111001",
 			NIPIndex:     utils.HashIndex("200308232022111001"),
 			NamaLengkap:  "Fajar Gustiana",
+			Jabatan:      "Developer",
+			UnitKerja:    "Universitas Komputer Indonesia",
 			Email:        "fajargustiana2@gmail.com",
 			NomorTelepon: "085720928785",
 		},
 	}
 
 	query := `
-		INSERT INTO users (nip_index,nama_lengkap,nip,email,nomor_telepon)
-		VALUES($1,$2,$3,$4,$5) RETURNING id;
+		INSERT INTO users (nip_index,nama_lengkap,nip,jabatan,unit_kerja,email,nomor_telepon)
+		VALUES($1,$2,$3,$4,$5,$6,$7) RETURNING id;
 	`
 	for _, u := range users {
 		var id uuid.UUID
@@ -57,6 +60,8 @@ func (s *seeder) UserSeeder() error {
 			u.NIPIndex,
 			u.NamaLengkap,
 			utils.Encrypt(u.NIP),
+			u.Jabatan,
+			u.UnitKerja,
 			utils.Encrypt(u.Email),
 			utils.Encrypt(u.NomorTelepon),
 		)
@@ -86,6 +91,11 @@ func (s *seeder) PolicySeeder() {
 	s.e.AddPolicy("admin", "policy", "read")
 	s.e.AddPolicy("admin", "policy", "update")
 	s.e.AddPolicy("admin", "policy", "delete")
+
+	s.e.AddPolicy("admin", "role", "create")
+	s.e.AddPolicy("admin", "role", "read")
+	s.e.AddPolicy("admin", "role", "update")
+	s.e.AddPolicy("admin", "role", "delete")
 
 	s.e.AddPolicy("operator", "situs", "create")
 	s.e.AddPolicy("operator", "situs", "read")

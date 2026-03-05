@@ -1,11 +1,9 @@
 package handlers
 
 import (
-	"log"
 	apperror "situs-keagamaan/internal/app/appError"
 	"situs-keagamaan/internal/app/services"
 	"situs-keagamaan/internal/dto"
-	"strings"
 	"time"
 
 	"github.com/go-playground/validator/v10"
@@ -75,9 +73,16 @@ func (h *authHandlerImpl) VerifyOTP(c *fiber.Ctx) error {
 		Secure:   false,
 		SameSite: "lax",
 	})
-	return c.Status(200).JSON(fiber.Map{
-		"access_token": token.AccessToken,
+	c.Cookie(&fiber.Cookie{
+		Name:     "access_token",
+		Value:    token.AccessToken,
+		Path:     "/",
+		Expires:  time.Now().Add(time.Minute * 15),
+		HTTPOnly: true,
+		Secure:   false,
+		SameSite: "lax",
 	})
+	return c.SendStatus(200)
 }
 
 func (h *authHandlerImpl) Refresh(c *fiber.Ctx) error {
@@ -101,21 +106,25 @@ func (h *authHandlerImpl) Refresh(c *fiber.Ctx) error {
 		Secure:   false,
 		SameSite: "lax",
 	})
-	return c.Status(200).JSON(fiber.Map{
-		"access_token": token.AccessToken,
+	c.Cookie(&fiber.Cookie{
+		Name:     "access_token",
+		Value:    token.AccessToken,
+		Path:     "/",
+		Expires:  time.Now().Add(time.Minute * 15),
+		HTTPOnly: true,
+		Secure:   false,
+		SameSite: "lax",
 	})
+	return c.SendStatus(200)
 }
 
 func (h *authHandlerImpl) Logout(c *fiber.Ctx) error {
-	authHeader := c.Get("Authorization")
-	bearerToken := strings.Split(authHeader, " ")
-	var token *string
-	if authHeader == "" {
-		token = nil
-		log.Println("Token Kosong")
+	accessToken := c.Cookies("access_token")
+	var accessTokenPtr *string
+	if accessToken == "" {
+		accessTokenPtr = nil
 	} else {
-		token = &bearerToken[1]
-		log.Println("Token Ada")
+		accessTokenPtr = &accessToken
 	}
 
 	refreshToken := c.Cookies("refresh_token")
@@ -123,12 +132,18 @@ func (h *authHandlerImpl) Logout(c *fiber.Ctx) error {
 		return c.Status(200).SendString("Kamu belum login si..")
 	}
 
-	if err := h.authService.Logout(c.Context(), refreshToken, token); err != nil {
+	if err := h.authService.Logout(c.Context(), refreshToken, accessTokenPtr); err != nil {
 		e := err.(*apperror.AppError)
 		return c.Status(e.Status).SendString(e.Error())
 	}
 	c.Cookie(&fiber.Cookie{
 		Name:    "refresh_token",
+		Value:   "",
+		Path:    "/",
+		Expires: time.Now().Add(-time.Hour),
+	})
+	c.Cookie(&fiber.Cookie{
+		Name:    "access_token",
 		Value:   "",
 		Path:    "/",
 		Expires: time.Now().Add(-time.Hour),

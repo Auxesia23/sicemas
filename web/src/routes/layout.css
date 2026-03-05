@@ -1,0 +1,44 @@
+@import 'tailwindcss';
+@plugin '@tailwindcss/forms';
+@plugin '@tailwindcss/typography';
+@plugin 'daisyui';
+@plugin 'daisyui/theme' {
+	name: 'kemenag';
+	default: false;
+	prefersdark: false;
+	color-scheme: 'light';
+
+	/* Warna Background & Text Utama */
+	--color-base-100: oklch(99% 0.01 160); /* Putih bersih sedikit kehijauan */
+	--color-base-200: oklch(96% 0.02 160); /* Abu-abu kehijauan sangat muda */
+	--color-base-300: oklch(92% 0.04 160); /* Untuk divider atau hover background */
+	--color-base-content: oklch(25% 0.02 160); /* Teks utama (Hampir hitam) */
+
+	/* Warna Brand Utama (Hijau Kemenag) */
+	--color-primary: oklch(45% 0.14 160); /* Hijau Khas Kemenag */
+	--color-primary-content: oklch(98% 0.01 160); /* Teks di atas warna primary (Putih) */
+
+	/* Warna Sekunder (Hijau Muda/Segar) */
+	--color-secondary: oklch(75% 0.15 150); /* Hijau muda daun */
+	--color-secondary-content: oklch(20% 0.05 150);
+
+	/* Warna Aksen (Kuning/Emas Kemenag) */
+	--color-accent: oklch(85% 0.18 90); /* Kuning Emas lembut */
+	--color-accent-content: oklch(30% 0.1 80);
+
+	/* Warna Netral (Deep Forest Green) */
+	--color-neutral: oklch(30% 0.05 160);
+	--color-neutral-content: oklch(95% 0.01 160);
+
+	/* State Colors (Disesuaikan agar tetap harmonis) */
+	--color-info: oklch(70% 0.1 220);
+	--color-success: oklch(65% 0.18 160);
+	--color-warning: oklch(80% 0.15 70);
+	--color-error: oklch(60% 0.18 25);
+
+	/* Variabel UI (Borders & Radius) */
+	--radius-selector: 0.5rem;
+	--radius-field: 0.5rem;
+	--radius-box: 1rem;
+	--border: 1px;
+}

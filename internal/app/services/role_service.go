@@ -6,6 +6,7 @@ import (
 	apperror "situs-keagamaan/internal/app/appError"
 	"situs-keagamaan/internal/app/repositories"
 	"situs-keagamaan/internal/dto"
+	"strings"
 
 	"github.com/lib/pq"
 )
@@ -27,7 +28,7 @@ func NewRoleService(roleRepo repositories.RoleRepository) RoleService {
 }
 
 func (s *roleServiceImpl) CreateRole(ctx context.Context, name string) (*dto.RoleResponse, error) {
-	newRole, err := s.roleRepo.Create(ctx, name)
+	newRole, err := s.roleRepo.Create(ctx, strings.ToLower(name))
 	if err != nil {
 		e := err.(*pq.Error)
 		if e.Code == "23505" {
