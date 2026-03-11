@@ -30,6 +30,28 @@
 		detail: {}
 	});
 
+	// Tipologi options based on jenis situs
+	const tipologiOptions = {
+		Masjid: ['Masjid Besar', 'Masjid Jami', 'Masjid Bersejarah', 'Masjid Publik'],
+		Musholla: ['Musholla Umum', 'Musholla Keluarga', 'Musholla Perkantoran', 'Musholla Sekolah'],
+		Pesantren: ['Pesantren Salafiyah', 'Pesantren Khalafiyah', 'Pesantren Kombinasi'],
+		Madrasah: ['Madrasah Diniyah', 'Madrasah Ibtidaiyah', 'Madrasah Tsanawiyah', 'Madrasah Aliyah'],
+		Lainnya: ['Umum', 'Khusus']
+	};
+
+	// Get tipologi options for selected jenis situs
+	function getTipologiOptions() {
+		if (!selectedJenisSitusName) return [];
+		// Find matching key in tipologiOptions
+		for (const [key, options] of Object.entries(tipologiOptions)) {
+			if (selectedJenisSitusName.toLowerCase().includes(key.toLowerCase())) {
+				return options;
+			}
+		}
+		// Default options if no match
+		return ['Umum', 'Khusus'];
+	}
+
 	// State for site types dropdown
 	let jenisSitusList = $state([]);
 	let selectedJenisSitusName = $state('');
@@ -52,6 +74,11 @@
 	let showToast = $state(false);
 	let toastMessage = $state('');
 	let toastType = $state('success'); // 'success' or 'error'
+
+	// State for images
+	let selectedImages = $state([]); // Array of { file, preview, webpBlob }
+	let isConverting = $state(false);
+	let convertedImages = $state([]); // Array of webp blobs ready to upload
 
 	// Derived: check if selected site is Masjid
 	let isMasjid = $derived(selectedJenisSitusName.toLowerCase().includes('masjid'));
@@ -159,7 +186,8 @@
 		const selected = jenisSitusList.find((item) => item.id === selectedId);
 		if (selected) {
 			selectedJenisSitusName = selected.nama || selected.name || '';
-			formData.jenis_tipologi = selectedJenisSitusName;
+			// Reset tipologi when jenis situs changes
+			formData.jenis_tipologi = '';
 		}
 	}
 
@@ -253,11 +281,116 @@
 		}
 	}
 
+	// Convert image to WebP
+	async function convertToWebP(file) {
+		return new Promise((resolve, reject) => {
+			const reader = new FileReader();
+			reader.onload = (e) => {
+				const img = new Image();
+				img.onload = () => {
+					const canvas = document.createElement('canvas');
+					canvas.width = img.width;
+					canvas.height = img.height;
+					const ctx = canvas.getContext('2d');
+					ctx.drawImage(img, 0, 0);
+					canvas.toBlob(
+						(blob) => {
+							if (blob) {
+								resolve(blob);
+							} else {
+								reject(new Error('Failed to convert image'));
+							}
+						},
+						'image/webp',
+						0.8
+					);
+				};
+				img.onerror = () => reject(new Error('Failed to load image'));
+				img.src = e.target.result;
+			};
+			reader.onerror = () => reject(new Error('Failed to read file'));
+			reader.readAsDataURL(file);
+		});
+	}
+
+	// Handle image selection
+	async function handleImageSelect(event) {
+		const files = Array.from(event.target.files);
+		if (files.length === 0) return;
+
+		isConverting = true;
+
+		try {
+			for (const file of files) {
+				if (!file.type.startsWith('image/')) continue;
+
+				// Create preview URL
+				const preview = URL.createObjectURL(file);
+
+				// Convert to WebP
+				const webpBlob = await convertToWebP(file);
+
+				selectedImages.push({
+					file,
+					preview,
+					webpBlob
+				});
+			}
+		} catch (error) {
+			console.error('Failed to convert image:', error);
+			toastMessage = 'Gagal mengkonversi gambar';
+			toastType = 'error';
+			showToast = true;
+			setTimeout(() => {
+				showToast = false;
+			}, 3000);
+		} finally {
+			isConverting = false;
+		}
+	}
+
+	// Remove selected image
+	function removeImage(index) {
+		if (selectedImages[index]?.preview) {
+			URL.revokeObjectURL(selectedImages[index].preview);
+		}
+		selectedImages.splice(index, 1);
+	}
+
+	// Upload images to API
+	async function uploadImages(situsId) {
+		if (selectedImages.length === 0) return;
+
+		const formDataImages = new FormData();
+		for (const img of selectedImages) {
+			formDataImages.append('images', img.webpBlob, `image-${Date.now()}.webp`);
+		}
+
+		try {
+			const response = await apiService.post(`/situs/${situsId}/foto`, formDataImages);
+			if (!response.ok) {
+				console.error('Failed to upload images:', await response.text());
+			}
+		} catch (error) {
+			console.error('Image upload error:', error);
+			throw error;
+		}
+	}
+
 	// Submit handler
 	async function handleSubmit() {
 		try {
 			const response = await apiService.post('/situs', formData);
+			const data = await response.json();
+
 			if (response.status === 201) {
+				const situsId = data.id;
+
+				// Upload images if any
+				if (situsId && selectedImages.length > 0) {
+					await uploadImages(situsId);
+				}
+
 				// Show success toast notification
 				toastMessage = 'Data situs berhasil disimpan';
 				toastType = 'success';
@@ -373,14 +506,19 @@
 							<label class="label" for="jenis_tipologi">
 								<span class="label-text font-medium">Jenis Tipologi</span>
 							</label>
-							<input
-								required
+							<select
 								id="jenis_tipologi"
-								type="text"
-								class="input-bordered input min-h-11 w-full"
-								placeholder="Jenis tipologi"
-								bind:value={formData.jenis_tipologi}
-							/>
+								class="select-bordered select min-h-11 w-full"
+								required
+								onchange={(e) => {
+									formData.jenis_tipologi = e.target.value;
+								}}
+							>
+								<option value="" disabled>Pilih jenis tipologi...</option>
+								{#each getTipologiOptions() as option}
+									<option value={option}>{option}</option>
+								{/each}
+							</select>
 						</div>
 						<div class="form-control">
 							<label class="label" for="nomor_telepon">
@@ -508,6 +646,7 @@
 								<span class="label-text font-medium">Alamat Lengkap</span>
 							</label>
 							<textarea
+								required
 								id="alamat_lengkap"
 								class="textarea-bordered textarea min-h-20 w-full"
 								placeholder="Jl. Raya Ciemas No. 45, RT 01 RW 02"
@@ -555,6 +694,7 @@
 									<span class="label-text font-medium">Latitude</span>
 								</label>
 								<input
+									required
 									id="latitude"
 									type="number"
 									step="any"
@@ -568,6 +708,7 @@
 									<span class="label-text font-medium">Longitude</span>
 								</label>
 								<input
+									required
 									id="longitude"
 									type="number"
 									step="any"
@@ -601,6 +742,7 @@
 								<span class="label-text font-medium">Luas Tanah (m²)</span>
 							</label>
 							<input
+								required
 								id="luas_tanah"
 								type="number"
 								min="0"
@@ -615,6 +757,7 @@
 								<span class="label-text font-medium">Luas Bangunan (m²)</span>
 							</label>
 							<input
+								required
 								id="luas_bangunan"
 								type="number"
 								min="0"
@@ -646,6 +789,7 @@
 								<span class="label-text font-medium">Daya Tampung Max</span>
 							</label>
 							<input
+								required
 								id="daya_tampung_max"
 								type="number"
 								min="0"
@@ -1163,6 +1307,61 @@
 					</div>
 				</div>
 			{/if}
+
+			<!-- Upload Gambar -->
+			<div class="card bg-base-100 shadow-md sm:shadow-xl">
+				<div class="card-body p-4 sm:p-5">
+					<h2 class="mb-3 card-title text-base sm:text-lg">Foto Situs</h2>
+					<div class="form-control">
+						<label class="label" for="images">
+							<span class="label-text font-medium">Unggah Foto</span>
+						</label>
+						<div class="mb-2 flex flex-col gap-3">
+							<input
+								id="images"
+								type="file"
+								accept="image/*"
+								multiple
+								class="file-input-bordered file-input min-h-11 w-full"
+								onchange={handleImageSelect}
+								disabled={isConverting}
+							/>
+							{#if isConverting}
+								<div class="flex items-center gap-2 text-sm text-base-content/70">
+									<span class="loading loading-sm loading-spinner"></span>
+									Mengkonversi gambar ke WebP...
+								</div>
+							{/if}
+						</div>
+
+						<!-- Image Previews -->
+						{#if selectedImages.length > 0}
+							<div class="mt-2 grid grid-cols-2 gap-3 sm:grid-cols-3 md:grid-cols-4">
+								{#each selectedImages as img, index (img.preview)}
+									<div class="relative overflow-hidden rounded-lg border border-base-300">
+										<img src={img.preview} alt="Preview" class="h-32 w-full object-cover" />
+										<button
+											type="button"
+											class="btn absolute top-1 right-1 btn-circle btn-xs btn-error"
+											onclick={() => removeImage(index)}
+										>
+											✕
+										</button>
+										<div
+											class="absolute right-1 bottom-1 rounded bg-black/70 px-1 text-xs text-white"
+										>
+											WebP
+										</div>
+									</div>
+								{/each}
+							</div>
+							<p class="mt-2 text-xs text-base-content/70">
+								{selectedImages.length} foto dipilih. Format akan dikonversi ke WebP sebelum diunggah.
+							</p>
+						{/if}
+					</div>
+				</div>
+			</div>
 
 			<!-- Submit Button -->
 			<div class="flex flex-col justify-end gap-3 pb-4 sm:flex-row sm:pb-8">

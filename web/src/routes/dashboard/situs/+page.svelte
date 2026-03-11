@@ -256,7 +256,7 @@
 											{site.status}
 										</span>
 									</td>
-									<td class="text-sm text-base-content/70">{formatDate(site.terakhir)}</td>
+									<td class="text-sm text-base-content/70">{formatDate(site.updated_at)}</td>
 									<td>
 										<div class="flex flex-wrap gap-1 sm:gap-2">
 											<button class="btn btn-outline btn-xs sm:btn-sm">Lihat</button>

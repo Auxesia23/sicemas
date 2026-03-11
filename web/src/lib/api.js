@@ -23,11 +23,16 @@ class ApiService {
 
 	async request(endpoint, options = {}) {
 		const url = `${config.apiUrl}${endpoint}`;
+
+		// Check if body is FormData to handle Content-Type properly
+		const isFormData = options.body instanceof FormData;
+
 		const requestOptions = {
 			...config.defaultFetchOptions,
 			...options,
 			headers: {
-				...config.defaultHeaders,
+				// Don't include default Content-Type for FormData
+				...(isFormData ? {} : config.defaultHeaders),
 				...options.headers
 			}
 		};
@@ -130,19 +135,37 @@ class ApiService {
 
 	/** POST request */
 	post(endpoint, body, headers = {}) {
+		const isFormData = body instanceof FormData;
+
+		// Buat salinan headers
+		const requestHeaders = { ...headers };
+
+		// Jika BUKAN FormData, baru kita pasang default Content-Type JSON
+		if (!isFormData && !requestHeaders['Content-Type']) {
+			requestHeaders['Content-Type'] = 'application/json';
+		}
+
 		return this.request(endpoint, {
 			method: 'POST',
-			body: typeof body === 'object' ? JSON.stringify(body) : body,
-			headers: { 'Content-Type': 'application/json', ...headers }
+			// Jika FormData, biarkan apa adanya. Jika object biasa, ubah ke JSON string.
+			body: isFormData ? body : typeof body === 'object' ? JSON.stringify(body) : body,
+			headers: requestHeaders
 		});
 	}
 
 	/** PUT request */
 	put(endpoint, body, headers = {}) {
+		const isFormData = body instanceof FormData;
+		const requestHeaders = { ...headers };
+
+		if (!isFormData && !requestHeaders['Content-Type']) {
+			requestHeaders['Content-Type'] = 'application/json';
+		}
+
 		return this.request(endpoint, {
 			method: 'PUT',
-			body: typeof body === 'object' ? JSON.stringify(body) : body,
-			headers: { 'Content-Type': 'application/json', ...headers }
+			body: isFormData ? body : typeof body === 'object' ? JSON.stringify(body) : body,
+			headers: requestHeaders
 		});
 	}
 
