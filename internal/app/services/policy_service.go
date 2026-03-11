@@ -42,6 +42,11 @@ func (s *policyServiceImpl) GetFilteredPolicy(filter string) ([]dto.PolicyRespon
 	if err != nil {
 		return nil, apperror.NewInternal("Terjadi Kesalahan")
 	}
+
+	if len(policies) == 0 {
+		return []dto.PolicyResponse{}, nil
+	}
+
 	var response []dto.PolicyResponse
 	for _, p := range policies {
 		response = append(response, dto.PolicyResponse{

@@ -334,9 +334,9 @@
 					<table class="table">
 						<thead>
 							<tr>
-								<th class="min-w-[150px] bg-base-200">Peran / Fitur</th>
+								<th class="min-w-37.5 bg-base-200">Peran / Fitur</th>
 								{#each columns as col}
-									<th class="min-w-[120px] bg-base-200 text-center">
+									<th class="min-w-30 bg-base-200 text-center">
 										<div class="flex flex-col items-center">
 											<span class="text-sm font-semibold">{col.label}</span>
 										</div>

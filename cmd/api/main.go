@@ -60,20 +60,26 @@ func main() {
 	// Initiate repository layer
 	userRepo := repositories.NewUserRepo(db)
 	roleRepo := repositories.NewRoleRepo(db)
+	jenisSitusRepo := repositories.NewJenisSitusRepo(db)
+	situsKeagamaanRepo := repositories.NewSitusKeagamaanRepo(db)
 
 	// Initiate service layer
 	userService := services.NewUserService(userRepo, enforcer, cache)
 	authService := services.NewAuthService(userRepo, cache)
 	roleService := services.NewRoleService(roleRepo)
 	policyService := services.NewPolicyService(enforcer)
+	jenisSitusService := services.NewJenisSitusService(jenisSitusRepo)
+	situsKeagamaanService := services.NewSitusKeagamaanService(situsKeagamaanRepo)
 
 	// Initiate handler layer
 	userHandler := handlers.NewUserHandler(userService, validate)
 	authHandler := handlers.NewAuthHandler(authService, validate)
 	roleHandler := handlers.NewRoleHandler(roleService, validate)
 	policyHandler := handlers.NewPolicyHandler(policyService, validate)
+	jenisSitusHandler := handlers.NewJenisSitusHandler(jenisSitusService, validate)
+	situsKeagamaanHandler := handlers.NewSitusKeagamaanHandler(situsKeagamaanService, validate)
 	// handler compositor
-	handlers := handlers.NewHandlers(userHandler, authHandler, roleHandler, policyHandler)
+	handlers := handlers.NewHandlers(userHandler, authHandler, roleHandler, policyHandler, jenisSitusHandler, situsKeagamaanHandler)
 
 	// Initiate middleware
 	authMiddleware := middlewares.NewAuthMiddleware(enforcer, locator, cache)

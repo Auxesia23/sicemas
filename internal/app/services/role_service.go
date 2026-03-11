@@ -50,6 +50,10 @@ func (s *roleServiceImpl) GetAllRole(ctx context.Context) ([]dto.RoleResponse, e
 		return nil, apperror.NewInternal("Terjadi Kesalahan")
 	}
 
+	if len(roles) == 0 {
+		return []dto.RoleResponse{}, nil
+	}
+
 	var response []dto.RoleResponse
 	for _, r := range roles {
 		response = append(response, dto.RoleResponse{

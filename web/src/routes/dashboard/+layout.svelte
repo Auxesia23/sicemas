@@ -1,7 +1,7 @@
 <script>
 	import { onMount } from 'svelte';
 
-	let { data } = $props();
+	let { data, children } = $props();
 	let user = $derived(data.user);
 
 	let isSidebarOpen = $state(false);
@@ -17,8 +17,10 @@
 			const sidebar = document.getElementById('sidebar');
 			const menuButton = document.getElementById('menu-button');
 
-			if (!sidebar.contains(event.target) && !menuButton.contains(event.target)) {
-				isSidebarOpen = false;
+			if (sidebar && menuButton) {
+				if (!sidebar.contains(event.target) && !menuButton.contains(event.target)) {
+					isSidebarOpen = false;
+				}
 			}
 		}
 	};
@@ -112,8 +114,7 @@
 							</div>
 						</div>
 						<ul
-							tabindex="0"
-							class="dropdown-content menu z-[1] mt-3 w-52 menu-sm rounded-box bg-base-100 p-2 shadow"
+							class="dropdown-content menu z-1 mt-3 w-52 menu-sm rounded-box bg-base-100 p-2 shadow"
 						>
 							<li>
 								<a href="/profile"
@@ -179,12 +180,12 @@
 
 		<!-- Main Content -->
 		<main class="min-h-[calc(100vh-4rem)] flex-1 bg-base-200 p-4 md:p-6">
-			<slot />
+			{@render children()}
 		</main>
 	</div>
 
 	<!-- Sidebar Navigation -->
-	<div class="drawer-side z-40">
+	<div id="sidebar" class="drawer-side z-40">
 		<label for="sidebar-drawer" class="drawer-overlay"></label>
 		<aside
 			class="menu min-h-screen w-64 border-r border-base-200 bg-base-100 p-0 text-base-content"

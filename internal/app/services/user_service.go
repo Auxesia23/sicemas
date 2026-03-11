@@ -73,6 +73,10 @@ func (s *userServiceImpl) GetAllUser(ctx context.Context) ([]dto.UserResponse, e
 		return nil, apperror.NewInternal("Terjadi kesalahan")
 	}
 
+	if len(users) == 0 {
+		return []dto.UserResponse{}, nil
+	}
+
 	var response []dto.UserResponse
 	for _, u := range users {
 		roles, _ := s.enforcer.GetRolesForUser(u.ID.String())

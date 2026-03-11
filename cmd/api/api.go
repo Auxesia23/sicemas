@@ -138,5 +138,43 @@ func (s *server) run() {
 		}
 	}
 
+	jenisSitus := app.Group("/jenis-situs")
+	{
+		jenisSitus.Use(s.middlewares.Auth.JWTAuthenticator)
+		jenisSitus.Use(s.middlewares.Auth.ZeroTrustValidator)
+
+		jenisSitus.Get("/",
+			s.middlewares.Auth.CasbinAuthz().RequiresPermissions([]string{"situs:read"}, casbin.WithValidationRule(casbin.MatchAllRule)),
+			s.handlers.JenisSitus.GetAllJenisSitus,
+		)
+		jenisSitus.Post("/",
+			s.middlewares.Auth.CasbinAuthz().RequiresPermissions([]string{"situs:create"}, casbin.WithValidationRule(casbin.MatchAllRule)),
+			s.handlers.JenisSitus.CreateJenisSitus,
+		)
+		jenisSitus.Put("/:id",
+			s.middlewares.Auth.CasbinAuthz().RequiresPermissions([]string{"situs:update"}, casbin.WithValidationRule(casbin.MatchAllRule)),
+			s.handlers.JenisSitus.UpdateJenisSitus,
+		)
+		jenisSitus.Delete("/:id",
+			s.middlewares.Auth.CasbinAuthz().RequiresPermissions([]string{"situs:delete"}, casbin.WithValidationRule(casbin.MatchAllRule)),
+			s.handlers.JenisSitus.DeleteJenisSitus,
+		)
+	}
+
+	situs := app.Group("/situs")
+	{
+		situs.Use(s.middlewares.Auth.JWTAuthenticator)
+		situs.Use(s.middlewares.Auth.ZeroTrustValidator)
+
+		situs.Post("/",
+			s.middlewares.Auth.CasbinAuthz().RequiresPermissions([]string{"situs:create"}, casbin.WithValidationRule(casbin.MatchAllRule)),
+			s.handlers.SitusKeagamaan.CreateSitus,
+		)
+		situs.Get("/",
+			s.middlewares.Auth.CasbinAuthz().RequiresPermissions([]string{"situs:read"}, casbin.WithValidationRule(casbin.MatchAllRule)),
+			s.handlers.SitusKeagamaan.GetAllSitus,
+		)
+	}
+
 	log.Fatal(app.Listen(s.cfg.Addr))
 }

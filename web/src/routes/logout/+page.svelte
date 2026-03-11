@@ -39,7 +39,7 @@
 </script>
 
 <div
-	class="flex min-h-screen items-center justify-center bg-gradient-to-b from-base-100 to-base-200 p-4"
+	class="flex min-h-screen items-center justify-center bg-linear-to-b from-base-100 to-base-200 p-4"
 >
 	<div class="card w-full max-w-md border border-base-200 bg-base-100 shadow-xl">
 		<div class="card-body items-center text-center">
