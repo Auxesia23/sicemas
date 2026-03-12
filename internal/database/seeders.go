@@ -112,13 +112,13 @@ func (s *seeder) PolicySeeder() {
 	s.e.AddPolicy("admin", "role", "delete")
 
 	s.e.AddPolicy("operator", "situs", "create")
-	s.e.AddPolicy("operator", "situs", "read")
-	s.e.AddPolicy("operator", "situs", "update")
+	s.e.AddPolicy("operator", "situs", "read_all")
+	s.e.AddPolicy("operator", "situs", "update_all")
 	s.e.AddPolicy("operator", "situs", "delete")
 
 	s.e.AddPolicy("penyuluh", "situs", "create")
-	s.e.AddPolicy("penyuluh", "situs", "read")
-	s.e.AddPolicy("penyuluh", "situs", "update")
+	s.e.AddPolicy("penyuluh", "situs", "read_own")
+	s.e.AddPolicy("penyuluh", "situs", "update_own")
 }
 
 func (s *seeder) RoleSeeder() error {

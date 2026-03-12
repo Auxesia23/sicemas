@@ -171,11 +171,11 @@ func (s *server) run() {
 			s.handlers.SitusKeagamaan.CreateSitus,
 		)
 		situs.Get("/",
-			s.middlewares.Auth.CasbinAuthz().RequiresPermissions([]string{"situs:read"}, casbin.WithValidationRule(casbin.MatchAllRule)),
+			s.middlewares.Auth.CasbinAuthz().RequiresPermissions([]string{"situs:read_all", "situs:read_own"}, casbin.WithValidationRule(casbin.AtLeastOneRule)),
 			s.handlers.SitusKeagamaan.GetAllSitus,
 		)
 		situs.Get("/:id",
-			s.middlewares.Auth.CasbinAuthz().RequiresPermissions([]string{"situs:read"}, casbin.WithValidationRule(casbin.MatchAllRule)),
+			s.middlewares.Auth.CasbinAuthz().RequiresPermissions([]string{"situs:read_all", "situs:read_own"}, casbin.WithValidationRule(casbin.AtLeastOneRule)),
 			s.handlers.SitusKeagamaan.GetDetailSitus,
 		)
 		situs.Post("/:id/foto",

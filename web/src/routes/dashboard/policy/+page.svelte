@@ -3,8 +3,30 @@
 	import { onMount } from 'svelte';
 
 	// Data statis
-	const resources = ['user', 'situs', 'role', 'policy'];
-	const actions = ['create', 'read', 'update', 'delete'];
+	const resources = [
+		{ name: 'user', actions: ['create', 'read', 'update', 'delete'] },
+		{
+			name: 'situs',
+			actions: ['create', 'read_all', 'read_own', 'update_all', 'update_own', 'delete']
+		},
+		{ name: 'role', actions: ['create', 'read', 'update', 'delete'] },
+		{ name: 'policy', actions: ['create', 'read', 'update', 'delete'] }
+	];
+
+	// Helper untuk mendapatkan label yang lebih ramah
+	function getActionLabel(action) {
+		const labels = {
+			create: 'Create',
+			read: 'Read',
+			read_all: 'Read All',
+			read_own: 'Read Own',
+			update: 'Update',
+			update_all: 'Update All',
+			update_own: 'Update Own',
+			delete: 'Delete'
+		};
+		return labels[action] || action;
+	}
 
 	// State reaktif Svelte 5 Runes
 	let roles = $state([]);
@@ -19,10 +41,10 @@
 	// Derived state untuk kolom
 	const columns = $derived(
 		resources.flatMap((res) =>
-			actions.map((act) => ({
-				resource: res,
+			res.actions.map((act) => ({
+				resource: res.name,
 				action: act,
-				label: `${capitalize(res)}: ${capitalize(act)}`
+				label: `${capitalize(res.name)}: ${getActionLabel(act)}`
 			}))
 		)
 	);

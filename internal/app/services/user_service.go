@@ -90,6 +90,10 @@ func (s *userServiceImpl) GetAllUser(ctx context.Context) ([]dto.UserResponse, e
 	var response []dto.UserResponse
 	for _, u := range users {
 		roles, _ := s.enforcer.GetRolesForUser(u.ID.String())
+		peran := ""
+		if len(roles) > 0 {
+			peran = roles[0]
+		}
 		decryptedNIP, err := utils.Decrypt(u.NIP)
 		if err != nil {
 			return nil, err
@@ -107,7 +111,7 @@ func (s *userServiceImpl) GetAllUser(ctx context.Context) ([]dto.UserResponse, e
 			NIP:          decryptedNIP,
 			NamaLengkap:  u.NamaLengkap,
 			Jabatan:      u.Jabatan,
-			Peran:        roles[0],
+			Peran:        peran,
 			UnitKerja:    u.UnitKerja,
 			Email:        decryptedEmail,
 			NomorTelepon: decryptedNomorTelepon,
@@ -181,6 +185,10 @@ func (s *userServiceImpl) GetProfile(ctx context.Context, id string) (*dto.UserR
 		return nil, apperror.NewInternal("Terjadi kesalahan")
 	}
 	roles, _ := s.enforcer.GetRolesForUser(user.ID.String())
+	peran := ""
+	if len(roles) > 0 {
+		peran = roles[0]
+	}
 	decryptedNIP, err := utils.Decrypt(user.NIP)
 	if err != nil {
 		return nil, err
@@ -198,7 +206,7 @@ func (s *userServiceImpl) GetProfile(ctx context.Context, id string) (*dto.UserR
 		NIP:          decryptedNIP,
 		NamaLengkap:  user.NamaLengkap,
 		Jabatan:      user.Jabatan,
-		Peran:        roles[0],
+		Peran:        peran,
 		UnitKerja:    user.UnitKerja,
 		Email:        decryptedEmail,
 		NomorTelepon: decryptedNomorTelepon,
