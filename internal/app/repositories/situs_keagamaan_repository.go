@@ -12,6 +12,7 @@ import (
 type SitusKeagamaanRepository interface {
 	Create(ctx context.Context, in *dto.SitusKeagamaanRequest, author uuid.UUID) (uuid.UUID, error)
 	ReadAll(ctx context.Context) ([]dto.SitusKeagamaanResponse, error)
+	ReadOwn(ctx context.Context, userID uuid.UUID) ([]dto.SitusKeagamaanResponse, error)
 	ReadDetail(ctx context.Context, id uuid.UUID) (*dto.SitusKeagamaanDetailResponse, error)
 }
 
@@ -93,6 +94,32 @@ func (r *situsKeagamaanRepositoryImpl) ReadAll(ctx context.Context) ([]dto.Situs
 	err := r.DB.SelectContext(ctx, &situs, query)
 	if err != nil {
 		log.Println("Error read all situs keagamaan:", err.Error())
+		return nil, err
+	}
+
+	return situs, nil
+}
+
+func (r *situsKeagamaanRepositoryImpl) ReadOwn(ctx context.Context, userID uuid.UUID) ([]dto.SitusKeagamaanResponse, error) {
+	query := `
+		SELECT
+			s.id,
+			s.nama,
+			j.nama_jenis AS jenis,
+			s.desa AS lokasi,
+			s.status_verifikasi AS status,
+			u.nama_lengkap AS pendata,
+			s.updated_at
+		FROM situs_keagamaan s
+		JOIN jenis_situs j ON s.jenis_situs_id = j.id
+		JOIN users u ON s.pendata_id = u.id
+		WHERE s.pendata_id = $1;
+	`
+
+	var situs []dto.SitusKeagamaanResponse
+	err := r.DB.SelectContext(ctx, &situs, query, userID)
+	if err != nil {
+		log.Println("Error read own situs keagamaan:", err.Error())
 		return nil, err
 	}
 

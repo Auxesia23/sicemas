@@ -21,7 +21,7 @@ import (
 type SitusKeagamaanService interface {
 	CreateSitusKeagamaan(ctx context.Context, in *dto.SitusKeagamaanRequest, author uuid.UUID) (uuid.UUID, error)
 	UploadFotoSitus(ctx context.Context, foto []multipart.File, situsId uuid.UUID) error
-	GetAllSitusKeagamaan(ctx context.Context) ([]dto.SitusKeagamaanResponse, error)
+	GetAllSitusKeagamaan(ctx context.Context, userId uuid.UUID) ([]dto.SitusKeagamaanResponse, error)
 	GetDetailSitusKeagamaan(ctx context.Context, id uuid.UUID) (*dto.SitusKeagamaanDetailResponse, error)
 }
 
@@ -124,14 +124,30 @@ func (s *situsKeagamaanServiceImpl) UploadFotoSitus(ctx context.Context, foto []
 	return nil
 }
 
-func (s *situsKeagamaanServiceImpl) GetAllSitusKeagamaan(ctx context.Context) ([]dto.SitusKeagamaanResponse, error) {
-	situs, err := s.situsRepo.ReadAll(ctx)
+func (s *situsKeagamaanServiceImpl) GetAllSitusKeagamaan(ctx context.Context, userId uuid.UUID) ([]dto.SitusKeagamaanResponse, error) {
+	canReadAll, err := s.enforcer.Enforce(userId.String(), "situs", "read_all")
 	if err != nil {
-		return nil, apperror.NewInternal("Terjadi kesalahan.")
+		return nil, apperror.NewInternal("Terjadi kesalahan validasi akses.")
 	}
+
+	var situs []dto.SitusKeagamaanResponse
+
+	if canReadAll {
+		situs, err = s.situsRepo.ReadAll(ctx)
+		if err != nil {
+			return nil, apperror.NewInternal("Terjadi kesalahan validasi akses.")
+		}
+	} else {
+		situs, err = s.situsRepo.ReadOwn(ctx, userId)
+		if err != nil {
+			return nil, apperror.NewInternal("Terjadi kesalahan validasi akses.")
+		}
+	}
+
 	if len(situs) == 0 {
 		return []dto.SitusKeagamaanResponse{}, nil
 	}
+
 	return situs, nil
 }
 

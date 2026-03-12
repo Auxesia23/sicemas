@@ -95,7 +95,12 @@ func (h *situsKeagamaanHandlerImpl) UploadFotoSitus(c *fiber.Ctx) error {
 }
 
 func (h *situsKeagamaanHandlerImpl) GetAllSitus(c *fiber.Ctx) error {
-	situs, err := h.situsService.GetAllSitusKeagamaan(c.Context())
+	claim := c.Locals("claim").(*dto.AccessToken)
+	userId, err := uuid.Parse(claim.Subject)
+	if err != nil {
+		return c.Status(400).SendString(err.Error())
+	}
+	situs, err := h.situsService.GetAllSitusKeagamaan(c.Context(), userId)
 	if err != nil {
 		e := err.(*apperror.AppError)
 		return c.Status(e.Status).SendString(e.Message)

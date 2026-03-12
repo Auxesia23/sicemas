@@ -144,7 +144,7 @@ func (s *server) run() {
 		jenisSitus.Use(s.middlewares.Auth.ZeroTrustValidator)
 
 		jenisSitus.Get("/",
-			s.middlewares.Auth.CasbinAuthz().RequiresPermissions([]string{"situs:read"}, casbin.WithValidationRule(casbin.MatchAllRule)),
+			s.middlewares.Auth.CasbinAuthz().RequiresPermissions([]string{"situs:read_all"}, casbin.WithValidationRule(casbin.MatchAllRule)),
 			s.handlers.JenisSitus.GetAllJenisSitus,
 		)
 		jenisSitus.Post("/",
@@ -152,7 +152,7 @@ func (s *server) run() {
 			s.handlers.JenisSitus.CreateJenisSitus,
 		)
 		jenisSitus.Put("/:id",
-			s.middlewares.Auth.CasbinAuthz().RequiresPermissions([]string{"situs:update"}, casbin.WithValidationRule(casbin.MatchAllRule)),
+			s.middlewares.Auth.CasbinAuthz().RequiresPermissions([]string{"situs:update_all"}, casbin.WithValidationRule(casbin.MatchAllRule)),
 			s.handlers.JenisSitus.UpdateJenisSitus,
 		)
 		jenisSitus.Delete("/:id",
