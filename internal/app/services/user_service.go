@@ -38,10 +38,20 @@ func NewUserService(userRepo repositories.UserRepo, enforcer *casbin.Enforcer, c
 }
 
 func (s *userServiceImpl) Register(ctx context.Context, in *dto.UserRequest) error {
+	var err error
 	index := utils.HashIndex(in.NIP)
-	in.Email = utils.Encrypt(in.Email)
-	in.NomorTelepon = utils.Encrypt(in.NomorTelepon)
-	in.NIP = utils.Encrypt(in.NIP)
+	in.Email, err = utils.Encrypt(in.Email)
+	if err != nil {
+		return err
+	}
+	in.NomorTelepon, err = utils.Encrypt(in.NomorTelepon)
+	if err != nil {
+		return err
+	}
+	in.NIP, err = utils.Encrypt(in.NIP)
+	if err != nil {
+		return err
+	}
 
 	if in.UnitKerja == nil || *in.UnitKerja == "" {
 		defaultUnit := "KUA Kecamatan Ciemas"
@@ -80,15 +90,27 @@ func (s *userServiceImpl) GetAllUser(ctx context.Context) ([]dto.UserResponse, e
 	var response []dto.UserResponse
 	for _, u := range users {
 		roles, _ := s.enforcer.GetRolesForUser(u.ID.String())
+		decryptedNIP, err := utils.Decrypt(u.NIP)
+		if err != nil {
+			return nil, err
+		}
+		decryptedEmail, err := utils.Decrypt(u.Email)
+		if err != nil {
+			return nil, err
+		}
+		decryptedNomorTelepon, err := utils.Decrypt(u.NomorTelepon)
+		if err != nil {
+			return nil, err
+		}
 		response = append(response, dto.UserResponse{
 			ID:           u.ID,
-			NIP:          utils.Decrypt(u.NIP),
+			NIP:          decryptedNIP,
 			NamaLengkap:  u.NamaLengkap,
 			Jabatan:      u.Jabatan,
 			Peran:        roles[0],
 			UnitKerja:    u.UnitKerja,
-			Email:        utils.Decrypt(u.Email),
-			NomorTelepon: utils.Decrypt(u.NomorTelepon),
+			Email:        decryptedEmail,
+			NomorTelepon: decryptedNomorTelepon,
 			CreatedAt:    u.CreatedAt,
 			UpdatedAt:    u.UpdatedAt,
 		})
@@ -97,17 +119,27 @@ func (s *userServiceImpl) GetAllUser(ctx context.Context) ([]dto.UserResponse, e
 }
 
 func (s *userServiceImpl) UpdateUser(ctx context.Context, id uuid.UUID, in *dto.UserRequest) error {
+	var err error
 	index := utils.HashIndex(in.NIP)
-	in.Email = utils.Encrypt(in.Email)
-	in.NomorTelepon = utils.Encrypt(in.NomorTelepon)
-	in.NIP = utils.Encrypt(in.NIP)
+	in.Email, err = utils.Encrypt(in.Email)
+	if err != nil {
+		return err
+	}
+	in.NomorTelepon, err = utils.Encrypt(in.NomorTelepon)
+	if err != nil {
+		return err
+	}
+	in.NIP, err = utils.Encrypt(in.NIP)
+	if err != nil {
+		return err
+	}
 	if err := s.userRepo.Update(ctx, id, in, index); err != nil {
 		if err == sql.ErrNoRows {
 			return apperror.NewNotFound("User tidak ditemukan")
 		}
 		return apperror.NewInternal("Terjadi kesalahan")
 	}
-	_, err := s.enforcer.RemoveFilteredGroupingPolicy(0, id.String())
+	_, err = s.enforcer.RemoveFilteredGroupingPolicy(0, id.String())
 	if err != nil {
 		return apperror.NewInternal("Gagal membersihkan peran lama")
 	}
@@ -119,7 +151,6 @@ func (s *userServiceImpl) UpdateUser(ctx context.Context, id uuid.UUID, in *dto.
 		}
 	}
 
-	// 4. Refresh Policy agar perubahan langsung aktif di memori
 	s.enforcer.LoadPolicy()
 	return nil
 }
@@ -150,15 +181,27 @@ func (s *userServiceImpl) GetProfile(ctx context.Context, id string) (*dto.UserR
 		return nil, apperror.NewInternal("Terjadi kesalahan")
 	}
 	roles, _ := s.enforcer.GetRolesForUser(user.ID.String())
+	decryptedNIP, err := utils.Decrypt(user.NIP)
+	if err != nil {
+		return nil, err
+	}
+	decryptedEmail, err := utils.Decrypt(user.Email)
+	if err != nil {
+		return nil, err
+	}
+	decryptedNomorTelepon, err := utils.Decrypt(user.NomorTelepon)
+	if err != nil {
+		return nil, err
+	}
 	response := &dto.UserResponse{
 		ID:           user.ID,
-		NIP:          utils.Decrypt(user.NIP),
+		NIP:          decryptedNIP,
 		NamaLengkap:  user.NamaLengkap,
 		Jabatan:      user.Jabatan,
 		Peran:        roles[0],
 		UnitKerja:    user.UnitKerja,
-		Email:        utils.Decrypt(user.Email),
-		NomorTelepon: utils.Decrypt(user.NomorTelepon),
+		Email:        decryptedEmail,
+		NomorTelepon: decryptedNomorTelepon,
 		CreatedAt:    user.CreatedAt,
 		UpdatedAt:    user.UpdatedAt,
 	}

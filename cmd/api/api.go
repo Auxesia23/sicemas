@@ -174,6 +174,14 @@ func (s *server) run() {
 			s.middlewares.Auth.CasbinAuthz().RequiresPermissions([]string{"situs:read"}, casbin.WithValidationRule(casbin.MatchAllRule)),
 			s.handlers.SitusKeagamaan.GetAllSitus,
 		)
+		situs.Get("/:id",
+			s.middlewares.Auth.CasbinAuthz().RequiresPermissions([]string{"situs:read"}, casbin.WithValidationRule(casbin.MatchAllRule)),
+			s.handlers.SitusKeagamaan.GetDetailSitus,
+		)
+		situs.Post("/:id/foto",
+			s.middlewares.Auth.CasbinAuthz().RequiresPermissions([]string{"situs:update"}, casbin.WithValidationRule(casbin.MatchAllRule)),
+			s.handlers.SitusKeagamaan.UploadFotoSitus,
+		)
 	}
 
 	log.Fatal(app.Listen(s.cfg.Addr))

@@ -10,21 +10,37 @@ import (
 	"os"
 )
 
-func Encrypt(plain string) string {
-	key, _ := base64.StdEncoding.DecodeString(os.Getenv("AES_256_KEY"))
+func Encrypt(plain string) (string, error) {
+	// Jika plain text kosong, kembalikan string kosong tanpa mengenkripsinya.
+	if plain == "" {
+		return "", nil
+	}
+
+	key, err := base64.StdEncoding.DecodeString(os.Getenv("AES_256_KEY"))
+	if err != nil {
+		return "", err
+	}
 	// Membangun blok AES-256 dari kunci 32 byte.
-	block, _ := aes.NewCipher(key)
+	block, err := aes.NewCipher(key)
+	if err != nil {
+		return "", err
+	}
 
 	// Blok dibungkus mode GCM sehingga kita memperoleh objek AEAD
 	// (Authenticated Encryption with Associated Data).
-	gcm, _ := cipher.NewGCM(block)
+	gcm, err := cipher.NewGCM(block)
+	if err != nil {
+		return "", err
+	}
 
 	// Alokasi 12 byte nonce/IV sesuai standar GCM.
 	nonce := make([]byte, gcm.NonceSize())
 
 	// 12 byte diisi nilai acak dari crypto/rand
 	// agar setiap enkripsi menghasilkan ciphertext berbeda (randomised encryption).
-	_, _ = io.ReadFull(rand.Reader, nonce)
+	if _, err := io.ReadFull(rand.Reader, nonce); err != nil {
+		return "", err
+	}
 
 	//Fungsi Seal menjalankan dua pekerjaan sekaligus:
 	// a. Enkripsi plaintext dengan algoritma Counter Mode,
@@ -33,20 +49,37 @@ func Encrypt(plain string) string {
 	cipherByte := gcm.Seal(nonce, nonce, []byte(plain), nil)
 
 	// Baris 6 – Array byte di-encode ke string heksadesimal agar mudah disimpan di database
-	return hex.EncodeToString(cipherByte)
+	return hex.EncodeToString(cipherByte), nil
 }
 
-func Decrypt(cipherHex string) string {
-	key, _ := base64.StdEncoding.DecodeString(os.Getenv("AES_256_KEY"))
+func Decrypt(cipherHex string) (string, error) {
+	// Jika data di database kosong, langsung kembalikan kosong.
+	if cipherHex == "" {
+		return "", nil
+	}
+
+	key, err := base64.StdEncoding.DecodeString(os.Getenv("AES_256_KEY"))
+	if err != nil {
+		return "", err
+	}
 	// Mengubah string heksadesimal menjadi byte-array mentah
-	cipherByte, _ := hex.DecodeString(cipherHex)
+	cipherByte, err := hex.DecodeString(cipherHex)
+	if err != nil {
+		return "", err
+	}
 
 	// Membuat blok AES-256 dari kunci 32 byte (sama seperti saat enkripsi).
-	block, _ := aes.NewCipher(key)
+	block, err := aes.NewCipher(key)
+	if err != nil {
+		return "", err
+	}
 
 	// Blok dibungkus mode GCM sehingga kita memperoleh objek AEAD
 	// AEAD mempunyai metode Open
-	gcm, _ := cipher.NewGCM(block)
+	gcm, err := cipher.NewGCM(block)
+	if err != nil {
+		return "", err
+	}
 
 	// Potong array menjadi dua bagian:
 	// nonce = 12 byte pertama.
@@ -54,8 +87,11 @@ func Decrypt(cipherHex string) string {
 	nonce, cipherText := cipherByte[:gcm.NonceSize()], cipherByte[gcm.NonceSize():]
 
 	// Dekripsi nonce dan cyper text
-	plainByte, _ := gcm.Open(nil, nonce, cipherText, nil)
+	plainByte, err := gcm.Open(nil, nonce, cipherText, nil)
+	if err != nil {
+		return "", err
+	}
 
 	// Kembalikan byte sebagai string agar bisa dibaca manusia
-	return string(plainByte)
+	return string(plainByte), nil
 }

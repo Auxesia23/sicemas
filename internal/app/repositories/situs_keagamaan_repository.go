@@ -10,8 +10,9 @@ import (
 )
 
 type SitusKeagamaanRepository interface {
-	Create(ctx context.Context, in *dto.SitusKeagamaanRequest, author uuid.UUID) error
+	Create(ctx context.Context, in *dto.SitusKeagamaanRequest, author uuid.UUID) (uuid.UUID, error)
 	ReadAll(ctx context.Context) ([]dto.SitusKeagamaanResponse, error)
+	ReadDetail(ctx context.Context, id uuid.UUID) (*dto.SitusKeagamaanDetailResponse, error)
 }
 
 type situsKeagamaanRepositoryImpl struct {
@@ -22,55 +23,55 @@ func NewSitusKeagamaanRepo(db *sqlx.DB) SitusKeagamaanRepository {
 	return &situsKeagamaanRepositoryImpl{DB: db}
 }
 
-func (r *situsKeagamaanRepositoryImpl) Create(ctx context.Context, in *dto.SitusKeagamaanRequest, author uuid.UUID) error {
+func (r *situsKeagamaanRepositoryImpl) Create(ctx context.Context, in *dto.SitusKeagamaanRequest, author uuid.UUID) (uuid.UUID, error) {
 	query := `
-		INSERT INTO situs_keagamaan (
-			jenis_situs_id, pendata_id, kode_situs, nama, jenis_tipologi,
-			nomor_telepon, email, website, nomor_badan_hukum, tahun_berdiri,
-			provinsi, kabupaten_kota, kecamatan, desa, alamat_lengkap, koordinat,
-			luas_tanah, luas_bangunan, status_tanah, nomor_aiw, nomor_sertifikat_wakaf, daya_tampung_max,
-			detail
-		) VALUES (
-			$1, $2, $3, $4, $5,
-			$6, $7, $8, $9, $10,
-			$11, $12, $13, $14,$15, ST_SetSRID(ST_MakePoint($16, $17), 4326),
-			$18, $19, $20, $21, $22, $23,
-			$24
-		);`
+        INSERT INTO situs_keagamaan (
+            jenis_situs_id, pendata_id, nama, jenis_tipologi,
+            nomor_telepon, email, website, nomor_badan_hukum, tahun_berdiri,
+            provinsi, kabupaten_kota, kecamatan, desa, alamat_lengkap, koordinat,
+            luas_tanah, luas_bangunan, status_tanah, nomor_aiw, nomor_sertifikat_wakaf, daya_tampung_max,
+            detail
+        ) VALUES (
+            $1, $2, $3, $4,
+            $5, $6, $7, $8, $9,
+            $10, $11, $12, $13, $14, ST_SetSRID(ST_MakePoint($15, $16), 4326),
+            $17, $18, $19, $20, $21, $22,
+            $23
+        ) RETURNING id;`
 
-	_, err := r.DB.ExecContext(ctx, query,
+	var id uuid.UUID
+	err := r.DB.GetContext(ctx, &id, query,
 		in.JenisSitusID,         // $1
 		author,                  // $2
-		in.KodeSitus,            // $3
-		in.Nama,                 // $4
-		in.JenisTipologi,        // $5
-		in.NomorTelepon,         // $6
-		in.Email,                // $7
-		in.Website,              // $8
-		in.NomorBadanHukum,      // $9
-		in.TahunBerdiri,         // $10
-		in.Provinsi,             // $11
-		in.KabupatenKota,        // $12
-		in.Kecamatan,            // $13
-		in.Desa,                 // $14
-		in.AlamatLengkap,        // $15
-		in.Longitude,            // $16 (PostGIS: Longitude duluan)
-		in.Latitude,             // $17 (PostGIS: Latitude belakangan)
-		in.LuasTanah,            // $18
-		in.LuasBangunan,         // $19
-		in.StatusTanah,          // $20
-		in.NomorAIW,             // $21
-		in.NomorSertifikatWakaf, // $22
-		in.DayaTampungMax,       // $23
-		in.Detail,               // $24
+		in.Nama,                 // $3
+		in.JenisTipologi,        // $4
+		in.NomorTelepon,         // $5
+		in.Email,                // $6
+		in.Website,              // $7
+		in.NomorBadanHukum,      // $8
+		in.TahunBerdiri,         // $9
+		in.Provinsi,             // $10
+		in.KabupatenKota,        // $11
+		in.Kecamatan,            // $12
+		in.Desa,                 // $13
+		in.AlamatLengkap,        // $14
+		in.Longitude,            // $15
+		in.Latitude,             // $16
+		in.LuasTanah,            // $17
+		in.LuasBangunan,         // $18
+		in.StatusTanah,          // $19
+		in.NomorAIW,             // $20
+		in.NomorSertifikatWakaf, // $21
+		in.DayaTampungMax,       // $22
+		in.Detail,               // $23
 	)
 
 	if err != nil {
 		log.Println("Error insert situs keagamaan:", err.Error())
-		return err
+		return uuid.Nil, err
 	}
 
-	return nil
+	return id, nil
 }
 
 func (r *situsKeagamaanRepositoryImpl) ReadAll(ctx context.Context) ([]dto.SitusKeagamaanResponse, error) {
@@ -96,4 +97,48 @@ func (r *situsKeagamaanRepositoryImpl) ReadAll(ctx context.Context) ([]dto.Situs
 	}
 
 	return situs, nil
+}
+
+func (r *situsKeagamaanRepositoryImpl) ReadDetail(ctx context.Context, id uuid.UUID) (*dto.SitusKeagamaanDetailResponse, error) {
+	query := `
+			SELECT
+				sk.id,
+				js.nama_jenis AS jenis_situs,
+				sk.situs_id,
+				sk.nama,
+				sk.jenis_tipologi,
+				sk.nomor_telepon,
+				sk.email,
+				sk.website,
+				sk.nomor_badan_hukum,
+				sk.tahun_berdiri,
+				sk.provinsi,
+				sk.kabupaten_kota,
+				sk.kecamatan,
+				sk.desa,
+				sk.alamat_lengkap,
+				ST_Y(sk.koordinat::geometry) AS latitude,
+				ST_X(sk.koordinat::geometry) AS longitude,
+				sk.luas_tanah,
+				sk.luas_bangunan,
+				sk.status_tanah,
+				sk.nomor_aiw,
+				sk.nomor_sertifikat_wakaf,
+				sk.daya_tampung_max,
+				sk.detail
+			FROM situs_keagamaan sk
+			LEFT JOIN jenis_situs js ON sk.jenis_situs_id = js.id
+			WHERE sk.id = $1
+		`
+
+	var detail dto.SitusKeagamaanDetailResponse
+
+	// Gunakan GetContext karena kita hanya mengambil 1 baris spesifik berdasarkan ID
+	err := r.DB.GetContext(ctx, &detail, query, id)
+	if err != nil {
+		log.Println(err.Error())
+		return nil, err
+	}
+
+	return &detail, nil
 }

@@ -1,6 +1,7 @@
 package main
 
 import (
+	"context"
 	"log"
 	"situs-keagamaan/internal/app/handlers"
 	"situs-keagamaan/internal/app/repositories"
@@ -26,6 +27,10 @@ func main() {
 		log.Fatal(err.Error())
 	}
 	rdb, err := cache.InitRedis()
+	if err != nil {
+		log.Fatal(err.Error())
+	}
+	cld, err := database.NewCloudinary(context.Background())
 	if err != nil {
 		log.Fatal(err.Error())
 	}
@@ -62,6 +67,7 @@ func main() {
 	roleRepo := repositories.NewRoleRepo(db)
 	jenisSitusRepo := repositories.NewJenisSitusRepo(db)
 	situsKeagamaanRepo := repositories.NewSitusKeagamaanRepo(db)
+	fotoSitusRepo := repositories.NewFotoSitusRepo(db)
 
 	// Initiate service layer
 	userService := services.NewUserService(userRepo, enforcer, cache)
@@ -69,7 +75,7 @@ func main() {
 	roleService := services.NewRoleService(roleRepo)
 	policyService := services.NewPolicyService(enforcer)
 	jenisSitusService := services.NewJenisSitusService(jenisSitusRepo)
-	situsKeagamaanService := services.NewSitusKeagamaanService(situsKeagamaanRepo)
+	situsKeagamaanService := services.NewSitusKeagamaanService(situsKeagamaanRepo, fotoSitusRepo, cld, enforcer)
 
 	// Initiate handler layer
 	userHandler := handlers.NewUserHandler(userService, validate)

@@ -8,16 +8,16 @@ CREATE TABLE situs_keagamaan (
     jenis_situs_id UUID REFERENCES jenis_situs(id) ON DELETE RESTRICT,
     pendata_id UUID REFERENCES users(id) ON DELETE RESTRICT,
 
-    kode_situs VARCHAR(50),
+    situs_id VARCHAR(50),
     nama VARCHAR(255) NOT NULL,
     jenis_tipologi VARCHAR(100),
 
 
     -- [DATA UMUM]
-    nomor_telepon VARCHAR(50),
-    email VARCHAR(100),
+    nomor_telepon TEXT,
+    email TEXT,
     website VARCHAR(255),
-    nomor_badan_hukum VARCHAR(100),
+    nomor_badan_hukum TEXT,
     tahun_berdiri INT,
 
     -- [LOKASI]
@@ -32,8 +32,8 @@ CREATE TABLE situs_keagamaan (
     luas_tanah DECIMAL(10, 2),
     luas_bangunan DECIMAL(10, 2),
     status_tanah VARCHAR(100),
-    nomor_aiw VARCHAR(100),
-    nomor_sertifikat_wakaf VARCHAR(100),
+    nomor_aiw TEXT,
+    nomor_sertifikat_wakaf TEXT,
     daya_tampung_max INT,
 
     -- =========================================================

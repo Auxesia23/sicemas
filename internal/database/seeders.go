@@ -56,14 +56,28 @@ func (s *seeder) UserSeeder() error {
 	`
 	for _, u := range users {
 		var id uuid.UUID
-		err := s.db.GetContext(ctx, &id, query,
+
+		encryptedNIP, err := utils.Encrypt(u.NIP)
+		if err != nil {
+			return err
+		}
+		encryptedEmail, err := utils.Encrypt(u.Email)
+		if err != nil {
+			return err
+		}
+		encryptedTelepon, err := utils.Encrypt(u.NomorTelepon)
+		if err != nil {
+			return err
+		}
+
+		err = s.db.GetContext(ctx, &id, query,
 			u.NIPIndex,
 			u.NamaLengkap,
-			utils.Encrypt(u.NIP),
+			encryptedNIP,
 			u.Jabatan,
 			u.UnitKerja,
-			utils.Encrypt(u.Email),
-			utils.Encrypt(u.NomorTelepon),
+			encryptedEmail,
+			encryptedTelepon,
 		)
 
 		if err != nil {
