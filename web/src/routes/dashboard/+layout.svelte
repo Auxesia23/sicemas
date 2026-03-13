@@ -256,7 +256,7 @@
 				<li>
 					<a
 						href="/dashboard/jenis-situs"
-						class:hidden={!hasAnyPermission(user.permissions, ['situs:read_all', 'situs:read_own'])}
+						class:hidden={!hasAnyPermission(user.permissions, ['jenis-situs:read'])}
 					>
 						<svg
 							xmlns="http://www.w3.org/2000/svg"

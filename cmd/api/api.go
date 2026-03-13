@@ -145,19 +145,19 @@ func (s *server) run() {
 		jenisSitus.Use(s.middlewares.Auth.ZeroTrustValidator)
 
 		jenisSitus.Get("/",
-			s.middlewares.Auth.CasbinAuthz().RequiresPermissions([]string{"situs:read_all", "situs:read_own"}, casbin.WithValidationRule(casbin.AtLeastOneRule)),
+			s.middlewares.Auth.CasbinAuthz().RequiresPermissions([]string{"jenis-situs:read"}, casbin.WithValidationRule(casbin.AtLeastOneRule)),
 			s.handlers.JenisSitus.GetAllJenisSitus,
 		)
 		jenisSitus.Post("/",
-			s.middlewares.Auth.CasbinAuthz().RequiresPermissions([]string{"situs:create"}, casbin.WithValidationRule(casbin.MatchAllRule)),
+			s.middlewares.Auth.CasbinAuthz().RequiresPermissions([]string{"jenis-situs:create"}, casbin.WithValidationRule(casbin.MatchAllRule)),
 			s.handlers.JenisSitus.CreateJenisSitus,
 		)
 		jenisSitus.Put("/:id",
-			s.middlewares.Auth.CasbinAuthz().RequiresPermissions([]string{"situs:update_all"}, casbin.WithValidationRule(casbin.MatchAllRule)),
+			s.middlewares.Auth.CasbinAuthz().RequiresPermissions([]string{"jenis-situs:update"}, casbin.WithValidationRule(casbin.MatchAllRule)),
 			s.handlers.JenisSitus.UpdateJenisSitus,
 		)
 		jenisSitus.Delete("/:id",
-			s.middlewares.Auth.CasbinAuthz().RequiresPermissions([]string{"situs:delete"}, casbin.WithValidationRule(casbin.MatchAllRule)),
+			s.middlewares.Auth.CasbinAuthz().RequiresPermissions([]string{"jenis-situs:delete"}, casbin.WithValidationRule(casbin.MatchAllRule)),
 			s.handlers.JenisSitus.DeleteJenisSitus,
 		)
 	}
@@ -180,7 +180,7 @@ func (s *server) run() {
 			s.handlers.SitusKeagamaan.GetDetailSitus,
 		)
 		situs.Post("/:id/foto",
-			s.middlewares.Auth.CasbinAuthz().RequiresPermissions([]string{"situs:create", "situs:update_all", "situs:update_own"}, casbin.WithValidationRule(casbin.AtLeastOneRule)),
+			s.middlewares.Auth.CasbinAuthz().RequiresPermissions([]string{"situs:create", "situs:update", "situs:update"}, casbin.WithValidationRule(casbin.AtLeastOneRule)),
 			s.handlers.SitusKeagamaan.UploadFotoSitus,
 		)
 	}

@@ -28,9 +28,9 @@ type SitusKeagamaanRequest struct {
 
 	LuasTanah            float64 `json:"luas_tanah" validate:"required"`
 	LuasBangunan         float64 `json:"luas_bangunan" validate:"required"`
-	StatusTanah          string  `json:"status_tanah" validate:"required"`
-	NomorAIW             string  `json:"nomor_aiw" validate:"required"`
-	NomorSertifikatWakaf string  `json:"nomor_sertifikat_wakaf" validate:"required"`
+	StatusTanah          string  `json:"status_tanah"`
+	NomorAIW             string  `json:"nomor_aiw"`
+	NomorSertifikatWakaf string  `json:"nomor_sertifikat_wakaf"`
 	DayaTampungMax       int     `json:"daya_tampung_max" validate:"required"`
 
 	Detail json.RawMessage `json:"detail"`
@@ -74,6 +74,8 @@ type SitusKeagamaanDetailResponse struct {
 	NomorAIW             string  `json:"nomor_aiw" db:"nomor_aiw"`
 	NomorSertifikatWakaf string  `json:"nomor_sertifikat_wakaf" db:"nomor_sertifikat_wakaf"`
 	DayaTampungMax       int     `json:"daya_tampung_max" db:"daya_tampung_max"`
+
+	Foto *[]FotoResponse `json:"foto" db:"foto"`
 
 	Detail *json.RawMessage `json:"detail" db:"detail"`
 }

@@ -5,11 +5,13 @@ import (
 	"log"
 	"situs-keagamaan/internal/dto"
 
+	"github.com/google/uuid"
 	"github.com/jmoiron/sqlx"
 )
 
 type FotoSitusRepository interface {
 	BulkCreate(ctx context.Context, data []dto.FotoSitusPayload) error
+	GetBySitusID(ctx context.Context, situsID uuid.UUID) (*[]dto.FotoResponse, error)
 }
 
 type fotoSitusRepositoryImpl struct {
@@ -35,4 +37,19 @@ func (r *fotoSitusRepositoryImpl) BulkCreate(ctx context.Context, data []dto.Fot
 	}
 
 	return nil
+}
+
+func (r *fotoSitusRepositoryImpl) GetBySitusID(ctx context.Context, situsID uuid.UUID) (*[]dto.FotoResponse, error) {
+	query := `SELECT id, image_url, public_id
+              FROM foto_situs
+              WHERE situs_id = $1`
+
+	var result []dto.FotoResponse
+	err := r.DB.SelectContext(ctx, &result, query, situsID)
+	if err != nil {
+		log.Println(err.Error())
+		return nil, err
+	}
+
+	return &result, nil
 }

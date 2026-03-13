@@ -181,5 +181,15 @@ func (s *situsKeagamaanServiceImpl) GetDetailSitusKeagamaan(ctx context.Context,
 		return nil, err
 	}
 
+	fotoSitus, err := s.fotoSitusRepo.GetBySitusID(ctx, id)
+	if err != nil {
+		return nil, apperror.NewInternal("Terjadi kesalahan")
+	}
+	if len(*fotoSitus) == 0 {
+		situs.Foto = &[]dto.FotoResponse{}
+	} else {
+		situs.Foto = fotoSitus
+	}
+
 	return situs, nil
 }

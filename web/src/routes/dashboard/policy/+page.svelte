@@ -1,13 +1,21 @@
 <script>
 	import apiService from '$lib/api';
 	import { onMount } from 'svelte';
+	import { hasAllPermissions } from '$lib/permissions';
+
+	let { data } = $props();
+	let user = $derived(data.user);
 
 	// Data statis
 	const resources = [
 		{ name: 'user', actions: ['create', 'read', 'update', 'delete'] },
 		{
 			name: 'situs',
-			actions: ['create', 'read_all', 'read_own', 'update_all', 'update_own', 'delete']
+			actions: ['create', 'read_all', 'read_own', 'update', 'delete']
+		},
+		{
+			name: 'jenis-situs',
+			actions: ['create', 'read', 'update', 'delete']
 		},
 		{ name: 'role', actions: ['create', 'read', 'update', 'delete'] },
 		{ name: 'policy', actions: ['create', 'read', 'update', 'delete'] }
@@ -282,44 +290,46 @@
 	</div>
 
 	<!-- Add Role Form -->
-	<div class="card mb-6 border border-base-200 bg-base-100 p-4 shadow">
-		<h3 class="mb-3 text-lg font-bold">Tambah Role Baru</h3>
-		<div class="flex gap-2">
-			<input
-				type="text"
-				class="input-bordered input flex-1"
-				placeholder="Nama role (contoh: developer)"
-				value={newRoleName}
-				oninput={(e) => (newRoleName = e.target.value)}
-				onkeydown={(e) => e.key === 'Enter' && addNewRole()}
-			/>
-			<button
-				class="btn btn-primary"
-				onclick={addNewRole}
-				disabled={addingRole || !newRoleName.trim()}
-			>
-				{#if addingRole}
-					<span class="loading loading-spinner"></span>
-				{:else}
-					<svg
-						xmlns="http://www.w3.org/2000/svg"
-						class="h-5 w-5"
-						fill="none"
-						viewBox="0 0 24 24"
-						stroke="currentColor"
-					>
-						<path
-							stroke-linecap="round"
-							stroke-linejoin="round"
-							stroke-width="2"
-							d="M12 4v16m8-8H4"
-						/>
-					</svg>
-				{/if}
-				Tambah
-			</button>
+	{#if hasAllPermissions(user.permissions, ['role:create'])}
+		<div class="card mb-6 border border-base-200 bg-base-100 p-4 shadow">
+			<h3 class="mb-3 text-lg font-bold">Tambah Role Baru</h3>
+			<div class="flex gap-2">
+				<input
+					type="text"
+					class="input-bordered input flex-1"
+					placeholder="Nama role (contoh: developer)"
+					value={newRoleName}
+					oninput={(e) => (newRoleName = e.target.value)}
+					onkeydown={(e) => e.key === 'Enter' && addNewRole()}
+				/>
+				<button
+					class="btn btn-primary"
+					onclick={addNewRole}
+					disabled={addingRole || !newRoleName.trim()}
+				>
+					{#if addingRole}
+						<span class="loading loading-spinner"></span>
+					{:else}
+						<svg
+							xmlns="http://www.w3.org/2000/svg"
+							class="h-5 w-5"
+							fill="none"
+							viewBox="0 0 24 24"
+							stroke="currentColor"
+						>
+							<path
+								stroke-linecap="round"
+								stroke-linejoin="round"
+								stroke-width="2"
+								d="M12 4v16m8-8H4"
+							/>
+						</svg>
+					{/if}
+					Tambah
+				</button>
+			</div>
 		</div>
-	</div>
+	{/if}
 
 	<!-- Error Alert -->
 	{#if error}
@@ -395,31 +405,33 @@
 												</div>
 												<span class="capitalize">{role.name}</span>
 											</div>
-											<button
-												class="btn text-error btn-ghost btn-xs hover:text-error"
-												onclick={() => deleteRole(role.ID, role.name)}
-												disabled={deletingRole === role.ID}
-												title="Hapus role"
-											>
-												{#if deletingRole === role.ID}
-													<span class="loading loading-xs loading-spinner"></span>
-												{:else}
-													<svg
-														xmlns="http://www.w3.org/2000/svg"
-														class="h-4 w-4"
-														fill="none"
-														viewBox="0 0 24 24"
-														stroke="currentColor"
-													>
-														<path
-															stroke-linecap="round"
-															stroke-linejoin="round"
-															stroke-width="2"
-															d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"
-														/>
-													</svg>
-												{/if}
-											</button>
+											{#if hasAllPermissions(user.permissions, 'role:delete')}
+												<button
+													class="btn text-error btn-ghost btn-xs hover:text-error"
+													onclick={() => deleteRole(role.ID, role.name)}
+													disabled={deletingRole === role.ID}
+													title="Hapus role"
+												>
+													{#if deletingRole === role.ID}
+														<span class="loading loading-xs loading-spinner"></span>
+													{:else}
+														<svg
+															xmlns="http://www.w3.org/2000/svg"
+															class="h-4 w-4"
+															fill="none"
+															viewBox="0 0 24 24"
+															stroke="currentColor"
+														>
+															<path
+																stroke-linecap="round"
+																stroke-linejoin="round"
+																stroke-width="2"
+																d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"
+															/>
+														</svg>
+													{/if}
+												</button>
+											{/if}
 										</div>
 									</td>
 									{#each columns as col}

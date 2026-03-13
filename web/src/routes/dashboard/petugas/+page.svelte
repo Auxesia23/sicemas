@@ -2,6 +2,10 @@
 	import { onMount } from 'svelte';
 	import { z } from 'zod';
 	import apiService from '$lib/api';
+	import { hasAllPermissions } from '$lib/permissions.js';
+
+	let { data } = $props();
+	let user = $derived(data.user);
 
 	let staffs = $state([]);
 	let isLoading = $state(false);
@@ -184,23 +188,25 @@
 	</div>
 
 	<div class="mb-6">
-		<button class="btn btn-primary" onclick={openModal}>
-			<svg
-				xmlns="http://www.w3.org/2000/svg"
-				class="mr-1 h-5 w-5"
-				fill="none"
-				viewBox="0 0 24 24"
-				stroke="currentColor"
-			>
-				<path
-					stroke-linecap="round"
-					stroke-linejoin="round"
-					stroke-width="2"
-					d="M12 6v6m0 0v6m0-6h6m-6 0H6"
-				/>
-			</svg>
-			Tambah Petugas
-		</button>
+		{#if hasAllPermissions(user.permissions, ['user:create'])}
+			<button class="btn btn-primary" onclick={openModal}>
+				<svg
+					xmlns="http://www.w3.org/2000/svg"
+					class="mr-1 h-5 w-5"
+					fill="none"
+					viewBox="0 0 24 24"
+					stroke="currentColor"
+				>
+					<path
+						stroke-linecap="round"
+						stroke-linejoin="round"
+						stroke-width="2"
+						d="M12 6v6m0 0v6m0-6h6m-6 0H6"
+					/>
+				</svg>
+				Tambah Petugas
+			</button>
+		{/if}
 	</div>
 
 	{#if tableError}
@@ -259,18 +265,22 @@
 								<td>{staff.email}</td>
 								<td class="text-center">
 									<div class="flex justify-center gap-2">
-										<button
-											class="btn text-primary btn-ghost btn-xs hover:bg-primary/10"
-											onclick={() => openEditModal(staff)}
-										>
-											Edit
-										</button>
-										<button
-											class="btn text-error btn-ghost btn-xs hover:bg-error/10"
-											onclick={() => deleteUser(staff.id)}
-										>
-											Hapus
-										</button>
+										{#if hasAllPermissions(user.permissions, ['user:update'])}
+											<button
+												class="btn text-primary btn-ghost btn-xs hover:bg-primary/10"
+												onclick={() => openEditModal(staff)}
+											>
+												Edit
+											</button>
+										{/if}
+										{#if hasAllPermissions(user.permissions, ['user:delete'])}
+											<button
+												class="btn text-error btn-ghost btn-xs hover:bg-error/10"
+												onclick={() => deleteUser(staff.id)}
+											>
+												Hapus
+											</button>
+										{/if}
 									</div>
 								</td>
 							</tr>

@@ -2,7 +2,7 @@
 	import { onMount } from 'svelte';
 	import apiService from '$lib/api';
 	import { derived } from 'svelte/store';
-	import { hasAllPermissions } from '$lib/permissions';
+	import { hasAllPermissions, hasAnyPermission } from '$lib/permissions';
 
 	let { data } = $props();
 	let user = $derived(data.user);
@@ -149,27 +149,25 @@
 	</div>
 
 	<div class="mb-6">
-		<button
-			hidden={!hasAllPermissions(user, ['situs:create', 'situs:read_all'])}
-			class="btn btn-primary"
-			onclick={() => openModal()}
-		>
-			<svg
-				xmlns="http://www.w3.org/2000/svg"
-				class="mr-1 h-5 w-5"
-				fill="none"
-				viewBox="0 0 24 24"
-				stroke="currentColor"
-			>
-				<path
-					stroke-linecap="round"
-					stroke-linejoin="round"
-					stroke-width="2"
-					d="M12 6v6m0 0v6m0-6h6m-6 0H6"
-				/>
-			</svg>
-			Tambah Jenis Situs
-		</button>
+		{#if hasAllPermissions(user.permissions, ['jenis-situs:create'])}
+			<button class="btn btn-primary" onclick={() => openModal()}>
+				<svg
+					xmlns="http://www.w3.org/2000/svg"
+					class="mr-1 h-5 w-5"
+					fill="none"
+					viewBox="0 0 24 24"
+					stroke="currentColor"
+				>
+					<path
+						stroke-linecap="round"
+						stroke-linejoin="round"
+						stroke-width="2"
+						d="M12 6v6m0 0v6m0-6h6m-6 0H6"
+					/>
+				</svg>
+				Tambah Jenis Situs
+			</button>
+		{/if}
 	</div>
 
 	{#if loading}
@@ -226,13 +224,19 @@
 						</div>
 
 						<div class="mt-4 card-actions justify-end">
-							<button
-								class="btn btn-outline btn-sm btn-error"
-								onclick={() => deleteItem(type.id, type.name)}
-							>
-								Hapus
-							</button>
-							<button class="btn btn-sm btn-primary" onclick={() => openModal(type)}> Edit </button>
+							{#if hasAllPermissions(user.permissions, ['jenis-situs:delete'])}
+								<button
+									class="btn btn-outline btn-sm btn-error"
+									onclick={() => deleteItem(type.id, type.name)}
+								>
+									Hapus
+								</button>
+							{/if}
+							{#if hasAllPermissions(user.permissions, ['jenis-situs:update'])}
+								<button class="btn btn-sm btn-primary" onclick={() => openModal(type)}>
+									Edit
+								</button>
+							{/if}
 						</div>
 					</div>
 				</div>

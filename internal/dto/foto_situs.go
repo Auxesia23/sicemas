@@ -13,3 +13,9 @@ type UploadResult struct {
 	SecureURL string
 	PublicID  string
 }
+
+type FotoResponse struct {
+	ID       uuid.UUID `json:"id" db:"id"`
+	ImageURL string    `json:"image_url" db:"image_url"`
+	PublicID string    `json:"public_id" db:"public_id"`
+}

@@ -1,6 +1,10 @@
 <script>
 	import { goto } from '$app/navigation';
 	import apiService from '$lib/api';
+	import { hasAllPermissions } from '$lib/permissions';
+
+	let { data } = $props();
+	let user = $derived(data.user);
 
 	// Data states
 	let sites = $state([]);
@@ -160,28 +164,30 @@
 					</span>
 				</div>
 				<div class="flex w-full gap-2 sm:w-auto">
-					<button
-						onclick={() => {
-							goto('situs/tambah');
-						}}
-						class="btn min-h-11 flex-1 btn-primary sm:flex-none"
-					>
-						<svg
-							xmlns="http://www.w3.org/2000/svg"
-							class="mr-1 h-5 w-5"
-							fill="none"
-							viewBox="0 0 24 24"
-							stroke="currentColor"
+					{#if hasAllPermissions(user.permissions, ['situs:create'])}
+						<button
+							onclick={() => {
+								goto('situs/tambah');
+							}}
+							class="btn min-h-11 flex-1 btn-primary sm:flex-none"
 						>
-							<path
-								stroke-linecap="round"
-								stroke-linejoin="round"
-								stroke-width="2"
-								d="M12 6v6m0 0v6m0-6h6m-6 0H6"
-							/>
-						</svg>
-						Tambah Situs
-					</button>
+							<svg
+								xmlns="http://www.w3.org/2000/svg"
+								class="mr-1 h-5 w-5"
+								fill="none"
+								viewBox="0 0 24 24"
+								stroke="currentColor"
+							>
+								<path
+									stroke-linecap="round"
+									stroke-linejoin="round"
+									stroke-width="2"
+									d="M12 6v6m0 0v6m0-6h6m-6 0H6"
+								/>
+							</svg>
+							Tambah Situs
+						</button>
+					{/if}
 				</div>
 			</div>
 		</div>
@@ -265,7 +271,9 @@
 									<td class="text-sm text-base-content/70">{formatDate(site.updated_at)}</td>
 									<td>
 										<div class="flex flex-wrap gap-1 sm:gap-2">
-											<button class="btn btn-outline btn-xs sm:btn-sm">Lihat</button>
+											<a href="/dashboard/situs/{site.id}" class="btn btn-outline btn-xs sm:btn-sm">
+												Lihat
+											</a>
 											<button class="btn btn-outline btn-xs btn-primary sm:btn-sm"> Edit </button>
 										</div>
 									</td>
