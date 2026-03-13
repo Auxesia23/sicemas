@@ -4,6 +4,7 @@
 
 	// Data states
 	let sites = $state([]);
+	let jenisSitusList = $state([]);
 	let loading = $state(true);
 	let error = $state(null);
 
@@ -12,24 +13,31 @@
 	let statusFilter = $state('all');
 	let typeFilter = $state('all');
 
-	// Fetch sites on mount
-	async function fetchSites() {
+	// Fetch sites and jenis situs on mount
+	async function fetchData() {
 		try {
 			loading = true;
 			error = null;
-			const response = await apiService.get('/situs');
-			const data = await response.json();
-			sites = data;
+
+			// Fetch sites
+			const sitesResponse = await apiService.get('/situs');
+			const sitesData = await sitesResponse.json();
+			sites = sitesData;
+
+			// Fetch jenis situs for filter options
+			const jenisResponse = await apiService.get('/jenis-situs');
+			const jenisData = await jenisResponse.json();
+			jenisSitusList = jenisData;
 		} catch (err) {
-			console.error('Failed to fetch sites:', err);
-			error = 'Gagal memuat data situs';
+			console.error('Failed to fetch data:', err);
+			error = 'Gagal memuat data';
 		} finally {
 			loading = false;
 		}
 	}
 
 	// Initial fetch
-	fetchSites();
+	fetchData();
 
 	// Function to filter sites based on search and filters
 	let filteredSites = $derived(
@@ -77,7 +85,7 @@
 
 	// Refresh data
 	function handleRefresh() {
-		fetchSites();
+		fetchData();
 	}
 </script>
 
@@ -138,11 +146,9 @@
 				<div>
 					<select class="select-bordered select min-h-11 w-full" bind:value={typeFilter}>
 						<option value="all">Semua Jenis</option>
-						<option value="Masjid">Masjid</option>
-						<option value="Gereja">Gereja</option>
-						<option value="Pura">Pura</option>
-						<option value="Vihara">Vihara</option>
-						<option value="Klenteng">Klenteng</option>
+						{#each jenisSitusList as jenis (jenis.id)}
+							<option value={jenis.nama}>{jenis.nama}</option>
+						{/each}
 					</select>
 				</div>
 			</div>

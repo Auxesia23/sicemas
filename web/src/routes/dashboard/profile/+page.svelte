@@ -17,7 +17,7 @@
 	const getProfile = async () => {
 		try {
 			isLoading = true; // Set loading to true when starting fetch
-			const response = await apiService.get('/users/me');
+			const response = await apiService.get('/users/profile');
 			if (!response.ok) {
 				errorMessage = await response.text();
 				isLoading = false;

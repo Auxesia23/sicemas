@@ -16,6 +16,7 @@ type UserHandler interface {
 	UpdateUser(c *fiber.Ctx) error
 	DeleteUser(c *fiber.Ctx) error
 	Profile(c *fiber.Ctx) error
+	Me(c *fiber.Ctx) error
 }
 
 type userHandlerImpl struct {
@@ -92,6 +93,17 @@ func (h *userHandlerImpl) DeleteUser(c *fiber.Ctx) error {
 func (h *userHandlerImpl) Profile(c *fiber.Ctx) error {
 	claim := c.Locals("claim").(*dto.AccessToken)
 	user, err := h.userService.GetProfile(c.Context(), claim.Subject)
+	if err != nil {
+		e := err.(*apperror.AppError)
+		return c.Status(e.Status).SendString(e.Message)
+	}
+
+	return c.JSON(user)
+}
+
+func (h *userHandlerImpl) Me(c *fiber.Ctx) error {
+	claim := c.Locals("claim").(*dto.AccessToken)
+	user, err := h.userService.GetPermissions(c.Context(), claim.Subject)
 	if err != nil {
 		e := err.(*apperror.AppError)
 		return c.Status(e.Status).SendString(e.Message)

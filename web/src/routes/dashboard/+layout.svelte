@@ -1,5 +1,6 @@
 <script>
 	import { onMount } from 'svelte';
+	import { hasAnyPermission } from '$lib/permissions';
 
 	let { data, children } = $props();
 	let user = $derived(data.user);
@@ -230,7 +231,10 @@
 				</li>
 
 				<li>
-					<a href="/dashboard/situs">
+					<a
+						href="/dashboard/situs"
+						class:hidden={!hasAnyPermission(user.permissions, ['situs:read_all', 'situs:read_own'])}
+					>
 						<svg
 							xmlns="http://www.w3.org/2000/svg"
 							class="h-5 w-5"
@@ -250,7 +254,10 @@
 				</li>
 
 				<li>
-					<a href="/dashboard/jenis-situs">
+					<a
+						href="/dashboard/jenis-situs"
+						class:hidden={!hasAnyPermission(user.permissions, ['situs:read_all', 'situs:read_own'])}
+					>
 						<svg
 							xmlns="http://www.w3.org/2000/svg"
 							class="h-5 w-5"
@@ -270,7 +277,10 @@
 				</li>
 
 				<li>
-					<a href="/dashboard/petugas">
+					<a
+						href="/dashboard/petugas"
+						class:hidden={!hasAnyPermission(user.permissions, ['user:read'])}
+					>
 						<svg
 							xmlns="http://www.w3.org/2000/svg"
 							class="h-5 w-5"
@@ -318,7 +328,10 @@
 				</li>
 
 				<li>
-					<a href="/dashboard/policy">
+					<a
+						href="/dashboard/policy"
+						class:hidden={!hasAnyPermission(user.permissions, ['policy:read'])}
+					>
 						<svg
 							xmlns="http://www.w3.org/2000/svg"
 							class="h-5 w-5"

@@ -5,6 +5,8 @@
 	import { goto } from '$app/navigation';
 	import DetailMasjidForm from '$lib/components/forms/DetailMasjidForm.svelte';
 	import DetailPesantrenForm from '$lib/components/forms/DetailPesantrenForm.svelte';
+	import DetailMusholaForm from '$lib/components/forms/DetailMusholaForm.svelte';
+	import DetailMTForm from '$lib/components/forms/DetailMTForm.svelte';
 
 	// State for form data
 	let formData = $state({
@@ -35,8 +37,9 @@
 	// Tipologi options based on jenis situs
 	const tipologiOptions = {
 		Masjid: ['Masjid Besar', 'Masjid Jami', 'Masjid Bersejarah', 'Masjid Publik'],
-		Musholla: ['Musholla Umum', 'Musholla Keluarga', 'Musholla Perkantoran', 'Musholla Sekolah'],
+		Mushola: ['Mushola'],
 		Ponpes: ['Salafiyah', 'Kholafiyah', 'Salafiyah Wajar Dikdas', 'Muadalah'],
+		MT: ['Majelis Taklim'],
 		Madrasah: ['Madrasah Diniyah', 'Madrasah Ibtidaiyah', 'Madrasah Tsanawiyah', 'Madrasah Aliyah'],
 		Lainnya: ['Umum', 'Khusus']
 	};
@@ -80,6 +83,12 @@
 
 	// Derived: check if selected site is Pesantren
 	let isPesantren = $derived(selectedJenisSitusName.toLowerCase().includes('ponpes'));
+
+	// Derived: check if selected site is Musholla
+	let isMusholla = $derived(selectedJenisSitusName.toLowerCase().includes('mushola'));
+
+	// Derived: check if selected site is Majelis Taklim
+	let isMT = $derived(selectedJenisSitusName.toLowerCase().includes('mt'));
 
 	// Initialize map after component mounts
 	onMount(async () => {
@@ -159,10 +168,25 @@
 			// Initialize or reset detail based on selected site type
 			const selectedName = selected.nama || selected.name || '';
 			if (selectedName.toLowerCase().includes('masjid')) {
-				initMasjidDetail();
-			} else if (selectedName.toLowerCase().includes('pesantren')) {
+				// Masjid detail will be initialized by child component
+				formData.detail = {};
+				// Auto-set tipologi to first option
+				formData.jenis_tipologi = tipologiOptions.Masjid[0];
+			} else if (selectedName.toLowerCase().includes('ponpes')) {
 				// Pesantren detail will be initialized by child component
 				formData.detail = {};
+				// Auto-set tipologi to first option
+				formData.jenis_tipologi = tipologiOptions.Ponpes[0];
+			} else if (selectedName.toLowerCase().includes('mushola')) {
+				// Musholla detail will be initialized by child component
+				formData.detail = {};
+				// Auto-set tipologi to Musholla
+				formData.jenis_tipologi = tipologiOptions.Mushola[0];
+			} else if (selectedName.toLowerCase().includes('mt')) {
+				// Majelis Taklim detail will be initialized by child component
+				formData.detail = {};
+				// Auto-set tipologi to Majelis Taklim
+				formData.jenis_tipologi = tipologiOptions.MT[0];
 			} else {
 				// Clear detail for other site types
 				formData.detail = {};
@@ -343,7 +367,7 @@
 				setTimeout(() => {
 					showToast = false;
 					goto('/dashboard/situs');
-				}, 3000);
+				}, 2000);
 			} else {
 				toastMessage = 'Gagal menyimpan data situs';
 				toastType = 'error';
@@ -432,19 +456,32 @@
 							<label class="label" for="jenis_tipologi">
 								<span class="label-text font-medium">Jenis Tipologi</span>
 							</label>
-							<select
-								id="jenis_tipologi"
-								class="select-bordered select min-h-11 w-full"
-								required
-								onchange={(e) => {
-									formData.jenis_tipologi = e.target.value;
-								}}
-							>
-								<option value="" disabled>Pilih jenis tipologi...</option>
-								{#each getTipologiOptions() as option}
-									<option value={option}>{option}</option>
-								{/each}
-							</select>
+
+							{#if getTipologiOptions().length <= 1}
+								<input
+									id="jenis_tipologi"
+									type="text"
+									class="input-bordered input min-h-11 w-full bg-base-200"
+									value={formData.jenis_tipologi}
+									readonly
+								/>
+								<label for="jenis_tipologi" class="label">
+									<span class="label-text-alt text-base-content/70">
+										Tipologi otomatis terisi
+									</span>
+								</label>
+							{:else}
+								<select
+									id="jenis_tipologi"
+									class="select-bordered select min-h-11 w-full"
+									required
+									bind:value={formData.jenis_tipologi}
+								>
+									{#each getTipologiOptions() as option}
+										<option value={option}>{option}</option>
+									{/each}
+								</select>
+							{/if}
 						</div>
 						<div class="form-control">
 							<label class="label" for="nomor_telepon">
@@ -760,6 +797,16 @@
 			<!-- Detail Fields (Pesantren Only) -->
 			{#if isPesantren}
 				<DetailPesantrenForm bind:detail={formData.detail} />
+			{/if}
+
+			<!-- Detail Fields (Musholla Only) -->
+			{#if isMusholla}
+				<DetailMusholaForm bind:detail={formData.detail} />
+			{/if}
+
+			<!-- Detail Fields (Majelis Taklim Only) -->
+			{#if isMT}
+				<DetailMTForm bind:detail={formData.detail} />
 			{/if}
 
 			<!-- Upload Gambar -->

@@ -37,3 +37,8 @@ type UserVerifyOTP struct {
 	NIP string `json:"nip" validate:"required"`
 	OTP string `json:"otp" validate:"required,min=6"`
 }
+
+type UserPermission struct {
+	NamaLengkap string   `json:"nama_lengkap"`
+	Permissions []string `json:"permissions"`
+}

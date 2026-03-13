@@ -3,6 +3,7 @@ package services
 import (
 	"context"
 	"database/sql"
+	"fmt"
 	"log"
 	apperror "situs-keagamaan/internal/app/appError"
 	"situs-keagamaan/internal/app/repositories"
@@ -21,6 +22,7 @@ type UserService interface {
 	UpdateUser(ctx context.Context, id uuid.UUID, in *dto.UserRequest) error
 	DeleteUser(ctx context.Context, id uuid.UUID) error
 	GetProfile(ctx context.Context, id string) (*dto.UserResponse, error)
+	GetPermissions(ctx context.Context, id string) (*dto.UserPermission, error)
 }
 
 type userServiceImpl struct {
@@ -212,6 +214,29 @@ func (s *userServiceImpl) GetProfile(ctx context.Context, id string) (*dto.UserR
 		NomorTelepon: decryptedNomorTelepon,
 		CreatedAt:    user.CreatedAt,
 		UpdatedAt:    user.UpdatedAt,
+	}
+	return response, nil
+}
+
+func (s *userServiceImpl) GetPermissions(ctx context.Context, id string) (*dto.UserPermission, error) {
+	user, err := s.userRepo.ReadById(ctx, id)
+	if err != nil {
+		if err == sql.ErrNoRows {
+			return nil, apperror.NewNotFound("User tidak ditemukan")
+		}
+		return nil, apperror.NewInternal("Terjadi kesalahan")
+	}
+	permissions, err := s.enforcer.GetImplicitPermissionsForUser(id)
+	if err != nil {
+		return nil, apperror.NewInternal("Terjadi kesalahan")
+	}
+	var formattedPermissions []string
+	for _, permission := range permissions {
+		formattedPermissions = append(formattedPermissions, fmt.Sprintf("%s:%s", permission[1], permission[2]))
+	}
+	response := &dto.UserPermission{
+		NamaLengkap: user.NamaLengkap,
+		Permissions: formattedPermissions,
 	}
 	return response, nil
 }

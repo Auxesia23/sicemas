@@ -1,6 +1,11 @@
 <script>
 	import { onMount } from 'svelte';
 	import apiService from '$lib/api';
+	import { derived } from 'svelte/store';
+	import { hasAllPermissions } from '$lib/permissions';
+
+	let { data } = $props();
+	let user = $derived(data.user);
 
 	// Menggunakan rune $state untuk Svelte 5
 	let siteTypes = $state([]);
@@ -144,7 +149,11 @@
 	</div>
 
 	<div class="mb-6">
-		<button class="btn btn-primary" onclick={() => openModal()}>
+		<button
+			hidden={!hasAllPermissions(user, ['situs:create', 'situs:read_all'])}
+			class="btn btn-primary"
+			onclick={() => openModal()}
+		>
 			<svg
 				xmlns="http://www.w3.org/2000/svg"
 				class="mr-1 h-5 w-5"

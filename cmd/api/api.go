@@ -62,7 +62,8 @@ func (s *server) run() {
 	{
 		users.Use(s.middlewares.Auth.JWTAuthenticator)
 
-		users.Get("/me", s.handlers.User.Profile)
+		users.Get("/profile", s.handlers.User.Profile)
+		users.Get("/me", s.handlers.User.Me)
 
 		users.Use(s.middlewares.Auth.ZeroTrustValidator)
 
@@ -144,7 +145,7 @@ func (s *server) run() {
 		jenisSitus.Use(s.middlewares.Auth.ZeroTrustValidator)
 
 		jenisSitus.Get("/",
-			s.middlewares.Auth.CasbinAuthz().RequiresPermissions([]string{"situs:read_all"}, casbin.WithValidationRule(casbin.MatchAllRule)),
+			s.middlewares.Auth.CasbinAuthz().RequiresPermissions([]string{"situs:read_all", "situs:read_own"}, casbin.WithValidationRule(casbin.AtLeastOneRule)),
 			s.handlers.JenisSitus.GetAllJenisSitus,
 		)
 		jenisSitus.Post("/",
@@ -179,7 +180,7 @@ func (s *server) run() {
 			s.handlers.SitusKeagamaan.GetDetailSitus,
 		)
 		situs.Post("/:id/foto",
-			s.middlewares.Auth.CasbinAuthz().RequiresPermissions([]string{"situs:update"}, casbin.WithValidationRule(casbin.MatchAllRule)),
+			s.middlewares.Auth.CasbinAuthz().RequiresPermissions([]string{"situs:create", "situs:update_all", "situs:update_own"}, casbin.WithValidationRule(casbin.AtLeastOneRule)),
 			s.handlers.SitusKeagamaan.UploadFotoSitus,
 		)
 	}
