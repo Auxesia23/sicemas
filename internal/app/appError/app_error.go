@@ -29,3 +29,7 @@ func NewBadRequest(msg string) error {
 func NewUnauthorized(msg string) error {
 	return &AppError{Message: msg, Status: 401}
 }
+
+func NewForbidden(msg string) error {
+	return &AppError{Message: msg, Status: 403}
+}

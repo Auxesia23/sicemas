@@ -2,6 +2,7 @@ package dto
 
 import (
 	"encoding/json"
+	"time"
 
 	"github.com/google/uuid"
 )
@@ -47,11 +48,12 @@ type SitusKeagamaanResponse struct {
 }
 
 type SitusKeagamaanDetailResponse struct {
-	ID            uuid.UUID `json:"id" db:"id"`
-	JenisSitus    string    `json:"jenis_situs" db:"jenis_situs"`
-	SitusID       *string   `json:"situs_id" db:"situs_id"`
-	Nama          string    `json:"nama" db:"nama"`
-	JenisTipologi string    `json:"jenis_tipologi" db:"jenis_tipologi"`
+	ID               uuid.UUID `json:"id" db:"id"`
+	StatusVerifikasi string    `json:"status_verifikasi" db:"status_verifikasi"`
+	JenisSitus       string    `json:"jenis_situs" db:"jenis_situs"`
+	SitusID          *string   `json:"situs_id" db:"situs_id"`
+	Nama             string    `json:"nama" db:"nama"`
+	JenisTipologi    string    `json:"jenis_tipologi" db:"jenis_tipologi"`
 
 	NomorTelepon    string  `json:"nomor_telepon" db:"nomor_telepon"`
 	Email           string  `json:"email" db:"email"`
@@ -77,7 +79,8 @@ type SitusKeagamaanDetailResponse struct {
 
 	Foto *[]FotoResponse `json:"foto" db:"foto"`
 
-	Detail *json.RawMessage `json:"detail" db:"detail"`
+	Detail    *json.RawMessage `json:"detail" db:"detail"`
+	UpdatedAt time.Time        `json:"updated_at" db:"updated_at"`
 }
 
 type SitusKeagamaanUpdate struct {
@@ -108,4 +111,9 @@ type SitusKeagamaanUpdate struct {
 	DayaTampungMax       int     `json:"daya_tampung_max" validate:"required"`
 
 	Detail json.RawMessage `json:"detail"`
+}
+
+type VerifikasiSitusRequest struct {
+	StatusVerifikasi string `json:"status_verifikasi" validate:"required,oneof=terverifikasi ditolak"`
+	SitusID          string `json:"situs_id"`
 }

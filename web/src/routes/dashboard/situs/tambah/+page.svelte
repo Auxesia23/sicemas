@@ -7,6 +7,7 @@
 	import DetailPesantrenForm from '$lib/components/forms/DetailPesantrenForm.svelte';
 	import DetailMusholaForm from '$lib/components/forms/DetailMusholaForm.svelte';
 	import DetailMTForm from '$lib/components/forms/DetailMTForm.svelte';
+	import Toast from '$lib/components/ui/Toast.svelte';
 
 	// State for form data
 	let formData = $state({
@@ -364,6 +365,7 @@
 					fileInputRef.value = '';
 				}
 
+				// REDIRECT (isSubmitting tetap TRUE di sini)
 				setTimeout(() => {
 					showToast = false;
 					goto('/dashboard/situs');
@@ -375,6 +377,9 @@
 				setTimeout(() => {
 					showToast = false;
 				}, 5000);
+
+				// Jika gagal API (bukan 201), hidupkan lagi tombolnya
+				isSubmitting = false;
 			}
 		} catch (error) {
 			console.error('Failed to submit form:', error);
@@ -384,7 +389,8 @@
 			setTimeout(() => {
 				showToast = false;
 			}, 5000);
-		} finally {
+
+			// Jika masuk ke catch blok karena error network, hidupkan lagi tombolnya
 			isSubmitting = false;
 		}
 	}
@@ -905,46 +911,12 @@
 		</form>
 	</div>
 
-	<!-- Toast Notification -->
-	{#if showToast}
-		<div class="toast toast-end toast-top z-50">
-			<div class="alert {toastType === 'success' ? 'alert-success' : 'alert-error'}">
-				{#if toastType === 'success'}
-					<svg
-						xmlns="http://www.w3.org/2000/svg"
-						class="h-6 w-6 shrink-0 stroke-current"
-						fill="none"
-						viewBox="0 0 24 24"
-					>
-						<path
-							stroke-linecap="round"
-							stroke-linejoin="round"
-							stroke-width="2"
-							d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"
-						/>
-					</svg>
-				{:else}
-					<svg
-						xmlns="http://www.w3.org/2000/svg"
-						class="h-6 w-6 shrink-0 stroke-current"
-						fill="none"
-						viewBox="0 0 24 24"
-					>
-						<path
-							stroke-linecap="round"
-							stroke-linejoin="round"
-							stroke-width="2"
-							d="M10 14l2-2m0 0l2-2m-2 2l-2-2m2 2l2 2m7-2a9 9 0 11-18 0 9 9 0 0118 0z"
-						/>
-					</svg>
-				{/if}
-				<div>
-					<h3 class="font-bold">{toastType === 'success' ? 'Berhasil!' : 'Gagal!'}</h3>
-					<div class="text-xs">{toastMessage}</div>
-				</div>
-			</div>
-		</div>
-	{/if}
+	<Toast
+		show={showToast}
+		message={toastMessage}
+		type={toastType}
+		onclose={() => (showToast = false)}
+	/>
 </div>
 
 <style>

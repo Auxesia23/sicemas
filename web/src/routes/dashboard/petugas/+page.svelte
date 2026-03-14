@@ -3,6 +3,10 @@
 	import { z } from 'zod';
 	import apiService from '$lib/api';
 	import { hasAllPermissions } from '$lib/permissions.js';
+	import UserTableActions from '$lib/components/ui/UserTableActions.svelte';
+	import EditUserModal from '$lib/components/ui/EditUserModal.svelte';
+	import ConfirmModal from '$lib/components/ui/ConfirmModal.svelte';
+	import Toast from '$lib/components/ui/Toast.svelte';
 
 	let { data } = $props();
 	let user = $derived(data.user);
@@ -18,6 +22,14 @@
 	let tableError = $state('');
 	let modalError = $state('');
 	let successMessage = $state('');
+
+	// Modal and toast states for ConfirmModal & Toast
+	let showDeleteModal = $state(false);
+	let userToDelete = $state(null);
+	let isDeleting = $state(false);
+	let showToast = $state(false);
+	let toastMessage = $state('');
+	let toastType = $state('success');
 
 	// Form state dengan Jabatan & Unit Kerja (Opsional)
 	let formData = $state({
@@ -160,28 +172,80 @@
 		}
 	};
 
-	const deleteUser = async (userId) => {
-		if (!confirm('Apakah Anda yakin ingin menghapus petugas ini?')) {
-			return;
-		}
+	// Confirm delete action
+	const confirmDelete = (user) => {
+		userToDelete = user;
+		showDeleteModal = true;
+	};
+
+	// Handle delete action with Toast
+	const deleteUser = async () => {
+		isDeleting = true;
 
 		try {
-			const response = await apiService.delete(`/users/${userId}`);
+			const response = await apiService.delete(`/users/${userToDelete.id}`);
 
 			if (!response.ok) {
 				const textError = await response.text();
 				throw new Error(textError || 'Gagal menghapus petugas');
 			}
 
+			// Success
+			showDeleteModal = false;
+			toastMessage = 'Petugas berhasil dihapus';
+			toastType = 'success';
+			showToast = true;
 			await getAllUsers();
+			setTimeout(() => {
+				showToast = false;
+			}, 3000);
 		} catch (error) {
+			// Error
 			tableError = error.message;
-			console.error(error);
+			toastMessage = error.message;
+			toastType = 'error';
+			showToast = true;
+			setTimeout(() => {
+				showToast = false;
+			}, 4000);
+		} finally {
+			isDeleting = false;
 		}
 	};
 </script>
 
 <div class="mx-auto max-w-7xl p-4">
+	<!-- Toast Notification -->
+	<Toast
+		show={showToast}
+		message={toastMessage}
+		type={toastType}
+		onclose={() => (showToast = false)}
+	/>
+
+	<!-- Confirmation Modal -->
+	<ConfirmModal
+		show={showDeleteModal}
+		title="Hapus Petugas"
+		message="Apakah Anda yakin ingin menghapus {userToDelete?.nama_lengkap}? Tindakan ini tidak dapat dibatalkan."
+		isProcessing={isDeleting}
+		onConfirm={deleteUser}
+		onCancel={() => (showDeleteModal = false)}
+	/>
+
+	<!-- Edit User Modal -->
+	<EditUserModal
+		show={isModalOpen}
+		{isEditMode}
+		{isLoading}
+		bind:formData
+		{roles}
+		{modalError}
+		{successMessage}
+		onSubmit={handleSubmit}
+		onCancel={closeModal}
+	/>
+
 	<div class="mb-8">
 		<h1 class="text-3xl font-bold text-gray-800">Data Petugas</h1>
 		<p class="text-gray-600">Manajemen informasi personil KUA Kecamatan Ciemas</p>
@@ -216,13 +280,14 @@
 				class="h-6 w-6 shrink-0 stroke-current"
 				fill="none"
 				viewBox="0 0 24 24"
-				><path
+			>
+				<path
 					stroke-linecap="round"
 					stroke-linejoin="round"
 					stroke-width="2"
 					d="M10 14l2-2m0 0l2-2m-2 2l-2-2m2 2l2 2m7-2a9 9 0 11-18 0 9 9 0 0118 0z"
-				/></svg
-			>
+				/>
+			</svg>
 			<span>{tableError}</span>
 		</div>
 	{/if}
@@ -263,25 +328,13 @@
 								<td>{staff.unit_kerja}</td>
 								<td>{staff.nomor_telepon}</td>
 								<td>{staff.email}</td>
-								<td class="text-center">
-									<div class="flex justify-center gap-2">
-										{#if hasAllPermissions(user.permissions, ['user:update'])}
-											<button
-												class="btn text-primary btn-ghost btn-xs hover:bg-primary/10"
-												onclick={() => openEditModal(staff)}
-											>
-												Edit
-											</button>
-										{/if}
-										{#if hasAllPermissions(user.permissions, ['user:delete'])}
-											<button
-												class="btn text-error btn-ghost btn-xs hover:bg-error/10"
-												onclick={() => deleteUser(staff.id)}
-											>
-												Hapus
-											</button>
-										{/if}
-									</div>
+								<td>
+									<UserTableActions
+										id={staff.id}
+										permissions={user.permissions}
+										onUpdate={() => openEditModal(staff)}
+										onDelete={() => confirmDelete(staff)}
+									/>
 								</td>
 							</tr>
 						{:else}
@@ -294,167 +347,4 @@
 			{/if}
 		</div>
 	</div>
-
-	<dialog class="modal" open={isModalOpen}>
-		<div class="modal-box max-w-2xl">
-			<h3 class="mb-6 border-b pb-2 text-xl font-bold">
-				{#if isEditMode}Edit Data Petugas{:else}Registrasi Petugas Baru{/if}
-			</h3>
-
-			{#if modalError}
-				<div class="mb-6 alert py-2 text-sm alert-error">
-					<svg
-						xmlns="http://www.w3.org/2000/svg"
-						class="h-4 w-4 shrink-0 stroke-current"
-						fill="none"
-						viewBox="0 0 24 24"
-						><path
-							stroke-linecap="round"
-							stroke-linejoin="round"
-							stroke-width="2"
-							d="M10 14l2-2m0 0l2-2m-2 2l-2-2m2 2l2 2m7-2a9 9 0 11-18 0 9 9 0 0118 0z"
-						/></svg
-					>
-					<span>{modalError}</span>
-				</div>
-			{/if}
-
-			{#if successMessage}
-				<div class="mb-6 alert py-2 text-sm font-medium alert-success">
-					<svg
-						xmlns="http://www.w3.org/2000/svg"
-						class="h-4 w-4 shrink-0 stroke-current"
-						fill="none"
-						viewBox="0 0 24 24"
-						><path
-							stroke-linecap="round"
-							stroke-linejoin="round"
-							stroke-width="2"
-							d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"
-						/></svg
-					>
-					<span>{successMessage}</span>
-				</div>
-			{/if}
-
-			<form
-				onsubmit={(e) => {
-					e.preventDefault();
-					handleSubmit();
-				}}
-			>
-				<div class="grid grid-cols-1 gap-x-6 gap-y-4 md:grid-cols-2">
-					<div class="form-control">
-						<label class="label pt-0" for="nip"
-							><span class="label-text font-semibold">NIP</span></label
-						>
-						<input
-							id="nip"
-							type="text"
-							class="input-bordered input w-full"
-							bind:value={formData.nip}
-							placeholder="18 digit angka"
-							maxlength="18"
-						/>
-					</div>
-
-					<div class="form-control">
-						<label class="label pt-0" for="nama"
-							><span class="label-text font-semibold">Nama Lengkap</span></label
-						>
-						<input
-							id="nama"
-							type="text"
-							class="input-bordered input w-full"
-							bind:value={formData.nama_lengkap}
-							placeholder="Nama sesuai SK"
-						/>
-					</div>
-
-					<div class="form-control">
-						<label class="label pt-0" for="jabatan"
-							><span class="label-text font-semibold">Jabatan</span></label
-						>
-						<input
-							id="jabatan"
-							type="text"
-							class="input-bordered input w-full"
-							bind:value={formData.jabatan}
-							placeholder="Contoh: Penghulu"
-						/>
-					</div>
-
-					<div class="form-control">
-						<label class="label pt-0" for="unit_kerja">
-							<span class="label-text font-semibold"
-								>Unit Kerja <span class="text-xs font-normal opacity-50">(Opsional)</span></span
-							>
-						</label>
-						<input
-							id="unit_kerja"
-							type="text"
-							class="input-bordered input w-full"
-							bind:value={formData.unit_kerja}
-							placeholder="Default: KUA Ciemas"
-						/>
-					</div>
-
-					<div class="form-control">
-						<label class="label pt-0" for="peran">
-							<span class="label-text font-semibold">Peran</span>
-						</label>
-						<select id="peran" class="input-bordered input w-full" bind:value={formData.peran}>
-							<option value="" disabled>Pilih peran</option>
-							{#each roles as role (role.ID)}
-								<option value={role.name}>{role.name}</option>
-							{/each}
-						</select>
-					</div>
-
-					<div class="form-control">
-						<label class="label pt-0" for="email"
-							><span class="label-text font-semibold">Email</span></label
-						>
-						<input
-							id="email"
-							type="email"
-							class="input-bordered input w-full"
-							bind:value={formData.email}
-							placeholder="petugas@kemenag.go.id"
-						/>
-					</div>
-
-					<div class="form-control">
-						<label class="label pt-0" for="telp"
-							><span class="label-text font-semibold">Nomor Telepon</span></label
-						>
-						<input
-							id="telp"
-							type="tel"
-							class="input-bordered input w-full"
-							bind:value={formData.nomor_telepon}
-							placeholder="08xxxxxxxxxx"
-						/>
-					</div>
-				</div>
-
-				<div class="modal-action mt-8">
-					<button type="button" class="btn btn-ghost" onclick={closeModal} disabled={isLoading}
-						>Batal</button
-					>
-					<button type="submit" class="btn px-8 btn-primary" disabled={isLoading}>
-						{#if isLoading}
-							<span class="loading loading-sm loading-spinner"></span>
-						{/if}
-						{#if isEditMode}Perbarui Data{:else}Simpan Data{/if}
-					</button>
-				</div>
-			</form>
-		</div>
-		<button
-			aria-label="Close modal"
-			class="modal-backdrop bg-black/40 backdrop-blur-sm"
-			onclick={closeModal}
-		></button>
-	</dialog>
 </div>

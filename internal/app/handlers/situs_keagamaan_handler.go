@@ -15,7 +15,9 @@ type SitusKeagamaanHandler interface {
 	CreateSitus(c *fiber.Ctx) error
 	GetAllSitus(c *fiber.Ctx) error
 	GetDetailSitus(c *fiber.Ctx) error
+	DeleteSitus(c *fiber.Ctx) error
 	UploadFotoSitus(c *fiber.Ctx) error
+	VerifySitus(c *fiber.Ctx) error
 }
 
 type situsKeagamaanHandlerImpl struct {
@@ -110,14 +112,53 @@ func (h *situsKeagamaanHandlerImpl) GetAllSitus(c *fiber.Ctx) error {
 }
 
 func (h *situsKeagamaanHandlerImpl) GetDetailSitus(c *fiber.Ctx) error {
+	claim := c.Locals("claim").(*dto.AccessToken)
+	userId, err := uuid.Parse(claim.Subject)
+	if err != nil {
+		return c.Status(400).SendString(err.Error())
+	}
+
 	situsId, err := uuid.Parse(c.Params("id"))
 	if err != nil {
 		return c.Status(400).SendString(err.Error())
 	}
-	situs, err := h.situsService.GetDetailSitusKeagamaan(c.Context(), situsId)
+	situs, err := h.situsService.GetDetailSitusKeagamaan(c.Context(), situsId, userId)
 	if err != nil {
 		e := err.(*apperror.AppError)
 		return c.Status(e.Status).SendString(e.Message)
 	}
 	return c.Status(200).JSON(situs)
+}
+
+func (h *situsKeagamaanHandlerImpl) DeleteSitus(c *fiber.Ctx) error {
+	situsId, err := uuid.Parse(c.Params("id"))
+	if err != nil {
+		return c.Status(400).SendString(err.Error())
+	}
+	if err := h.situsService.DeleteSitus(c.Context(), situsId); err != nil {
+		e := err.(*apperror.AppError)
+		return c.Status(e.Status).SendString(e.Message)
+	}
+	return c.SendStatus(204)
+}
+
+func (h *situsKeagamaanHandlerImpl) VerifySitus(c *fiber.Ctx) error {
+	situsId, err := uuid.Parse(c.Params("id"))
+	if err != nil {
+		return c.Status(400).SendString(err.Error())
+	}
+
+	var body dto.VerifikasiSitusRequest
+	if err := c.BodyParser(&body); err != nil {
+		return c.Status(400).SendString(err.Error())
+	}
+	if err := h.validate.Struct(&body); err != nil {
+		return c.Status(400).SendString(err.Error())
+	}
+
+	if err := h.situsService.VerifySitus(c.Context(), situsId, &body); err != nil {
+		e := err.(*apperror.AppError)
+		return c.Status(e.Status).SendString(e.Message)
+	}
+	return c.Status(200).SendString("Situs berhasil diverifikasi")
 }

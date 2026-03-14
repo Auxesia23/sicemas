@@ -2,6 +2,9 @@
 	import { goto } from '$app/navigation';
 	import apiService from '$lib/api';
 	import { hasAllPermissions } from '$lib/permissions';
+	import ConfirmModal from '$lib/components/ui/ConfirmModal.svelte';
+	import Toast from '$lib/components/ui/Toast.svelte';
+	import SitusTableActions from '$lib/components/ui/SitusTableActions.svelte';
 
 	let { data } = $props();
 	let user = $derived(data.user);
@@ -16,6 +19,14 @@
 	let searchTerm = $state('');
 	let statusFilter = $state('all');
 	let typeFilter = $state('all');
+
+	// Modal and toast states
+	let showDeleteModal = $state(false);
+	let siteToDelete = $state(null);
+	let isDeleting = $state(false);
+	let showToast = $state(false);
+	let toastMessage = $state('');
+	let toastType = $state('success');
 
 	// Fetch sites and jenis situs on mount
 	async function fetchData() {
@@ -76,12 +87,10 @@
 		switch (status) {
 			case 'menunggu':
 				return 'badge-warning';
-			case 'disetujui':
+			case 'terverifikasi':
 				return 'badge-success';
 			case 'ditolak':
 				return 'badge-error';
-			case 'revisi':
-				return 'badge-info';
 			default:
 				return 'badge-ghost';
 		}
@@ -91,7 +100,71 @@
 	function handleRefresh() {
 		fetchData();
 	}
+
+	// Confirm delete action
+	function confirmDelete(site) {
+		siteToDelete = site;
+		showDeleteModal = true;
+	}
+
+	// Handle delete action
+	async function handleDelete() {
+		isDeleting = true;
+
+		try {
+			const res = await apiService.delete('/situs/' + siteToDelete.id);
+
+			if (res.ok) {
+				showDeleteModal = false;
+				toastMessage = 'Data situs berhasil dihapus';
+				toastType = 'success';
+				showToast = true;
+				fetchData();
+				setTimeout(() => {
+					showToast = false;
+				}, 3000);
+			} else {
+				const errText = await res.text();
+				toastMessage = 'Gagal menghapus data: ' + errText;
+				toastType = 'error';
+				showToast = true;
+				setTimeout(() => {
+					showToast = false;
+				}, 4000);
+			}
+		} catch (err) {
+			console.error('Delete error:', err);
+			toastMessage = 'Terjadi kesalahan saat menghapus data';
+			toastType = 'error';
+			showToast = true;
+			setTimeout(() => {
+				showToast = false;
+			}, 4000);
+		} finally {
+			isDeleting = false;
+		}
+	}
 </script>
+
+<!-- Toast Notification -->
+<Toast
+	show={showToast}
+	message={toastMessage}
+	type={toastType}
+	onclose={() => (showToast = false)}
+/>
+
+<!-- Confirmation Modal -->
+<ConfirmModal
+	show={showDeleteModal}
+	title="Hapus Data Situs"
+	message="Apakah Anda yakin ingin menghapus {siteToDelete?.nama}? Data yang dihapus tidak dapat dikembalikan."
+	confirmText="Hapus"
+	cancelText="Batal"
+	isProcessing={isDeleting}
+	onConfirm={handleDelete}
+	onCancel={() => (showDeleteModal = false)}
+/>
 
 <div class="mx-auto max-w-7xl">
 	<!-- Page Header -->
@@ -141,9 +214,8 @@
 					<select class="select-bordered select min-h-11 w-full" bind:value={statusFilter}>
 						<option value="all">Semua Status</option>
 						<option value="menunggu">Menunggu</option>
-						<option value="disetujui">Disetujui</option>
+						<option value="terverifikasi">Terverifikasi</option>
 						<option value="ditolak">Ditolak</option>
-						<option value="revisi">Revisi</option>
 					</select>
 				</div>
 
@@ -270,12 +342,12 @@
 									</td>
 									<td class="text-sm text-base-content/70">{formatDate(site.updated_at)}</td>
 									<td>
-										<div class="flex flex-wrap gap-1 sm:gap-2">
-											<a href="/dashboard/situs/{site.id}" class="btn btn-outline btn-xs sm:btn-sm">
-												Lihat
-											</a>
-											<button class="btn btn-outline btn-xs btn-primary sm:btn-sm"> Edit </button>
-										</div>
+										<SitusTableActions
+											id={site.id}
+											status={site.status}
+											permissions={data.user.permissions}
+											onDelete={() => confirmDelete(site)}
+										/>
 									</td>
 								</tr>
 							{/each}

@@ -42,7 +42,7 @@ func (s *server) run() {
 	app.Use(cors.New(cors.Config{
 		AllowOrigins:     "http://localhost:5173",
 		AllowHeaders:     "Origin, Content-Type, Accept, Authorization, X-Requested-With",
-		AllowMethods:     "GET, POST, PUT, DELETE, OPTIONS",
+		AllowMethods:     "GET, POST, PUT, PATCH, DELETE, OPTIONS",
 		AllowCredentials: true,
 	}))
 
@@ -121,22 +121,6 @@ func (s *server) run() {
 			s.middlewares.Auth.CasbinAuthz().RequiresPermissions([]string{"policy:delete"}, casbin.WithValidationRule(casbin.MatchAllRule)),
 			s.handlers.Policy.RemovePolicy,
 		)
-
-		groups := policies.Group("/groups")
-		{
-			groups.Get("/",
-				s.middlewares.Auth.CasbinAuthz().RequiresPermissions([]string{"policy:read"}, casbin.WithValidationRule(casbin.MatchAllRule)),
-				s.handlers.Policy.GetFilteredGroupPolicy,
-			)
-			groups.Post("/",
-				s.middlewares.Auth.CasbinAuthz().RequiresPermissions([]string{"policy:create"}, casbin.WithValidationRule(casbin.MatchAllRule)),
-				s.handlers.Policy.AddGroupPolicy,
-			)
-			groups.Delete("/",
-				s.middlewares.Auth.CasbinAuthz().RequiresPermissions([]string{"policy:delete"}, casbin.WithValidationRule(casbin.MatchAllRule)),
-				s.handlers.Policy.RemoveGroupPolicy,
-			)
-		}
 	}
 
 	jenisSitus := app.Group("/jenis-situs")
@@ -180,8 +164,16 @@ func (s *server) run() {
 			s.handlers.SitusKeagamaan.GetDetailSitus,
 		)
 		situs.Post("/:id/foto",
-			s.middlewares.Auth.CasbinAuthz().RequiresPermissions([]string{"situs:create", "situs:update", "situs:update"}, casbin.WithValidationRule(casbin.AtLeastOneRule)),
+			s.middlewares.Auth.CasbinAuthz().RequiresPermissions([]string{"situs:create", "situs:update"}, casbin.WithValidationRule(casbin.AtLeastOneRule)),
 			s.handlers.SitusKeagamaan.UploadFotoSitus,
+		)
+		situs.Patch("/:id/verify",
+			s.middlewares.Auth.CasbinAuthz().RequiresPermissions([]string{"situs:verify"}, casbin.WithValidationRule(casbin.AtLeastOneRule)),
+			s.handlers.SitusKeagamaan.VerifySitus,
+		)
+		situs.Delete("/:id",
+			s.middlewares.Auth.CasbinAuthz().RequiresPermissions([]string{"situs:delete"}, casbin.WithValidationRule(casbin.AtLeastOneRule)),
+			s.handlers.SitusKeagamaan.DeleteSitus,
 		)
 	}
 

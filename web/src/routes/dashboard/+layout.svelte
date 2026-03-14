@@ -118,7 +118,7 @@
 							class="dropdown-content menu z-1 mt-3 w-52 menu-sm rounded-box bg-base-100 p-2 shadow"
 						>
 							<li>
-								<a href="/profile"
+								<a href="/dashboard/profile"
 									><svg
 										xmlns="http://www.w3.org/2000/svg"
 										class="h-5 w-5"

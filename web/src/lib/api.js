@@ -169,6 +169,22 @@ class ApiService {
 		});
 	}
 
+	/** PATCH request */
+	patch(endpoint, body, headers = {}) {
+		const isFormData = body instanceof FormData;
+		const requestHeaders = { ...headers };
+
+		if (!isFormData && !requestHeaders['Content-Type']) {
+			requestHeaders['Content-Type'] = 'application/json';
+		}
+
+		return this.request(endpoint, {
+			method: 'PATCH',
+			body: isFormData ? body : typeof body === 'object' ? JSON.stringify(body) : body,
+			headers: requestHeaders
+		});
+	}
+
 	/** DELETE request */
 	delete(endpoint, body = null, headers = {}) {
 		return this.request(endpoint, {

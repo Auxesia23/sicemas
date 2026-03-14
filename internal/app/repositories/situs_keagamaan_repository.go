@@ -2,6 +2,7 @@ package repositories
 
 import (
 	"context"
+	"database/sql"
 	"log"
 	"situs-keagamaan/internal/dto"
 
@@ -12,8 +13,11 @@ import (
 type SitusKeagamaanRepository interface {
 	Create(ctx context.Context, in *dto.SitusKeagamaanRequest, author uuid.UUID) (uuid.UUID, error)
 	ReadAll(ctx context.Context) ([]dto.SitusKeagamaanResponse, error)
-	ReadOwn(ctx context.Context, userID uuid.UUID) ([]dto.SitusKeagamaanResponse, error)
+	ReadOwn(ctx context.Context, userId uuid.UUID) ([]dto.SitusKeagamaanResponse, error)
 	ReadDetail(ctx context.Context, id uuid.UUID) (*dto.SitusKeagamaanDetailResponse, error)
+	Delete(ctx context.Context, id uuid.UUID) error
+	Verify(ctx context.Context, id uuid.UUID, in *dto.VerifikasiSitusRequest) error
+	CheckOwnership(ctx context.Context, Id uuid.UUID, userId uuid.UUID) error
 }
 
 type situsKeagamaanRepositoryImpl struct {
@@ -131,6 +135,7 @@ func (r *situsKeagamaanRepositoryImpl) ReadDetail(ctx context.Context, id uuid.U
 			SELECT
 				sk.id,
 				js.nama_jenis AS jenis_situs,
+				sk.status_verifikasi,
 				sk.situs_id,
 				sk.nama,
 				sk.jenis_tipologi,
@@ -152,7 +157,8 @@ func (r *situsKeagamaanRepositoryImpl) ReadDetail(ctx context.Context, id uuid.U
 				sk.nomor_aiw,
 				sk.nomor_sertifikat_wakaf,
 				sk.daya_tampung_max,
-				sk.detail
+				sk.detail,
+				sk.updated_at
 			FROM situs_keagamaan sk
 			LEFT JOIN jenis_situs js ON sk.jenis_situs_id = js.id
 			WHERE sk.id = $1
@@ -168,4 +174,53 @@ func (r *situsKeagamaanRepositoryImpl) ReadDetail(ctx context.Context, id uuid.U
 	}
 
 	return &detail, nil
+}
+
+func (r *situsKeagamaanRepositoryImpl) CheckOwnership(ctx context.Context, situsID, userID uuid.UUID) error {
+	query := `
+		SELECT id
+		FROM situs_keagamaan
+		WHERE id = $1 AND pendata_id = $2
+	`
+	var result uuid.UUID
+	err := r.DB.GetContext(ctx, &result, query, situsID, userID)
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func (r *situsKeagamaanRepositoryImpl) Verify(ctx context.Context, id uuid.UUID, in *dto.VerifikasiSitusRequest) error {
+	query := `
+		UPDATE situs_keagamaan
+			SET
+				status_verifikasi = $1,
+				situs_id = NULLIF($2, ''),
+				updated_at = CURRENT_TIMESTAMP
+			WHERE id = $3
+	`
+	_, err := r.DB.ExecContext(ctx, query, in.StatusVerifikasi, in.SitusID, id)
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func (r *situsKeagamaanRepositoryImpl) Delete(ctx context.Context, id uuid.UUID) error {
+	query := `
+		DELETE FROM situs_keagamaan WHERE id = $1
+	`
+	result, err := r.DB.ExecContext(ctx, query, id)
+	if err != nil {
+		return err
+	}
+
+	rows, _ := result.RowsAffected()
+	if rows == 0 {
+		return sql.ErrNoRows
+	}
+
+	return nil
 }

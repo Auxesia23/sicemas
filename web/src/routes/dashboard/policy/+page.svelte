@@ -2,16 +2,21 @@
 	import apiService from '$lib/api';
 	import { onMount } from 'svelte';
 	import { hasAllPermissions } from '$lib/permissions';
+	import Toast from '$lib/components/ui/Toast.svelte';
+	import ConfirmModal from '$lib/components/ui/ConfirmModal.svelte';
+	import RoleBadge from '$lib/components/ui/RoleBadge.svelte';
+	import AddRoleForm from '$lib/components/ui/AddRoleForm.svelte';
 
 	let { data } = $props();
 	let user = $derived(data.user);
+	let isAdding = $state(false);
 
 	// Data statis
 	const resources = [
 		{ name: 'user', actions: ['create', 'read', 'update', 'delete'] },
 		{
 			name: 'situs',
-			actions: ['create', 'read_all', 'read_own', 'update', 'delete']
+			actions: ['create', 'read_all', 'read_own', 'update', 'delete', 'verify']
 		},
 		{
 			name: 'jenis-situs',
@@ -31,7 +36,8 @@
 			update: 'Update',
 			update_all: 'Update All',
 			update_own: 'Update Own',
-			delete: 'Delete'
+			delete: 'Delete',
+			verify: 'Verify'
 		};
 		return labels[action] || action;
 	}
@@ -41,10 +47,15 @@
 	let policies = $state([]);
 	let loading = $state(false);
 	let updatingCells = $state(new Set());
-	let error = $state(null);
-	let newRoleName = $state('');
 	let addingRole = $state(false);
-	let deletingRole = $state(null);
+
+	// Modal and toast states
+	let showDeleteModal = $state(false);
+	let roleToDelete = $state(null);
+	let isDeleting = $state(false);
+	let showToast = $state(false);
+	let toastMessage = $state('');
+	let toastType = $state('success');
 
 	// Derived state untuk kolom
 	const columns = $derived(
@@ -74,31 +85,6 @@
 		return updatingCells.has(getPolicyKey(role, resource, action));
 	}
 
-	function getRoleBadgeClass(role) {
-		if (role === 'admin') return 'badge-primary';
-		if (role === 'operator') return 'badge-secondary';
-		return 'badge-accent';
-	}
-
-	function getRoleBadgeIcon(role) {
-		if (role === 'admin') {
-			return 'M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z';
-		}
-		if (role === 'operator') {
-			return 'M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z M15 12a3 3 0 11-6 0 3 3 0 016 0z';
-		}
-		return 'M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z';
-	}
-
-	// Clear error after delay
-	function clearError() {
-		if (error) {
-			setTimeout(() => {
-				error = null;
-			}, 5000);
-		}
-	}
-
 	// Load roles dari API
 	async function loadRoles() {
 		try {
@@ -112,73 +98,115 @@
 		}
 	}
 
+	// Wrapper untuk AddRoleForm
+	function handleAddNewRoleWrapper(name) {
+		addNewRole(name);
+	}
+
 	// Add new role
-	async function addNewRole() {
-		if (!newRoleName.trim()) return;
+	async function addNewRole(name) {
+		if (!name) return;
 
 		addingRole = true;
-		error = null;
 
 		try {
-			const res = await apiService.post('/roles', { name: newRoleName.trim() });
+			const res = await apiService.post('/roles', { name });
 			if (res.ok) {
-				newRoleName = '';
+				toastMessage = 'Role berhasil ditambahkan';
+				toastType = 'success';
+				showToast = true;
 				await loadRoles();
+				setTimeout(() => {
+					showToast = false;
+				}, 3000);
 			} else {
 				const errorText = await res.text();
-				error = errorText || 'Gagal menambahkan role';
-				clearError();
+				toastMessage = errorText || 'Gagal menambahkan role';
+				toastType = 'error';
+				showToast = true;
+				setTimeout(() => {
+					showToast = false;
+				}, 4000);
 			}
 		} catch (err) {
-			error = 'Terjadi kesalahan saat menambahkan role';
-			clearError();
+			toastMessage = 'Terjadi kesalahan saat menambahkan role';
+			toastType = 'error';
+			showToast = true;
+			setTimeout(() => {
+				showToast = false;
+			}, 4000);
 		} finally {
 			addingRole = false;
 		}
 	}
 
-	// Delete role
-	async function deleteRole(roleId, roleName) {
-		if (!confirm(`Hapus role "${roleName}"? Semua hak akses terkait juga akan dihapus.`)) return;
+	// Confirm delete role
+	function confirmDeleteRole(roleId, roleName) {
+		roleToDelete = { id: roleId, name: roleName };
+		showDeleteModal = true;
+	}
 
-		deletingRole = roleId;
-		error = null;
+	// Delete role
+	async function deleteRole() {
+		isDeleting = true;
 
 		try {
-			const res = await apiService.delete(`/roles/${roleId}`);
+			const res = await apiService.delete(`/roles/${roleToDelete.id}`);
 			if (res.ok) {
+				showDeleteModal = false;
+				toastMessage = 'Role berhasil dihapus';
+				toastType = 'success';
+				showToast = true;
 				await loadRoles();
-				// Reload policies untuk menghapus policy yang terkait
 				await loadPolicies();
+				setTimeout(() => {
+					showToast = false;
+				}, 3000);
 			} else {
 				const errorText = await res.text();
-				error = errorText || `Gagal menghapus role ${roleName}`;
-				clearError();
+				toastMessage = errorText || `Gagal menghapus role ${roleToDelete.name}`;
+				toastType = 'error';
+				showToast = true;
+				setTimeout(() => {
+					showToast = false;
+				}, 4000);
 			}
 		} catch (err) {
-			error = 'Terjadi kesalahan saat menghapus role';
-			clearError();
+			toastMessage = 'Terjadi kesalahan saat menghapus role';
+			toastType = 'error';
+			showToast = true;
+			setTimeout(() => {
+				showToast = false;
+			}, 4000);
 		} finally {
-			deletingRole = null;
+			isDeleting = false;
+			roleToDelete = null;
 		}
 	}
 
 	// Load policies dari API
 	async function loadPolicies() {
 		loading = true;
-		error = null;
 		try {
 			const res = await apiService.get('/policies');
 			if (res.ok) {
 				policies = await res.json();
 			} else {
 				const errorText = await res.text();
-				error = errorText || 'Gagal memuat data policy';
-				clearError();
+				toastMessage = errorText || 'Gagal memuat data policy';
+				toastType = 'error';
+				showToast = true;
+				setTimeout(() => {
+					showToast = false;
+				}, 4000);
 			}
 		} catch (err) {
-			error = 'Terjadi kesalahan saat memuat data';
-			clearError();
+			toastMessage = 'Terjadi kesalahan saat memuat data';
+			toastType = 'error';
+			showToast = true;
+			setTimeout(() => {
+				showToast = false;
+			}, 4000);
 		} finally {
 			loading = false;
 		}
@@ -188,7 +216,6 @@
 	async function addPolicy(role, resource, action) {
 		const key = getPolicyKey(role, resource, action);
 		updatingCells.add(key);
-		error = null;
 
 		try {
 			const res = await apiService.post('/policies', {
@@ -198,18 +225,23 @@
 			});
 
 			if (res.ok) {
-				// API hanya return status code, buat policy lokal
 				policies.push({ subject: role, object: resource, action: action });
 			} else {
-				// Handle error response (forbidden, etc.) - rollback checkbox
 				const errorText = await res.text();
-				error = errorText || `Gagal menambahkan hak akses ${role} - ${resource}:${action}`;
-				clearError();
+				toastMessage = errorText || `Gagal menambahkan hak akses ${role} - ${resource}:${action}`;
+				toastType = 'error';
+				showToast = true;
+				setTimeout(() => {
+					showToast = false;
+				}, 4000);
 			}
 		} catch (err) {
-			// Error - rollback checkbox
-			error = 'Terjadi kesalahan saat menambahkan hak akses';
-			clearError();
+			toastMessage = 'Terjadi kesalahan saat menambahkan hak akses';
+			toastType = 'error';
+			showToast = true;
+			setTimeout(() => {
+				showToast = false;
+			}, 4000);
 		} finally {
 			updatingCells.delete(key);
 		}
@@ -219,7 +251,6 @@
 	async function removePolicy(role, resource, action) {
 		const key = getPolicyKey(role, resource, action);
 		updatingCells.add(key);
-		error = null;
 
 		try {
 			const res = await apiService.delete('/policies', {
@@ -233,15 +264,21 @@
 					(p) => !(p.subject === role && p.object === resource && p.action === action)
 				);
 			} else {
-				// Handle error response (forbidden, etc.) - rollback checkbox
 				const errorText = await res.text();
-				error = errorText || `Gagal mencabut hak akses ${role} - ${resource}:${action}`;
-				clearError();
+				toastMessage = errorText || `Gagal mencabut hak akses ${role} - ${resource}:${action}`;
+				toastType = 'error';
+				showToast = true;
+				setTimeout(() => {
+					showToast = false;
+				}, 4000);
 			}
 		} catch (err) {
-			// Error - rollback checkbox
-			error = 'Terjadi kesalahan saat menghapus hak akses';
-			clearError();
+			toastMessage = 'Terjadi kesalahan saat menghapus hak akses';
+			toastType = 'error';
+			showToast = true;
+			setTimeout(() => {
+				showToast = false;
+			}, 4000);
 		} finally {
 			updatingCells.delete(key);
 		}
@@ -261,6 +298,26 @@
 		await Promise.all([loadRoles(), loadPolicies()]);
 	});
 </script>
+
+<!-- Toast Notification -->
+<Toast
+	show={showToast}
+	message={toastMessage}
+	type={toastType}
+	onclose={() => (showToast = false)}
+/>
+
+<!-- Confirmation Modal -->
+<ConfirmModal
+	show={showDeleteModal}
+	title="Hapus Role"
+	message="Apakah Anda yakin ingin menghapus role '{roleToDelete?.name}'? Semua hak akses terkait juga akan dihapus permanen."
+	confirmText="Hapus"
+	cancelText="Batal"
+	isProcessing={isDeleting}
+	onConfirm={deleteRole}
+	onCancel={() => (showDeleteModal = false)}
+/>
 
 <div class="mx-auto max-w-7xl">
 	<!-- Page Header -->
@@ -284,73 +341,11 @@
 				d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
 			/>
 		</svg>
-		<span>
-			Centang checkbox untuk memberikan hak akses, hilangkan centang untuk mencabut hak akses.
-		</span>
+		<span> Centang untuk memberikan hak akses, hilangkan centang untuk mencabut hak akses. </span>
 	</div>
 
-	<!-- Add Role Form -->
-	{#if hasAllPermissions(user.permissions, ['role:create'])}
-		<div class="card mb-6 border border-base-200 bg-base-100 p-4 shadow">
-			<h3 class="mb-3 text-lg font-bold">Tambah Role Baru</h3>
-			<div class="flex gap-2">
-				<input
-					type="text"
-					class="input-bordered input flex-1"
-					placeholder="Nama role (contoh: developer)"
-					value={newRoleName}
-					oninput={(e) => (newRoleName = e.target.value)}
-					onkeydown={(e) => e.key === 'Enter' && addNewRole()}
-				/>
-				<button
-					class="btn btn-primary"
-					onclick={addNewRole}
-					disabled={addingRole || !newRoleName.trim()}
-				>
-					{#if addingRole}
-						<span class="loading loading-spinner"></span>
-					{:else}
-						<svg
-							xmlns="http://www.w3.org/2000/svg"
-							class="h-5 w-5"
-							fill="none"
-							viewBox="0 0 24 24"
-							stroke="currentColor"
-						>
-							<path
-								stroke-linecap="round"
-								stroke-linejoin="round"
-								stroke-width="2"
-								d="M12 4v16m8-8H4"
-							/>
-						</svg>
-					{/if}
-					Tambah
-				</button>
-			</div>
-		</div>
-	{/if}
-
-	<!-- Error Alert -->
-	{#if error}
-		<div class="mb-6 alert alert-error shadow">
-			<svg
-				xmlns="http://www.w3.org/2000/svg"
-				class="h-6 w-6 shrink-0 stroke-current"
-				fill="none"
-				viewBox="0 0 24 24"
-			>
-				<path
-					stroke-linecap="round"
-					stroke-linejoin="round"
-					stroke-width="2"
-					d="M10 14l2-2m0 0l2-2m-2 2l-2-2m2 2l2 2m7-2a9 9 0 11-18 0 9 9 0 0118 0z"
-				/>
-			</svg>
-			<span>{error}</span>
-			<button class="btn btn-ghost btn-sm" onclick={() => (error = null)}>✕</button>
-		</div>
-	{/if}
+	<!-- Add Role Form Component -->
+	<AddRoleForm {isAdding} {user} onSubmit={handleAddNewRoleWrapper} />
 
 	<!-- Loading State -->
 	{#if loading}
@@ -363,34 +358,23 @@
 		<div class="card border border-base-200 bg-base-100 shadow-xl">
 			<div class="card-body">
 				<div class="overflow-x-auto">
-					<table class="table">
+					<table class="table table-zebra">
 						<thead>
 							<tr>
-								<th class="min-w-37.5 bg-base-200">Peran / Fitur</th>
-								{#each columns as col}
-									<th class="min-w-30 bg-base-200 text-center">
-										<div class="flex flex-col items-center">
-											<span class="text-sm font-semibold">{col.label}</span>
-										</div>
-									</th>
-								{/each}
-							</tr>
-						</thead>
-						<tbody>
-							{#each roles as role, index}
-								<tr class={index % 2 === 1 ? 'bg-base-200/50' : ''}>
-									<td class="font-semibold capitalize">
-										<div class="flex items-center justify-between gap-2">
-											<div class="flex items-center gap-2">
-												<div
-													class="badge badge-sm"
-													class:badge-primary={role.name === 'admin'}
-													class:badge-secondary={role.name === 'operator'}
-													class:badge-accent={role.name !== 'admin' && role.name !== 'operator'}
+								<th class="bg-base-200 font-bold">Modul / Sumber Daya</th>
+								{#each roles as role}
+									<th class="bg-base-200 text-center">
+										<div class="flex items-center justify-center gap-1">
+											<RoleBadge name={role.name} showText={true} />
+											{#if hasAllPermissions(user.permissions, 'role:delete')}
+												<button
+													class="btn text-error btn-ghost btn-xs hover:text-error"
+													onclick={() => confirmDeleteRole(role.ID, role.name)}
+													title="Hapus"
 												>
 													<svg
 														xmlns="http://www.w3.org/2000/svg"
-														class="h-3 w-3"
+														class="h-4 w-4"
 														fill="none"
 														viewBox="0 0 24 24"
 														stroke="currentColor"
@@ -399,63 +383,49 @@
 															stroke-linecap="round"
 															stroke-linejoin="round"
 															stroke-width="2"
-															d={getRoleBadgeIcon(role.name)}
+															d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"
 														/>
 													</svg>
-												</div>
-												<span class="capitalize">{role.name}</span>
-											</div>
-											{#if hasAllPermissions(user.permissions, 'role:delete')}
-												<button
-													class="btn text-error btn-ghost btn-xs hover:text-error"
-													onclick={() => deleteRole(role.ID, role.name)}
-													disabled={deletingRole === role.ID}
-													title="Hapus role"
-												>
-													{#if deletingRole === role.ID}
-														<span class="loading loading-xs loading-spinner"></span>
-													{:else}
-														<svg
-															xmlns="http://www.w3.org/2000/svg"
-															class="h-4 w-4"
-															fill="none"
-															viewBox="0 0 24 24"
-															stroke="currentColor"
-														>
-															<path
-																stroke-linecap="round"
-																stroke-linejoin="round"
-																stroke-width="2"
-																d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"
-															/>
-														</svg>
-													{/if}
 												</button>
 											{/if}
 										</div>
-									</td>
-									{#each columns as col}
-										{@const isChecked = hasPolicy(role.name, col.resource, col.action)}
-										{@const isUpdating = isCellUpdating(role.name, col.resource, col.action)}
-										<td class="text-center">
-											<label class="flex cursor-pointer justify-center gap-2">
-												<input
-													type="checkbox"
-													class="checkbox checkbox-sm"
-													checked={isChecked}
-													disabled={isUpdating}
-													onchange={(e) =>
-														handleCheckboxChange(
-															role.name,
-															col.resource,
-															col.action,
-															e.target.checked
-														)}
-												/>
-												{#if isUpdating}
-													<span class="loading loading-xs loading-spinner text-primary"></span>
-												{/if}
-											</label>
+									</th>
+								{/each}
+							</tr>
+						</thead>
+						<tbody>
+							{#each resources as resource}
+								<tr class="hover">
+									<td class="font-bold capitalize">{resource.name}</td>
+									{#each roles as role}
+										<td>
+											<div class="grid grid-cols-2 gap-2">
+												{#each resource.actions as action}
+													{@const isChecked = hasPolicy(role.name, resource.name, action)}
+													{@const isUpdating = isCellUpdating(role.name, resource.name, action)}
+													<label class="flex cursor-pointer items-center gap-2 text-xs">
+														<input
+															type="checkbox"
+															class="checkbox checkbox-xs"
+															checked={isChecked}
+															disabled={isUpdating}
+															onchange={(e) =>
+																handleCheckboxChange(
+																	role.name,
+																	resource.name,
+																	action,
+																	e.target.checked
+																)}
+														/>
+														<span class="text-base-content/80">
+															{getActionLabel(action)}
+														</span>
+														{#if isUpdating}
+															<span class="loading loading-xs loading-spinner text-primary"></span>
+														{/if}
+													</label>
+												{/each}
+											</div>
 										</td>
 									{/each}
 								</tr>
@@ -467,30 +437,7 @@
 				<!-- Legend -->
 				<div class="mt-6 flex flex-wrap gap-4">
 					{#each roles as role}
-						<div class="flex items-center gap-2">
-							<div
-								class="badge badge-sm"
-								class:badge-primary={role.name === 'admin'}
-								class:badge-secondary={role.name === 'operator'}
-								class:badge-accent={role.name !== 'admin' && role.name !== 'operator'}
-							>
-								<svg
-									xmlns="http://www.w3.org/2000/svg"
-									class="h-3 w-3"
-									fill="none"
-									viewBox="0 0 24 24"
-									stroke="currentColor"
-								>
-									<path
-										stroke-linecap="round"
-										stroke-linejoin="round"
-										stroke-width="2"
-										d={getRoleBadgeIcon(role.name)}
-									/>
-								</svg>
-							</div>
-							<span class="text-sm text-gray-600 capitalize">{role.name}</span>
-						</div>
+						<RoleBadge name={role.name} showText={true} />
 					{/each}
 				</div>
 			</div>

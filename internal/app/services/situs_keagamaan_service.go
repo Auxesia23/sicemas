@@ -22,7 +22,9 @@ type SitusKeagamaanService interface {
 	CreateSitusKeagamaan(ctx context.Context, in *dto.SitusKeagamaanRequest, author uuid.UUID) (uuid.UUID, error)
 	UploadFotoSitus(ctx context.Context, foto []multipart.File, situsId uuid.UUID) error
 	GetAllSitusKeagamaan(ctx context.Context, userId uuid.UUID) ([]dto.SitusKeagamaanResponse, error)
-	GetDetailSitusKeagamaan(ctx context.Context, id uuid.UUID) (*dto.SitusKeagamaanDetailResponse, error)
+	GetDetailSitusKeagamaan(ctx context.Context, situsId, userId uuid.UUID) (*dto.SitusKeagamaanDetailResponse, error)
+	DeleteSitus(ctx context.Context, id uuid.UUID) error
+	VerifySitus(ctx context.Context, situsId uuid.UUID, in *dto.VerifikasiSitusRequest) error
 }
 
 type situsKeagamaanServiceImpl struct {
@@ -151,8 +153,23 @@ func (s *situsKeagamaanServiceImpl) GetAllSitusKeagamaan(ctx context.Context, us
 	return situs, nil
 }
 
-func (s *situsKeagamaanServiceImpl) GetDetailSitusKeagamaan(ctx context.Context, id uuid.UUID) (*dto.SitusKeagamaanDetailResponse, error) {
-	situs, err := s.situsRepo.ReadDetail(ctx, id)
+func (s *situsKeagamaanServiceImpl) GetDetailSitusKeagamaan(ctx context.Context, situsId, userId uuid.UUID) (*dto.SitusKeagamaanDetailResponse, error) {
+	canReadAll, err := s.enforcer.Enforce(userId.String(), "situs", "read_all")
+	if err != nil {
+		return nil, apperror.NewInternal("Terjadi kesalahan validasi akses.")
+	}
+
+	if !canReadAll {
+		err := s.situsRepo.CheckOwnership(ctx, situsId, userId)
+		if err != nil {
+			if errors.Is(err, sql.ErrNoRows) {
+				return nil, apperror.NewForbidden("Anda tidak memiliki hak akses untuk melihat situs ini")
+			}
+			return nil, apperror.NewInternal("Terjadi kesalahan.")
+		}
+	}
+
+	situs, err := s.situsRepo.ReadDetail(ctx, situsId)
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
 			return nil, apperror.NewNotFound("Situs tidak ditemukan")
@@ -181,7 +198,7 @@ func (s *situsKeagamaanServiceImpl) GetDetailSitusKeagamaan(ctx context.Context,
 		return nil, err
 	}
 
-	fotoSitus, err := s.fotoSitusRepo.GetBySitusID(ctx, id)
+	fotoSitus, err := s.fotoSitusRepo.GetBySitusID(ctx, situsId)
 	if err != nil {
 		return nil, apperror.NewInternal("Terjadi kesalahan")
 	}
@@ -192,4 +209,21 @@ func (s *situsKeagamaanServiceImpl) GetDetailSitusKeagamaan(ctx context.Context,
 	}
 
 	return situs, nil
+}
+
+func (s *situsKeagamaanServiceImpl) DeleteSitus(ctx context.Context, id uuid.UUID) error {
+	if err := s.situsRepo.Delete(ctx, id); err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			return apperror.NewNotFound("Situs tidak ditemukan")
+		}
+		return apperror.NewInternal("Terjadi kesalahan.")
+	}
+	return nil
+}
+
+func (s *situsKeagamaanServiceImpl) VerifySitus(ctx context.Context, id uuid.UUID, in *dto.VerifikasiSitusRequest) error {
+	if err := s.situsRepo.Verify(ctx, id, in); err != nil {
+		return apperror.NewInternal("Terjadi kesalahan.")
+	}
+	return nil
 }

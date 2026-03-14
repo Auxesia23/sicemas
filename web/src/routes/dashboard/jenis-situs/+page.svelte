@@ -1,8 +1,11 @@
 <script>
 	import { onMount } from 'svelte';
 	import apiService from '$lib/api';
-	import { derived } from 'svelte/store';
-	import { hasAllPermissions, hasAnyPermission } from '$lib/permissions';
+	import { hasAllPermissions } from '$lib/permissions';
+	import DeleteIcon from '$lib/components/icons/DeleteIcon.svelte';
+	import EditIcon from '$lib/components/icons/EditIcon.svelte';
+	import ConfirmModal from '$lib/components/ui/ConfirmModal.svelte';
+	import Toast from '$lib/components/ui/Toast.svelte';
 
 	let { data } = $props();
 	let user = $derived(data.user);
@@ -19,8 +22,14 @@
 	let formNama = $state('');
 	let formDeskripsi = $state('');
 	let formLoading = $state(false);
-	let formError = $state(null);
-	let formSuccess = $state(null);
+
+	// Delete & Toast state
+	let showDeleteModal = $state(false);
+	let itemToDelete = $state(null);
+	let isDeleting = $state(false);
+	let showToast = $state(false);
+	let toastMessage = $state('');
+	let toastType = $state('success');
 
 	const colorMap = {
 		0: 'primary',
@@ -59,8 +68,6 @@
 
 	function openModal(item = null) {
 		modalOpen = true;
-		formError = null;
-		formSuccess = null;
 		formLoading = false;
 
 		if (item) {
@@ -84,8 +91,6 @@
 
 	async function submitForm() {
 		formLoading = true;
-		formError = null;
-		formSuccess = null;
 
 		try {
 			const payload = {
@@ -107,40 +112,91 @@
 				throw new Error(text || `Gagal ${isEditMode ? 'mengubah' : 'menambah'} jenis situs`);
 			}
 
-			formSuccess = `Jenis situs berhasil ${isEditMode ? 'diperbarui' : 'ditambahkan'}`;
+			// Show success toast
+			toastMessage = `Jenis situs berhasil ${isEditMode ? 'diperbarui' : 'ditambahkan'}`;
+			toastType = 'success';
+			showToast = true;
 
 			// Refresh data setelah berhasil
 			await loadData();
 
+			closeModal();
 			setTimeout(() => {
-				closeModal();
-			}, 1500);
+				showToast = false;
+			}, 2000);
 		} catch (e) {
-			formError = e.message || `Gagal ${isEditMode ? 'mengubah' : 'menambah'} jenis situs`;
+			// Show error toast
+			toastMessage = e.message || `Gagal ${isEditMode ? 'mengubah' : 'menambah'} jenis situs`;
+			toastType = 'error';
+			showToast = true;
+			setTimeout(() => {
+				showToast = false;
+			}, 4000);
 		} finally {
 			formLoading = false;
 		}
 	}
 
-	async function deleteItem(id, nama) {
-		if (!confirm(`Apakah Anda yakin ingin menghapus jenis situs "${nama}"?`)) {
-			return;
-		}
+	// Confirm delete action
+	function confirmDeleteItem(id, name) {
+		itemToDelete = { id, name };
+		showDeleteModal = true;
+	}
+
+	// Handle delete action
+	async function handleDelete() {
+		isDeleting = true;
 
 		try {
-			const response = await apiService.delete(`/jenis-situs/${id}`);
+			const response = await apiService.delete(`/jenis-situs/${itemToDelete.id}`);
 			if (!response.ok) {
 				const text = await response.text();
 				throw new Error(text || 'Gagal menghapus jenis situs');
 			}
 
-			// Hapus item dari array secara reaktif
-			siteTypes = siteTypes.filter((type) => type.id !== id);
+			// Success - show toast and update array
+			toastMessage = 'Jenis situs berhasil dihapus';
+			toastType = 'success';
+			showToast = true;
+			siteTypes = siteTypes.filter((type) => type.id !== itemToDelete.id);
+			showDeleteModal = false;
+			setTimeout(() => {
+				showToast = false;
+			}, 3000);
 		} catch (e) {
-			alert(e.message || 'Terjadi kesalahan saat menghapus data');
+			// Error - show error toast
+			toastMessage = e.message || 'Terjadi kesalahan saat menghapus data';
+			toastType = 'error';
+			showToast = true;
+			setTimeout(() => {
+				showToast = false;
+			}, 4000);
+		} finally {
+			isDeleting = false;
+			itemToDelete = null;
 		}
 	}
 </script>
+
+<!-- Toast Notification -->
+<Toast
+	show={showToast}
+	message={toastMessage}
+	type={toastType}
+	onclose={() => (showToast = false)}
+/>
+
+<!-- Confirmation Modal -->
+<ConfirmModal
+	show={showDeleteModal}
+	title="Hapus Jenis Situs"
+	message="Apakah Anda yakin ingin menghapus jenis situs '{itemToDelete?.name}'? Tindakan ini tidak dapat dibatalkan."
+	confirmText="Hapus"
+	cancelText="Batal"
+	isProcessing={isDeleting}
+	onConfirm={handleDelete}
+	onCancel={() => (showDeleteModal = false)}
+/>
 
 <div class="mx-auto max-w-7xl">
 	<div class="mb-8">
@@ -227,14 +283,19 @@
 							{#if hasAllPermissions(user.permissions, ['jenis-situs:delete'])}
 								<button
 									class="btn btn-outline btn-sm btn-error"
-									onclick={() => deleteItem(type.id, type.name)}
+									onclick={() => confirmDeleteItem(type.id, type.name)}
+									title="Hapus"
 								>
-									Hapus
+									<DeleteIcon />
 								</button>
 							{/if}
 							{#if hasAllPermissions(user.permissions, ['jenis-situs:update'])}
-								<button class="btn btn-sm btn-primary" onclick={() => openModal(type)}>
-									Edit
+								<button
+									class="btn btn-outline btn-sm btn-primary"
+									onclick={() => openModal(type)}
+									title="Edit"
+								>
+									<EditIcon />
 								</button>
 							{/if}
 						</div>
@@ -255,44 +316,6 @@
 		<h3 class="mb-4 text-lg font-bold">
 			{isEditMode ? 'Edit Jenis Situs' : 'Tambah Jenis Situs'}
 		</h3>
-
-		{#if formSuccess}
-			<div class="mb-4 alert alert-success">
-				<svg
-					xmlns="http://www.w3.org/2000/svg"
-					class="h-6 w-6 shrink-0 stroke-current"
-					fill="none"
-					viewBox="0 0 24 24"
-				>
-					<path
-						stroke-linecap="round"
-						stroke-linejoin="round"
-						stroke-width="2"
-						d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"
-					/>
-				</svg>
-				<span>{formSuccess}</span>
-			</div>
-		{/if}
-
-		{#if formError}
-			<div class="mb-4 alert alert-error">
-				<svg
-					xmlns="http://www.w3.org/2000/svg"
-					class="h-6 w-6 shrink-0 stroke-current"
-					fill="none"
-					viewBox="0 0 24 24"
-				>
-					<path
-						stroke-linecap="round"
-						stroke-linejoin="round"
-						stroke-width="2"
-						d="M10 14l2-2m0 0l2-2m-2 2l-2-2m2 2l2 2m7-2a9 9 0 11-18 0 9 9 0 0118 0z"
-					/>
-				</svg>
-				<span>{formError}</span>
-			</div>
-		{/if}
 
 		<div class="form-control">
 			<label class="label-text mb-2 block font-medium" for="formNama">Nama</label>

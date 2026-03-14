@@ -3,37 +3,65 @@
 	import { goto } from '$app/navigation';
 	import { page } from '$app/stores';
 	import apiService from '$lib/api';
+	import { hasAnyPermission } from '$lib/permissions';
 
+	// UI Components
+	import Toast from '$lib/components/ui/Toast.svelte';
 	import ViewDetailMasjid from '$lib/components/views/ViewDetailMasjid.svelte';
 	import ViewDetailPesantren from '$lib/components/views/ViewDetailPesantren.svelte';
 	import ViewDetailMushola from '$lib/components/views/ViewDetailMushola.svelte';
 	import ViewDetailMT from '$lib/components/views/ViewDetailMT.svelte';
 
+	let { data } = $props();
+
+	// State management
 	let situs = $state(null);
 	let isLoading = $state(true);
 	let error = $state(null);
 
+	// Verification form state
+	let verifyStatus = $state('');
+	let verifySitusId = $state('');
+	let isVerifying = $state(false);
+
+	// Toast state
+	let showToast = $state(false);
+	let toastMessage = $state('');
+	let toastType = $state('success');
+
+	// Map state
 	let map;
 	let marker;
 
+	// Fetch data on mount
 	onMount(async () => {
 		try {
 			isLoading = true;
 			error = null;
-
 			const response = await apiService.get(`/situs/${$page.params.id}`);
-
 			if (!response.ok) {
 				throw new Error('Gagal memuat data situs');
 			}
-
 			situs = await response.json();
+
+			// Pre-fill verification form
+			verifyStatus = situs.status_verifikasi || '';
+			verifySitusId = situs.situs_id || '';
 		} catch (err) {
-			console.error(err);
+			console.error('Failed to fetch situs:', err);
 			error = err.message;
 		} finally {
 			isLoading = false;
 		}
+
+		// Cleanup on unmount
+		return () => {
+			if (map) {
+				map.remove();
+				map = null;
+				marker = null;
+			}
+		};
 	});
 
 	onDestroy(() => {
@@ -60,13 +88,12 @@
 			const lng = Number(situs.longitude);
 
 			map = L.map(node, {
-				dragging: false,
-				touchZoom: false,
+				// Biarkan default Leaflet mengatur interaksinya (otomatis true)
+				// Kita hanya matikan scrollWheelZoom agar halaman tidak "nyangkut" saat user men-scroll ke bawah
 				scrollWheelZoom: false,
-				doubleClickZoom: false,
-				boxZoom: false,
-				keyboard: false,
-				zoomControl: false,
+
+				// Tampilkan kontrol zoom, tapi opsional
+				zoomControl: true,
 				attributionControl: false
 			}).setView([lat, lng], 15);
 
@@ -97,11 +124,10 @@
 		}
 	}
 
+	// Format date to Indonesian locale
 	function formatDate(dateString) {
 		if (!dateString) return '-';
-
 		const date = new Date(dateString);
-
 		return date.toLocaleDateString('id-ID', {
 			day: 'numeric',
 			month: 'long',
@@ -109,8 +135,73 @@
 		});
 	}
 
+	// Submit verification
+	async function submitVerifikasi(e) {
+		e.preventDefault();
+
+		if (isVerifying) return; // Prevent double submit
+
+		isVerifying = true;
+
+		try {
+			const res = await apiService.patch('/situs/' + $page.params.id + '/verify', {
+				status_verifikasi: verifyStatus,
+				situs_id: verifySitusId
+			});
+
+			if (res.ok) {
+				toastMessage = 'Verifikasi berhasil disimpan';
+				toastType = 'success';
+				showToast = true;
+
+				// Reload halaman setelah delay agar toast terlihat
+				// Tombol tetap disabled karena isVerifying tidak di-false-kan di sini
+				setTimeout(() => {
+					location.reload();
+				}, 2000);
+			} else {
+				const errText = await res.text();
+				toastMessage = 'Gagal menyimpan verifikasi: ' + errText;
+				toastType = 'error';
+				showToast = true;
+				isVerifying = false; // Aktifkan tombol lagi jika gagal
+
+				setTimeout(() => {
+					showToast = false;
+				}, 4000);
+			}
+		} catch (err) {
+			console.error('Verification error:', err);
+			toastMessage = 'Terjadi kesalahan sistem saat menyimpan verifikasi';
+			toastType = 'error';
+			showToast = true;
+			isVerifying = false; // Aktifkan tombol lagi jika error
+
+			setTimeout(() => {
+				showToast = false;
+			}, 4000);
+		}
+		// Tidak ada finally block agar tombol tidak kembali enable saat sukses
+	}
+
+	// Go back to situs list
 	function goBack() {
 		goto('/dashboard/situs');
+	}
+
+	// Get status badge class
+	function getStatusBadgeClass(status) {
+		if (!status) return 'badge-ghost';
+		switch (status) {
+			case 'terverifikasi':
+				return 'badge-success';
+			case 'ditolak':
+				return 'badge-error';
+			case 'menunggu':
+				return 'badge-warning';
+			default:
+				return 'badge-ghost';
+		}
 	}
 </script>
 
@@ -118,7 +209,14 @@
 	<title>{situs?.nama || 'Detail Situs'} - Dashboard</title>
 </svelte:head>
 
-<div class="mx-auto max-w-7xl p-4">
+<div class="relative mx-auto max-w-7xl p-4">
+	<Toast
+		show={showToast}
+		message={toastMessage}
+		type={toastType}
+		onclose={() => (showToast = false)}
+	/>
+
 	{#if isLoading}
 		<div class="flex min-h-[60vh] items-center justify-center">
 			<div class="flex flex-col items-center gap-4">
@@ -170,6 +268,11 @@
 						<div class="mt-1 flex items-center gap-2">
 							<span class="badge badge-lg badge-primary">{situs.jenis_tipologi}</span>
 							<span class="badge badge-outline">{situs.jenis_situs}</span>
+							{#if situs.status_verifikasi}
+								<span class="badge {getStatusBadgeClass(situs.status_verifikasi)}">
+									{situs.status_verifikasi}
+								</span>
+							{/if}
 						</div>
 					</div>
 				</div>
@@ -183,21 +286,15 @@
 					<h2 class="mb-4 card-title text-lg">Informasi Umum</h2>
 					<div class="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
 						<div>
-							<p class="mb-1 block text-xs font-medium text-base-content/70">ID (Kemenag)</p>
-							<p class="font-mono font-medium text-primary">
-								{situs.situs_id || '-'}
-							</p>
-						</div>
-						<div>
-							<p class="mb-1 block text-xs font-medium text-base-content/70">Email</p>
+							<p class="text-xs font-medium text-base-content/70">Email</p>
 							<p class="font-medium">{situs.email || '-'}</p>
 						</div>
 						<div>
-							<p class="mb-1 block text-xs font-medium text-base-content/70">Nomor Telepon</p>
+							<p class="text-xs font-medium text-base-content/70">Nomor Telepon</p>
 							<p class="font-medium">{situs.nomor_telepon || '-'}</p>
 						</div>
 						<div>
-							<p class="mb-1 block text-xs font-medium text-base-content/70">Website</p>
+							<p class="text-xs font-medium text-base-content/70">Website</p>
 							<p class="font-medium">
 								{#if situs.website}
 									<a
@@ -214,11 +311,11 @@
 							</p>
 						</div>
 						<div>
-							<p class="mb-1 block text-xs font-medium text-base-content/70">Tahun Berdiri</p>
+							<p class="text-xs font-medium text-base-content/70">Tahun Berdiri</p>
 							<p class="font-medium">{situs.tahun_berdiri || '-'}</p>
 						</div>
 						<div>
-							<p class="mb-1 block text-xs font-medium text-base-content/70">Nomor Badan Hukum</p>
+							<p class="text-xs font-medium text-base-content/70">Nomor Badan Hukum</p>
 							<p class="font-medium">{situs.nomor_badan_hukum || '-'}</p>
 						</div>
 					</div>
@@ -230,27 +327,27 @@
 					<h2 class="mb-4 card-title text-lg">Lokasi & Peta</h2>
 					<div class="mb-4 grid grid-cols-1 gap-4 sm:grid-cols-2">
 						<div>
-							<p class="mb-1 block text-xs font-medium text-base-content/70">Alamat Lengkap</p>
+							<p class="text-xs font-medium text-base-content/70">Alamat Lengkap</p>
 							<p class="font-medium">{situs.alamat_lengkap || '-'}</p>
 						</div>
 						<div>
-							<p class="mb-1 block text-xs font-medium text-base-content/70">Desa/Kelurahan</p>
+							<p class="text-xs font-medium text-base-content/70">Desa/Kelurahan</p>
 							<p class="font-medium">{situs.desa || '-'}</p>
 						</div>
 						<div>
-							<p class="mb-1 block text-xs font-medium text-base-content/70">Kecamatan</p>
+							<p class="text-xs font-medium text-base-content/70">Kecamatan</p>
 							<p class="font-medium">{situs.kecamatan || '-'}</p>
 						</div>
 						<div>
-							<p class="mb-1 block text-xs font-medium text-base-content/70">Kabupaten/Kota</p>
+							<p class="text-xs font-medium text-base-content/70">Kabupaten/Kota</p>
 							<p class="font-medium">{situs.kabupaten_kota || '-'}</p>
 						</div>
 						<div>
-							<p class="mb-1 block text-xs font-medium text-base-content/70">Provinsi</p>
+							<p class="text-xs font-medium text-base-content/70">Provinsi</p>
 							<p class="font-medium">{situs.provinsi || '-'}</p>
 						</div>
 						<div>
-							<p class="mb-1 block text-xs font-medium text-base-content/70">Koordinat</p>
+							<p class="text-xs font-medium text-base-content/70">Koordinat</p>
 							<p class="font-mono text-sm font-medium">
 								{situs.latitude?.toFixed(6) ?? '-'}, {situs.longitude?.toFixed(6) ?? '-'}
 							</p>
@@ -275,31 +372,29 @@
 					<h2 class="mb-4 card-title text-lg">Kapasitas & Legalitas</h2>
 					<div class="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
 						<div>
-							<p class="mb-1 block text-xs font-medium text-base-content/70">Luas Tanah</p>
+							<p class="text-xs font-medium text-base-content/70">Luas Tanah</p>
 							<p class="font-medium">{situs.luas_tanah ? `${situs.luas_tanah} m²` : '-'}</p>
 						</div>
 						<div>
-							<p class="mb-1 block text-xs font-medium text-base-content/70">Luas Bangunan</p>
+							<p class="text-xs font-medium text-base-content/70">Luas Bangunan</p>
 							<p class="font-medium">{situs.luas_bangunan ? `${situs.luas_bangunan} m²` : '-'}</p>
 						</div>
 						<div>
-							<p class="mb-1 block text-xs font-medium text-base-content/70">Status Tanah</p>
+							<p class="text-xs font-medium text-base-content/70">Status Tanah</p>
 							<p class="font-medium">{situs.status_tanah || '-'}</p>
 						</div>
 						<div>
-							<p class="mb-1 block text-xs font-medium text-base-content/70">Daya Tampung Max</p>
+							<p class="text-xs font-medium text-base-content/70">Daya Tampung Max</p>
 							<p class="font-medium">
 								{situs.daya_tampung_max ? `${situs.daya_tampung_max} orang` : '-'}
 							</p>
 						</div>
 						<div>
-							<p class="mb-1 block text-xs font-medium text-base-content/70">Nomor AIW</p>
+							<p class="text-xs font-medium text-base-content/70">Nomor AIW</p>
 							<p class="font-medium">{situs.nomor_aiw || '-'}</p>
 						</div>
 						<div>
-							<p class="mb-1 block text-xs font-medium text-base-content/70">
-								No. Sertifikat Wakaf
-							</p>
+							<p class="text-xs font-medium text-base-content/70">No. Sertifikat Wakaf</p>
 							<p class="font-medium">{situs.nomor_sertifikat_wakaf || '-'}</p>
 						</div>
 					</div>
@@ -337,6 +432,108 @@
 				<ViewDetailMushola detail={situs.detail} />
 			{:else if situs.jenis_situs === 'MT' || situs.jenis_situs.toLowerCase().includes('majelis')}
 				<ViewDetailMT detail={situs.detail} />
+			{/if}
+
+			{#if hasAnyPermission(data.user.permissions, 'situs:verify')}
+				<div class="card border-2 border-primary bg-primary/5 shadow-lg">
+					<div class="card-body p-4 sm:p-6">
+						<h2 class="mb-2 card-title flex items-center gap-2 text-lg text-primary">
+							<svg
+								xmlns="http://www.w3.org/2000/svg"
+								class="h-6 w-6"
+								fill="none"
+								viewBox="0 0 24 24"
+								stroke="currentColor"
+							>
+								<path
+									stroke-linecap="round"
+									stroke-linejoin="round"
+									stroke-width="2"
+									d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"
+								/>
+							</svg>
+							Panel Verifikasi Situs
+						</h2>
+						<p class="mb-4 text-sm text-base-content/70">
+							Status saat ini:
+							{#if situs.status_verifikasi}
+								<span class="badge {getStatusBadgeClass(situs.status_verifikasi)} ml-2">
+									{situs.status_verifikasi}
+								</span>
+							{:else}
+								<span class="ml-2 text-base-content/50">Belum ada status</span>
+							{/if}
+						</p>
+
+						<form onsubmit={submitVerifikasi} class="space-y-4">
+							<div class="grid grid-cols-1 gap-4 sm:grid-cols-2">
+								<div class="form-control">
+									<label class="label" for="verifyStatus">
+										<span class="label-text font-medium">Status Verifikasi</span>
+										<span class="label-text-alt text-error">*</span>
+									</label>
+									<select
+										id="verifyStatus"
+										class="select-bordered select w-full"
+										required
+										bind:value={verifyStatus}
+									>
+										<option value="" disabled>Pilih status...</option>
+										<option value="terverifikasi">Terverifikasi</option>
+										<option value="ditolak">Ditolak</option>
+									</select>
+								</div>
+
+								<div class="form-control">
+									<label class="label" for="verifySitusId">
+										<span class="label-text font-medium">Nomor Statistik Kemenag</span>
+										<span class="label-text-alt">Opsional</span>
+									</label>
+									<input
+										id="verifySitusId"
+										type="text"
+										class="input-bordered input w-full"
+										placeholder="Contoh: 51.2.12.345678"
+										bind:value={verifySitusId}
+										disabled={verifyStatus === 'ditolak'}
+									/>
+									{#if verifyStatus === 'ditolak'}
+										<label for="verifySitusId" class="label">
+											<span class="label-text-alt text-error">
+												Tidak dapat diisi saat status ditolak
+											</span>
+										</label>
+									{/if}
+								</div>
+							</div>
+
+							<div class="flex justify-end gap-2">
+								<button type="submit" class="btn btn-primary" disabled={isVerifying}>
+									{#if isVerifying}
+										<span class="loading loading-spinner"></span>
+										Menyimpan...
+									{:else}
+										<svg
+											xmlns="http://www.w3.org/2000/svg"
+											class="h-5 w-5"
+											fill="none"
+											viewBox="0 0 24 24"
+											stroke="currentColor"
+										>
+											<path
+												stroke-linecap="round"
+												stroke-linejoin="round"
+												stroke-width="2"
+												d="M5 13l4 4L19 7"
+											/>
+										</svg>
+										Simpan Verifikasi
+									{/if}
+								</button>
+							</div>
+						</form>
+					</div>
+				</div>
 			{/if}
 		</div>
 	{/if}

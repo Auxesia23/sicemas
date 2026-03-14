@@ -2,12 +2,10 @@
 	import { onMount } from 'svelte';
 	import apiService from '$lib/api';
 
-	// Mock user data
+	// User data
 	let user = $state();
-	let isLoading = $state(true); // Track loading state
+	let isLoading = $state(true);
 	let errorMessage = $state(null);
-
-	let isEditing = $state(false);
 
 	onMount(async () => {
 		await getProfile();
@@ -16,7 +14,7 @@
 	// Function untuk ambil data profile
 	const getProfile = async () => {
 		try {
-			isLoading = true; // Set loading to true when starting fetch
+			isLoading = true;
 			const response = await apiService.get('/users/profile');
 			if (!response.ok) {
 				errorMessage = await response.text();
@@ -29,7 +27,7 @@
 			isLoading = false;
 			return;
 		} finally {
-			isLoading = false; // Ensure loading is set to false after completion
+			isLoading = false;
 		}
 	};
 
@@ -40,19 +38,6 @@
 			dateStyle: 'long'
 		}).format(date);
 	}
-
-	// Function to toggle edit mode
-	const toggleEdit = () => {
-		isEditing = !isEditing;
-	};
-
-	// Function to save profile
-	const saveProfile = () => {
-		// In a real app, this would send data to the server
-		isEditing = false;
-		// Show success message
-		alert('Profil berhasil diperbarui!');
-	};
 
 	function getInitials(name = '') {
 		if (!name) return '??';
@@ -69,7 +54,7 @@
 	<!-- Page Header -->
 	<div class="mb-8">
 		<h1 class="text-3xl font-bold text-gray-800">Profil Pengguna</h1>
-		<p class="text-gray-600">Kelola informasi profil Anda</p>
+		<p class="text-gray-600">Informasi profil Anda</p>
 	</div>
 
 	<!-- Profile Card -->
@@ -99,11 +84,6 @@
 								</div>
 							{/each}
 						</div>
-
-						<!-- Action Buttons Skeleton -->
-						<div class="mt-6 flex justify-end space-x-3">
-							<div class="h-10 w-24 animate-pulse rounded bg-base-300"></div>
-						</div>
 					</div>
 				</div>
 			{:else if errorMessage}
@@ -115,18 +95,19 @@
 							class="h-6 w-6 shrink-0 stroke-current"
 							fill="none"
 							viewBox="0 0 24 24"
-							><path
+						>
+							<path
 								stroke-linecap="round"
 								stroke-linejoin="round"
 								stroke-width="2"
 								d="M10 14l2-2m0 0l2-2m-2 2l-2-2m2 2l2 2m7-2a9 9 0 11-18 0 9 9 0 0118 0z"
-							/></svg
-						>
+							/>
+						</svg>
 						<span>{errorMessage}</span>
 					</div>
 				</div>
 			{:else}
-				<!-- Actual Content -->
+				<!-- Profile Content -->
 				<div class="flex flex-col gap-8 md:flex-row">
 					<!-- Avatar Section -->
 					<div class="flex flex-col items-center">
@@ -134,12 +115,14 @@
 							<div
 								class="h-24 w-24 rounded-full ring ring-primary ring-offset-2 ring-offset-base-100"
 							>
-								<img src="#" alt="User Avatar" />
+								<img
+									src="https://placehold.co/400x400/ffffff/000000?text={getInitials(
+										user.nama_lengkap
+									)}"
+									alt="User Avatar"
+								/>
 							</div>
 						</div>
-						{#if isEditing}
-							<button class="btn btn-outline btn-sm">Ubah Foto</button>
-						{/if}
 					</div>
 
 					<!-- Profile Info Section -->
@@ -149,16 +132,7 @@
 								<label class="label" for="nama">
 									<span class="label-text font-medium">Nama Lengkap</span>
 								</label>
-								{#if isEditing}
-									<input
-										id="nama"
-										type="text"
-										class="input-bordered input w-full"
-										bind:value={user.nama_lengkap}
-									/>
-								{:else}
-									<p class="text-lg">{user?.nama_lengkap}</p>
-								{/if}
+								<p class="text-lg" id="nama">{user?.nama_lengkap}</p>
 							</div>
 
 							<div>
@@ -172,48 +146,21 @@
 								<label class="label" for="jabatan">
 									<span class="label-text font-medium">Jabatan</span>
 								</label>
-								{#if isEditing}
-									<input
-										id="jabatan"
-										type="text"
-										class="input-bordered input w-full"
-										bind:value={user.jabatan}
-									/>
-								{:else}
-									<p class="text-lg">{user?.jabatan}</p>
-								{/if}
+								<p class="text-lg" id="jabatan">{user?.jabatan}</p>
 							</div>
 
 							<div>
 								<label class="label" for="email">
 									<span class="label-text font-medium">Email</span>
 								</label>
-								{#if isEditing}
-									<input
-										type="email"
-										id="email"
-										class="input-bordered input w-full"
-										bind:value={user.email}
-									/>
-								{:else}
-									<p class="text-lg">{user?.email}</p>
-								{/if}
+								<p class="text-lg" id="email">{user?.email}</p>
 							</div>
 
 							<div>
-								<label class="label" for="edit">
+								<label class="label" for="telepon">
 									<span class="label-text font-medium">Telepon</span>
 								</label>
-								{#if isEditing}
-									<input
-										type="tel"
-										id="edit"
-										class="input-bordered input w-full"
-										bind:value={user.nomor_telepon}
-									/>
-								{:else}
-									<p class="text-lg">{user?.nomor_telepon}</p>
-								{/if}
+								<p class="text-lg" id="telepon">{user?.nomor_telepon}</p>
 							</div>
 
 							<div>
@@ -229,16 +176,6 @@
 								</label>
 								<p id="tanggal-bergabung" class="text-lg">{formatDate(user?.created_at)}</p>
 							</div>
-						</div>
-
-						<!-- Action Buttons -->
-						<div class="mt-6 flex justify-end space-x-3">
-							{#if isEditing}
-								<button class="btn btn-outline" onclick={toggleEdit}>Batal</button>
-								<button class="btn btn-primary" onclick={saveProfile}>Simpan</button>
-							{:else}
-								<button class="btn btn-primary" onclick={toggleEdit}>Edit Profil</button>
-							{/if}
 						</div>
 					</div>
 				</div>
