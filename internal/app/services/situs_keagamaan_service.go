@@ -13,6 +13,7 @@ import (
 	"github.com/casbin/casbin/v2"
 	"github.com/cloudinary/cloudinary-go/v2"
 	"github.com/cloudinary/cloudinary-go/v2/api"
+	"github.com/cloudinary/cloudinary-go/v2/api/admin"
 	"github.com/cloudinary/cloudinary-go/v2/api/uploader"
 	"github.com/google/uuid"
 	"golang.org/x/sync/errgroup"
@@ -21,6 +22,7 @@ import (
 type SitusKeagamaanService interface {
 	CreateSitusKeagamaan(ctx context.Context, in *dto.SitusKeagamaanRequest, author uuid.UUID) (uuid.UUID, error)
 	UploadFotoSitus(ctx context.Context, foto []multipart.File, situsId uuid.UUID) error
+	DeleteFotoSitus(ctx context.Context, situsId uuid.UUID, foto *dto.DeleteFoto) error
 	GetAllSitusKeagamaan(ctx context.Context, userId uuid.UUID) ([]dto.SitusKeagamaanResponse, error)
 	GetDetailSitusKeagamaan(ctx context.Context, situsId, userId uuid.UUID) (*dto.SitusKeagamaanDetailResponse, error)
 	DeleteSitus(ctx context.Context, id uuid.UUID) error
@@ -119,6 +121,33 @@ func (s *situsKeagamaanServiceImpl) UploadFotoSitus(ctx context.Context, foto []
 	}
 
 	err := s.fotoSitusRepo.BulkCreate(ctx, results)
+	if err != nil {
+		return apperror.NewInternal("Terjadi kesalahan")
+	}
+
+	return nil
+}
+
+func (s *situsKeagamaanServiceImpl) DeleteFotoSitus(ctx context.Context, situsId uuid.UUID, foto *dto.DeleteFoto) error {
+	if len(foto.IDs) == 0 {
+		return nil
+	}
+	publicIDs, err := s.fotoSitusRepo.GetPublicIDs(ctx, foto.IDs)
+	if err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			return apperror.NewNotFound("Foto situs tidak ditemukan")
+		}
+		return apperror.NewInternal("Terjadi kesalahan")
+	}
+
+	if err := s.fotoSitusRepo.Delete(ctx, foto.IDs, situsId); err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			return apperror.NewNotFound("Foto situs tidak ditemukan")
+		}
+		return apperror.NewInternal("Terjadi kesalahan")
+	}
+
+	_, err = s.cloudinary.Admin.DeleteAssets(ctx, admin.DeleteAssetsParams{PublicIDs: publicIDs})
 	if err != nil {
 		return apperror.NewInternal("Terjadi kesalahan")
 	}

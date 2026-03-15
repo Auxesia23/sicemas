@@ -19,3 +19,7 @@ type FotoResponse struct {
 	ImageURL string    `json:"image_url" db:"image_url"`
 	PublicID string    `json:"public_id" db:"public_id"`
 }
+
+type DeleteFoto struct {
+	IDs []uuid.UUID `json:"ids"`
+}

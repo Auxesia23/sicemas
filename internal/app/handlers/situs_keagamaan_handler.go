@@ -17,6 +17,7 @@ type SitusKeagamaanHandler interface {
 	GetDetailSitus(c *fiber.Ctx) error
 	DeleteSitus(c *fiber.Ctx) error
 	UploadFotoSitus(c *fiber.Ctx) error
+	DeleteFotoSitus(c *fiber.Ctx) error
 	VerifySitus(c *fiber.Ctx) error
 }
 
@@ -161,4 +162,25 @@ func (h *situsKeagamaanHandlerImpl) VerifySitus(c *fiber.Ctx) error {
 		return c.Status(e.Status).SendString(e.Message)
 	}
 	return c.Status(200).SendString("Situs berhasil diverifikasi")
+}
+
+func (h *situsKeagamaanHandlerImpl) DeleteFotoSitus(c *fiber.Ctx) error {
+	situsId, err := uuid.Parse(c.Params("id"))
+	if err != nil {
+		return c.Status(400).SendString(err.Error())
+	}
+
+	var body dto.DeleteFoto
+	if err := c.BodyParser(&body); err != nil {
+		return c.Status(400).SendString(err.Error())
+	}
+	if err := h.validate.Struct(&body); err != nil {
+		return c.Status(400).SendString(err.Error())
+	}
+
+	if err := h.situsService.DeleteFotoSitus(c.Context(), situsId, &body); err != nil {
+		e := err.(*apperror.AppError)
+		return c.Status(e.Status).SendString(e.Message)
+	}
+	return c.SendStatus(204)
 }

@@ -54,3 +54,14 @@ func (s *policyServiceImpl) GetFilteredPolicy(filter string) ([]dto.PolicyRespon
 	}
 	return response, nil
 }
+
+func (s *policyServiceImpl) RemovePolicy(body dto.PolicyRequest) error {
+	ok, err := s.e.RemovePolicy(body.Subject, body.Object, body.Action)
+	if !ok {
+		return apperror.NewBadRequest("Policy tidak ditemukan!")
+	}
+	if err != nil {
+		return apperror.NewInternal("Terjadi Kesalahan")
+	}
+	return nil
+}
