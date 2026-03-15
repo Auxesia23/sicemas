@@ -12,6 +12,7 @@ import (
 type RoleRepository interface {
 	Create(ctx context.Context, name string) (*entity.Role, error)
 	ReadAll(ctx context.Context) ([]entity.Role, error)
+	ReadOne(ctx context.Context, id string) (*entity.Role, error)
 	Delete(ctx context.Context, name string) error
 }
 
@@ -65,4 +66,16 @@ func (r *roleRepositoryImpl) Delete(ctx context.Context, name string) error {
 	}
 
 	return nil
+}
+
+func (r *roleRepositoryImpl) ReadOne(ctx context.Context, id string) (*entity.Role, error) {
+	query := `
+		SELECT * FROM roles
+		WHERE id = $1;
+	`
+	var role entity.Role
+	if err := r.DB.GetContext(ctx, &role, query, id); err != nil {
+		return nil, err
+	}
+	return &role, nil
 }

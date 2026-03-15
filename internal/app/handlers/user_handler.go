@@ -32,6 +32,12 @@ func NewUserHandler(userService services.UserService, validate *validator.Valida
 }
 
 func (h *userHandlerImpl) Register(c *fiber.Ctx) error {
+	claim := c.Locals("claim").(*dto.AccessToken)
+	actorId, err := uuid.Parse(claim.Subject)
+	if err != nil {
+		return c.Status(fiber.StatusInternalServerError).SendString(err.Error())
+	}
+
 	var body dto.UserRequest
 	if err := c.BodyParser(&body); err != nil {
 		return c.Status(fiber.StatusBadRequest).SendString(err.Error())
@@ -39,7 +45,7 @@ func (h *userHandlerImpl) Register(c *fiber.Ctx) error {
 	if err := h.validate.Struct(&body); err != nil {
 		return c.Status(400).SendString(err.Error())
 	}
-	if err := h.userService.Register(c.Context(), &body); err != nil {
+	if err := h.userService.Register(c.Context(), &body, actorId); err != nil {
 		e := err.(*apperror.AppError)
 		return c.Status(e.Status).SendString(e.Error())
 	}
@@ -57,6 +63,12 @@ func (h *userHandlerImpl) GetAllUser(c *fiber.Ctx) error {
 }
 
 func (h *userHandlerImpl) UpdateUser(c *fiber.Ctx) error {
+	claim := c.Locals("claim").(*dto.AccessToken)
+	actorId, err := uuid.Parse(claim.Subject)
+	if err != nil {
+		return c.Status(fiber.StatusInternalServerError).SendString(err.Error())
+	}
+
 	id := c.Params("userId")
 	uuid, err := uuid.Parse(id)
 	if err != nil {
@@ -69,7 +81,7 @@ func (h *userHandlerImpl) UpdateUser(c *fiber.Ctx) error {
 	if err := h.validate.Struct(&body); err != nil {
 		return c.Status(400).SendString(err.Error())
 	}
-	if err := h.userService.UpdateUser(c.Context(), uuid, &body); err != nil {
+	if err := h.userService.UpdateUser(c.Context(), uuid, actorId, &body); err != nil {
 		e := err.(*apperror.AppError)
 		return c.Status(e.Status).SendString(e.Error())
 	}
@@ -78,12 +90,18 @@ func (h *userHandlerImpl) UpdateUser(c *fiber.Ctx) error {
 }
 
 func (h *userHandlerImpl) DeleteUser(c *fiber.Ctx) error {
+	claim := c.Locals("claim").(*dto.AccessToken)
+	actorId, err := uuid.Parse(claim.Subject)
+	if err != nil {
+		return c.Status(fiber.StatusInternalServerError).SendString(err.Error())
+	}
+
 	id := c.Params("userId")
 	uuid, err := uuid.Parse(id)
 	if err != nil {
 		return c.Status(400).SendString(err.Error())
 	}
-	if err := h.userService.DeleteUser(c.Context(), uuid); err != nil {
+	if err := h.userService.DeleteUser(c.Context(), uuid, actorId); err != nil {
 		e := err.(*apperror.AppError)
 		return c.Status(e.Status).SendString(e.Message)
 	}

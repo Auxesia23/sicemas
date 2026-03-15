@@ -1,41 +1,55 @@
 package services
 
 import (
+	"context"
 	apperror "situs-keagamaan/internal/app/appError"
+	"situs-keagamaan/internal/app/repositories"
 	"situs-keagamaan/internal/dto"
+	"situs-keagamaan/internal/entity"
 
 	"github.com/casbin/casbin/v2"
+	"github.com/google/uuid"
 )
 
 type PolicyService interface {
-	AddPolicy(dto.PolicyRequest) error
-	RemovePolicy(policy dto.PolicyRequest) error
+	AddPolicy(policy dto.PolicyRequest, actorId uuid.UUID) error
+	RemovePolicy(policy dto.PolicyRequest, actorId uuid.UUID) error
 	GetFilteredPolicy(filter string) ([]dto.PolicyResponse, error)
 }
 
 type policyServiceImpl struct {
-	e *casbin.Enforcer
+	activityRepo repositories.ActivityRepository
+	enforcer     *casbin.Enforcer
 }
 
-func NewPolicyService(e *casbin.Enforcer) PolicyService {
+func NewPolicyService(enforcer *casbin.Enforcer, activityRepo repositories.ActivityRepository) PolicyService {
 	return &policyServiceImpl{
-		e,
+		activityRepo: activityRepo,
+		enforcer:     enforcer,
 	}
 }
 
-func (s *policyServiceImpl) AddPolicy(policy dto.PolicyRequest) error {
-	ok, err := s.e.AddPolicy(policy.Subject, policy.Object, policy.Action)
+func (s *policyServiceImpl) AddPolicy(policy dto.PolicyRequest, actorId uuid.UUID) error {
+	ok, err := s.enforcer.AddPolicy(policy.Subject, policy.Object, policy.Action)
 	if !ok {
 		return apperror.NewBadRequest("Policy sudah ada!")
 	}
 	if err != nil {
 		return apperror.NewInternal("Terjadi Kesalahan")
 	}
+	ctx := context.Background()
+	_ = s.activityRepo.InsertActivity(ctx, &entity.Activity{
+		UserID:     actorId,
+		ActionType: "Menambahkan policy",
+		EntityType: "POLICY",
+		EntityID:   uuid.Nil.String(),
+		TargetName: policy.Object + ":" + policy.Action,
+	})
 	return nil
 }
 
 func (s *policyServiceImpl) GetFilteredPolicy(filter string) ([]dto.PolicyResponse, error) {
-	policies, err := s.e.GetFilteredPolicy(0, filter)
+	policies, err := s.enforcer.GetFilteredPolicy(0, filter)
 	if err != nil {
 		return nil, apperror.NewInternal("Terjadi Kesalahan")
 	}
@@ -55,13 +69,21 @@ func (s *policyServiceImpl) GetFilteredPolicy(filter string) ([]dto.PolicyRespon
 	return response, nil
 }
 
-func (s *policyServiceImpl) RemovePolicy(body dto.PolicyRequest) error {
-	ok, err := s.e.RemovePolicy(body.Subject, body.Object, body.Action)
+func (s *policyServiceImpl) RemovePolicy(policy dto.PolicyRequest, actorId uuid.UUID) error {
+	ok, err := s.enforcer.RemovePolicy(policy.Subject, policy.Object, policy.Action)
 	if !ok {
 		return apperror.NewBadRequest("Policy tidak ditemukan!")
 	}
 	if err != nil {
 		return apperror.NewInternal("Terjadi Kesalahan")
 	}
+	ctx := context.Background()
+	_ = s.activityRepo.InsertActivity(ctx, &entity.Activity{
+		UserID:     actorId,
+		ActionType: "Menghapus policy",
+		EntityType: "POLICY",
+		EntityID:   uuid.Nil.String(),
+		TargetName: policy.Object + ":" + policy.Action,
+	})
 	return nil
 }

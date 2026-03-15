@@ -27,6 +27,11 @@ func NewJenisSitusHandler(service services.JenisSitusService, validate *validato
 }
 
 func (h *jenisSitusHandlerImpl) CreateJenisSitus(c *fiber.Ctx) error {
+	claim := c.Locals("claim").(*dto.AccessToken)
+	actorId, err := uuid.Parse(claim.Subject)
+	if err != nil {
+		return c.Status(fiber.StatusInternalServerError).SendString(err.Error())
+	}
 	var body dto.JenisSitusRequest
 	if err := c.BodyParser(&body); err != nil {
 		return c.Status(400).SendString(err.Error())
@@ -35,7 +40,7 @@ func (h *jenisSitusHandlerImpl) CreateJenisSitus(c *fiber.Ctx) error {
 	if err := h.validate.Struct(&body); err != nil {
 		return c.Status(400).SendString(err.Error())
 	}
-	newJenisSitus, err := h.service.CreateJenisSitus(c.Context(), &body)
+	newJenisSitus, err := h.service.CreateJenisSitus(c.Context(), &body, actorId)
 	if err != nil {
 		e := err.(*apperror.AppError)
 		return c.Status(e.Status).SendString(e.Error())
@@ -53,6 +58,11 @@ func (h *jenisSitusHandlerImpl) GetAllJenisSitus(c *fiber.Ctx) error {
 }
 
 func (h *jenisSitusHandlerImpl) UpdateJenisSitus(c *fiber.Ctx) error {
+	claim := c.Locals("claim").(*dto.AccessToken)
+	actorId, err := uuid.Parse(claim.Subject)
+	if err != nil {
+		return c.Status(fiber.StatusInternalServerError).SendString(err.Error())
+	}
 	var body dto.JenisSitusRequest
 	if err := c.BodyParser(&body); err != nil {
 		return c.Status(400).SendString(err.Error())
@@ -66,7 +76,7 @@ func (h *jenisSitusHandlerImpl) UpdateJenisSitus(c *fiber.Ctx) error {
 	if err != nil {
 		return c.Status(fiber.StatusBadRequest).SendString(err.Error())
 	}
-	err = h.service.UpdateJenisSitus(c.Context(), uuid, &body)
+	err = h.service.UpdateJenisSitus(c.Context(), uuid, &body, actorId)
 	if err != nil {
 		e := err.(*apperror.AppError)
 		return c.Status(e.Status).SendString(e.Error())
@@ -75,12 +85,17 @@ func (h *jenisSitusHandlerImpl) UpdateJenisSitus(c *fiber.Ctx) error {
 }
 
 func (h *jenisSitusHandlerImpl) DeleteJenisSitus(c *fiber.Ctx) error {
+	claim := c.Locals("claim").(*dto.AccessToken)
+	actorId, err := uuid.Parse(claim.Subject)
+	if err != nil {
+		return c.Status(fiber.StatusInternalServerError).SendString(err.Error())
+	}
 	id := c.Params("id")
 	uuid, err := uuid.Parse(id)
 	if err != nil {
 		return c.Status(fiber.StatusBadRequest).SendString(err.Error())
 	}
-	err = h.service.DeleteJenisSitus(c.Context(), uuid)
+	err = h.service.DeleteJenisSitus(c.Context(), uuid, actorId)
 	if err != nil {
 		e := err.(*apperror.AppError)
 		return c.Status(e.Status).SendString(e.Error())

@@ -3,12 +3,14 @@ package services
 import (
 	"context"
 	"database/sql"
+	"errors"
 	"fmt"
 	"log"
 	apperror "situs-keagamaan/internal/app/appError"
 	"situs-keagamaan/internal/app/repositories"
 	"situs-keagamaan/internal/cache"
 	"situs-keagamaan/internal/dto"
+	"situs-keagamaan/internal/entity"
 	"situs-keagamaan/internal/utils"
 
 	"github.com/casbin/casbin/v2"
@@ -17,29 +19,31 @@ import (
 )
 
 type UserService interface {
-	Register(ctx context.Context, in *dto.UserRequest) error
+	Register(ctx context.Context, in *dto.UserRequest, actorId uuid.UUID) error
 	GetAllUser(ctx context.Context) ([]dto.UserResponse, error)
-	UpdateUser(ctx context.Context, id uuid.UUID, in *dto.UserRequest) error
-	DeleteUser(ctx context.Context, id uuid.UUID) error
+	UpdateUser(ctx context.Context, id, actorId uuid.UUID, in *dto.UserRequest) error
+	DeleteUser(ctx context.Context, id, actorId uuid.UUID) error
 	GetProfile(ctx context.Context, id string) (*dto.UserResponse, error)
 	GetPermissions(ctx context.Context, id string) (*dto.UserPermission, error)
 }
 
 type userServiceImpl struct {
-	userRepo repositories.UserRepo
-	enforcer *casbin.Enforcer
-	cache    cache.Cache
+	userRepo     repositories.UserRepo
+	activityRepo repositories.ActivityRepository
+	enforcer     *casbin.Enforcer
+	cache        cache.Cache
 }
 
-func NewUserService(userRepo repositories.UserRepo, enforcer *casbin.Enforcer, cache cache.Cache) UserService {
+func NewUserService(userRepo repositories.UserRepo, activityRepo repositories.ActivityRepository, enforcer *casbin.Enforcer, cache cache.Cache) UserService {
 	return &userServiceImpl{
 		userRepo,
+		activityRepo,
 		enforcer,
 		cache,
 	}
 }
 
-func (s *userServiceImpl) Register(ctx context.Context, in *dto.UserRequest) error {
+func (s *userServiceImpl) Register(ctx context.Context, in *dto.UserRequest, actorId uuid.UUID) error {
 	var err error
 	index := utils.HashIndex(in.NIP)
 	in.Email, err = utils.Encrypt(in.Email)
@@ -76,6 +80,13 @@ func (s *userServiceImpl) Register(ctx context.Context, in *dto.UserRequest) err
 		s.enforcer.LoadPolicy()
 	}
 
+	_ = s.activityRepo.InsertActivity(ctx, &entity.Activity{
+		UserID:     actorId,
+		ActionType: "Menambahkan petugas",
+		EntityType: "USER",
+		EntityID:   userID,
+		TargetName: in.NamaLengkap,
+	})
 	return nil
 }
 
@@ -124,7 +135,7 @@ func (s *userServiceImpl) GetAllUser(ctx context.Context) ([]dto.UserResponse, e
 	return response, nil
 }
 
-func (s *userServiceImpl) UpdateUser(ctx context.Context, id uuid.UUID, in *dto.UserRequest) error {
+func (s *userServiceImpl) UpdateUser(ctx context.Context, id, actorId uuid.UUID, in *dto.UserRequest) error {
 	var err error
 	index := utils.HashIndex(in.NIP)
 	in.Email, err = utils.Encrypt(in.Email)
@@ -158,23 +169,43 @@ func (s *userServiceImpl) UpdateUser(ctx context.Context, id uuid.UUID, in *dto.
 	}
 
 	s.enforcer.LoadPolicy()
+	_ = s.activityRepo.InsertActivity(ctx, &entity.Activity{
+		UserID:     actorId,
+		ActionType: "Memperbarui data petugas",
+		EntityType: "USER",
+		EntityID:   id.String(),
+		TargetName: in.NamaLengkap,
+	})
 	return nil
 }
 
-func (s *userServiceImpl) DeleteUser(ctx context.Context, id uuid.UUID) error {
+func (s *userServiceImpl) DeleteUser(ctx context.Context, id, actorId uuid.UUID) error {
+	userTarget, err := s.userRepo.ReadById(ctx, id.String())
+	if err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			return apperror.NewNotFound("User tidak ditemukan")
+		}
+		return apperror.NewInternal("Terjadi kesalahan saat mencari data user")
+	}
 	if err := s.userRepo.Delete(ctx, id); err != nil {
-		if err == sql.ErrNoRows {
+		if errors.Is(err, sql.ErrNoRows) {
 			return apperror.NewNotFound("User tidak ditemukan")
 		}
 		return apperror.NewInternal("Terjadi kesalahan")
 	}
-	_, err := s.enforcer.RemoveFilteredGroupingPolicy(0, id.String())
+	_, err = s.enforcer.RemoveFilteredGroupingPolicy(0, id.String())
 	if err != nil {
-		// Log error tapi mungkin jangan gagalkan response karena user di DB sudah terhapus
 		log.Printf("Warning: Gagal hapus policy Casbin untuk user %s", id)
 	}
 
 	s.enforcer.LoadPolicy()
+	_ = s.activityRepo.InsertActivity(ctx, &entity.Activity{
+		UserID:     actorId,
+		ActionType: "Menghapus petugas",
+		EntityType: "USER",
+		EntityID:   id.String(),
+		TargetName: userTarget.NamaLengkap,
+	})
 	return nil
 }
 

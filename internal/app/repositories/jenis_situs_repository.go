@@ -13,6 +13,7 @@ import (
 type JenisSitusRepository interface {
 	Create(ctx context.Context, in *dto.JenisSitusRequest) (*entity.JenisSitus, error)
 	ReadAll(ctx context.Context) ([]dto.JenisSitusResponse, error)
+	ReadOne(ctx context.Context, id uuid.UUID) (*dto.JenisSitusResponse, error)
 	Update(ctx context.Context, id uuid.UUID, in *dto.JenisSitusRequest) error
 	Delete(ctx context.Context, id uuid.UUID) error
 }
@@ -53,6 +54,27 @@ func (r *jenisSitusRepositoryImpl) ReadAll(ctx context.Context) ([]dto.JenisSitu
 	}
 	return jenisSitus, nil
 }
+
+func (r *jenisSitusRepositoryImpl) ReadOne(ctx context.Context, id uuid.UUID) (*dto.JenisSitusResponse, error) {
+	query := `
+        SELECT
+            js.id,
+            js.nama_jenis,
+            js.deskripsi,
+            COUNT(s.id) AS jumlah_situs
+        FROM jenis_situs js
+        LEFT JOIN situs_keagamaan s ON js.id = s.jenis_situs_id
+        WHERE js.id = $1
+        GROUP BY js.id, js.nama_jenis, js.deskripsi
+    `
+
+	var jenisSitus dto.JenisSitusResponse
+	if err := r.DB.GetContext(ctx, &jenisSitus, query, id); err != nil {
+		return nil, err
+	}
+	return &jenisSitus, nil
+}
+
 func (r *jenisSitusRepositoryImpl) Update(ctx context.Context, id uuid.UUID, in *dto.JenisSitusRequest) error {
 	query := `UPDATE jenis_situs SET nama_jenis = $1, deskripsi = $2 WHERE id = $3`
 

@@ -8,6 +8,7 @@ import (
 	apperror "situs-keagamaan/internal/app/appError"
 	"situs-keagamaan/internal/app/repositories"
 	"situs-keagamaan/internal/dto"
+	"situs-keagamaan/internal/entity"
 	"situs-keagamaan/internal/utils"
 
 	"github.com/casbin/casbin/v2"
@@ -20,19 +21,20 @@ import (
 )
 
 type SitusKeagamaanService interface {
-	CreateSitusKeagamaan(ctx context.Context, in *dto.SitusKeagamaanRequest, author uuid.UUID) (uuid.UUID, error)
+	CreateSitusKeagamaan(ctx context.Context, in *dto.SitusKeagamaanRequest, author, actorId uuid.UUID) (uuid.UUID, error)
 	UploadFotoSitus(ctx context.Context, foto []multipart.File, situsId uuid.UUID) error
 	DeleteFotoSitus(ctx context.Context, situsId uuid.UUID, foto *dto.DeleteFoto) error
 	GetAllSitusKeagamaan(ctx context.Context, userId uuid.UUID) ([]dto.SitusKeagamaanResponse, error)
 	GetDetailSitusKeagamaan(ctx context.Context, situsId, userId uuid.UUID) (*dto.SitusKeagamaanDetailResponse, error)
-	UpdateSitus(ctx context.Context, id, userId uuid.UUID, in *dto.SitusKeagamaanUpdate) error
-	DeleteSitus(ctx context.Context, id uuid.UUID) error
-	VerifySitus(ctx context.Context, situsId uuid.UUID, in *dto.VerifikasiSitusRequest) error
+	UpdateSitus(ctx context.Context, id, userId uuid.UUID, in *dto.SitusKeagamaanUpdate, actorId uuid.UUID) error
+	DeleteSitus(ctx context.Context, id uuid.UUID, actorId uuid.UUID) error
+	VerifySitus(ctx context.Context, situsId uuid.UUID, in *dto.VerifikasiSitusRequest, actorId uuid.UUID) error
 }
 
 type situsKeagamaanServiceImpl struct {
 	situsRepo     repositories.SitusKeagamaanRepository
 	fotoSitusRepo repositories.FotoSitusRepository
+	activityRepo  repositories.ActivityRepository
 	cloudinary    *cloudinary.Cloudinary
 	enforcer      *casbin.Enforcer
 }
@@ -40,18 +42,20 @@ type situsKeagamaanServiceImpl struct {
 func NewSitusKeagamaanService(
 	situsRepo repositories.SitusKeagamaanRepository,
 	fotoSitusRepo repositories.FotoSitusRepository,
+	activityRepo repositories.ActivityRepository,
 	cloudinary *cloudinary.Cloudinary,
 	enforcer *casbin.Enforcer,
 ) SitusKeagamaanService {
 	return &situsKeagamaanServiceImpl{
 		situsRepo:     situsRepo,
 		fotoSitusRepo: fotoSitusRepo,
+		activityRepo:  activityRepo,
 		cloudinary:    cloudinary,
 		enforcer:      enforcer,
 	}
 }
 
-func (s *situsKeagamaanServiceImpl) CreateSitusKeagamaan(ctx context.Context, in *dto.SitusKeagamaanRequest, author uuid.UUID) (uuid.UUID, error) {
+func (s *situsKeagamaanServiceImpl) CreateSitusKeagamaan(ctx context.Context, in *dto.SitusKeagamaanRequest, author, actorId uuid.UUID) (uuid.UUID, error) {
 	if len(in.Detail) == 0 {
 		in.Detail = []byte("{}")
 	}
@@ -81,6 +85,13 @@ func (s *situsKeagamaanServiceImpl) CreateSitusKeagamaan(ctx context.Context, in
 	if err != nil {
 		return uuid.Nil, apperror.NewInternal("Terjadi kesalahan.")
 	}
+	_ = s.activityRepo.InsertActivity(ctx, &entity.Activity{
+		UserID:     actorId,
+		ActionType: "Menambahkan situs",
+		EntityType: "SITUS",
+		EntityID:   id.String(),
+		TargetName: in.Nama,
+	})
 	return id, nil
 }
 
@@ -241,7 +252,7 @@ func (s *situsKeagamaanServiceImpl) GetDetailSitusKeagamaan(ctx context.Context,
 	return situs, nil
 }
 
-func (s *situsKeagamaanServiceImpl) UpdateSitus(ctx context.Context, id, userId uuid.UUID, in *dto.SitusKeagamaanUpdate) error {
+func (s *situsKeagamaanServiceImpl) UpdateSitus(ctx context.Context, id, userId uuid.UUID, in *dto.SitusKeagamaanUpdate, actorId uuid.UUID) error {
 	if err := s.situsRepo.CheckOwnership(ctx, id, userId); err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
 			return apperror.NewForbidden("Anda tidak memiliki izin untuk mengubah situs ini")
@@ -285,23 +296,58 @@ func (s *situsKeagamaanServiceImpl) UpdateSitus(ctx context.Context, id, userId 
 		}
 		return apperror.NewInternal("Terjadi kesalahan saat memperbarui data situs.")
 	}
+	_ = s.activityRepo.InsertActivity(ctx, &entity.Activity{
+		UserID:     actorId,
+		ActionType: "Memperbarui data situs",
+		EntityType: "SITUS",
+		EntityID:   id.String(),
+		TargetName: in.Nama,
+	})
 
 	return nil
 }
 
-func (s *situsKeagamaanServiceImpl) DeleteSitus(ctx context.Context, id uuid.UUID) error {
+func (s *situsKeagamaanServiceImpl) DeleteSitus(ctx context.Context, id, actorId uuid.UUID) error {
+	situsTarget, err := s.situsRepo.ReadDetail(ctx, id)
+	if err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			return apperror.NewNotFound("Situs tidak ditemukan")
+		}
+		return apperror.NewInternal("Terjadi kesalahan.")
+	}
 	if err := s.situsRepo.Delete(ctx, id); err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
 			return apperror.NewNotFound("Situs tidak ditemukan")
 		}
 		return apperror.NewInternal("Terjadi kesalahan.")
 	}
+	_ = s.activityRepo.InsertActivity(ctx, &entity.Activity{
+		UserID:     actorId,
+		ActionType: "Menghapus situs",
+		EntityType: "SITUS",
+		EntityID:   id.String(),
+		TargetName: situsTarget.Nama,
+	})
 	return nil
 }
 
-func (s *situsKeagamaanServiceImpl) VerifySitus(ctx context.Context, id uuid.UUID, in *dto.VerifikasiSitusRequest) error {
+func (s *situsKeagamaanServiceImpl) VerifySitus(ctx context.Context, id uuid.UUID, in *dto.VerifikasiSitusRequest, actorId uuid.UUID) error {
+	situsTarget, err := s.situsRepo.ReadDetail(ctx, id)
+	if err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			return apperror.NewNotFound("Situs tidak ditemukan")
+		}
+		return apperror.NewInternal("Terjadi kesalahan.")
+	}
 	if err := s.situsRepo.Verify(ctx, id, in); err != nil {
 		return apperror.NewInternal("Terjadi kesalahan.")
 	}
+	_ = s.activityRepo.InsertActivity(ctx, &entity.Activity{
+		UserID:     actorId,
+		ActionType: "Memverifikasi situs",
+		EntityType: "SITUS",
+		EntityID:   id.String(),
+		TargetName: situsTarget.Nama,
+	})
 	return nil
 }

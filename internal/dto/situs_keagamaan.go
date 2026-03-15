@@ -39,6 +39,7 @@ type SitusKeagamaanRequest struct {
 
 type SitusKeagamaanResponse struct {
 	ID             uuid.UUID `json:"id" db:"id"`
+	SitusID        *string   `json:"situs_id" db:"situs_id"`
 	Nama           string    `json:"nama" db:"nama"`
 	Jenis          string    `json:"jenis" db:"jenis"`
 	Lokasi         string    `json:"lokasi" db:"lokasi"`

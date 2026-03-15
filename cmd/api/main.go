@@ -68,14 +68,16 @@ func main() {
 	jenisSitusRepo := repositories.NewJenisSitusRepo(db)
 	situsKeagamaanRepo := repositories.NewSitusKeagamaanRepo(db)
 	fotoSitusRepo := repositories.NewFotoSitusRepo(db)
+	activityRepo := repositories.NewActivityRepo(db)
 
 	// Initiate service layer
-	userService := services.NewUserService(userRepo, enforcer, cache)
+	userService := services.NewUserService(userRepo, activityRepo, enforcer, cache)
 	authService := services.NewAuthService(userRepo, cache)
-	roleService := services.NewRoleService(roleRepo)
-	policyService := services.NewPolicyService(enforcer)
-	jenisSitusService := services.NewJenisSitusService(jenisSitusRepo)
-	situsKeagamaanService := services.NewSitusKeagamaanService(situsKeagamaanRepo, fotoSitusRepo, cld, enforcer)
+	roleService := services.NewRoleService(roleRepo, activityRepo)
+	policyService := services.NewPolicyService(enforcer, activityRepo)
+	jenisSitusService := services.NewJenisSitusService(jenisSitusRepo, activityRepo)
+	situsKeagamaanService := services.NewSitusKeagamaanService(situsKeagamaanRepo, fotoSitusRepo, activityRepo, cld, enforcer)
+	dashboardService := services.NewDashboardService(activityRepo)
 
 	// Initiate handler layer
 	userHandler := handlers.NewUserHandler(userService, validate)
@@ -84,8 +86,9 @@ func main() {
 	policyHandler := handlers.NewPolicyHandler(policyService, validate)
 	jenisSitusHandler := handlers.NewJenisSitusHandler(jenisSitusService, validate)
 	situsKeagamaanHandler := handlers.NewSitusKeagamaanHandler(situsKeagamaanService, validate)
+	dashboardHandler := handlers.NewDashboardHandler(dashboardService)
 	// handler compositor
-	handlers := handlers.NewHandlers(userHandler, authHandler, roleHandler, policyHandler, jenisSitusHandler, situsKeagamaanHandler)
+	handlers := handlers.NewHandlers(userHandler, authHandler, roleHandler, policyHandler, jenisSitusHandler, situsKeagamaanHandler, dashboardHandler)
 
 	// Initiate middleware
 	authMiddleware := middlewares.NewAuthMiddleware(enforcer, locator, cache)

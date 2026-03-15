@@ -44,7 +44,8 @@ func (h *situsKeagamaanHandlerImpl) CreateSitus(c *fiber.Ctx) error {
 	if err != nil {
 		return c.Status(500).SendString(err.Error())
 	}
-	id, err := h.situsService.CreateSitusKeagamaan(c.Context(), &body, userId)
+	actorId := userId
+	id, err := h.situsService.CreateSitusKeagamaan(c.Context(), &body, userId, actorId)
 	if err != nil {
 		e := err.(*apperror.AppError)
 		return c.Status(e.Status).SendString(e.Message)
@@ -138,7 +139,7 @@ func (h *situsKeagamaanHandlerImpl) UpdateSitus(c *fiber.Ctx) error {
 	if err != nil {
 		return c.Status(400).SendString(err.Error())
 	}
-
+	actorId := userId
 	situsId, err := uuid.Parse(c.Params("id"))
 	if err != nil {
 		return c.Status(400).SendString(err.Error())
@@ -152,7 +153,7 @@ func (h *situsKeagamaanHandlerImpl) UpdateSitus(c *fiber.Ctx) error {
 		return c.Status(400).SendString(err.Error())
 	}
 
-	if err := h.situsService.UpdateSitus(c.Context(), situsId, userId, &body); err != nil {
+	if err := h.situsService.UpdateSitus(c.Context(), situsId, userId, &body, actorId); err != nil {
 		e := err.(*apperror.AppError)
 		return c.Status(e.Status).SendString(e.Message)
 	}
@@ -160,11 +161,16 @@ func (h *situsKeagamaanHandlerImpl) UpdateSitus(c *fiber.Ctx) error {
 }
 
 func (h *situsKeagamaanHandlerImpl) DeleteSitus(c *fiber.Ctx) error {
+	claim := c.Locals("claim").(*dto.AccessToken)
+	actorId, err := uuid.Parse(claim.Subject)
+	if err != nil {
+		return c.Status(fiber.StatusInternalServerError).SendString(err.Error())
+	}
 	situsId, err := uuid.Parse(c.Params("id"))
 	if err != nil {
 		return c.Status(400).SendString(err.Error())
 	}
-	if err := h.situsService.DeleteSitus(c.Context(), situsId); err != nil {
+	if err := h.situsService.DeleteSitus(c.Context(), situsId, actorId); err != nil {
 		e := err.(*apperror.AppError)
 		return c.Status(e.Status).SendString(e.Message)
 	}
@@ -172,6 +178,11 @@ func (h *situsKeagamaanHandlerImpl) DeleteSitus(c *fiber.Ctx) error {
 }
 
 func (h *situsKeagamaanHandlerImpl) VerifySitus(c *fiber.Ctx) error {
+	claim := c.Locals("claim").(*dto.AccessToken)
+	actorId, err := uuid.Parse(claim.Subject)
+	if err != nil {
+		return c.Status(fiber.StatusInternalServerError).SendString(err.Error())
+	}
 	situsId, err := uuid.Parse(c.Params("id"))
 	if err != nil {
 		return c.Status(400).SendString(err.Error())
@@ -185,7 +196,7 @@ func (h *situsKeagamaanHandlerImpl) VerifySitus(c *fiber.Ctx) error {
 		return c.Status(400).SendString(err.Error())
 	}
 
-	if err := h.situsService.VerifySitus(c.Context(), situsId, &body); err != nil {
+	if err := h.situsService.VerifySitus(c.Context(), situsId, &body, actorId); err != nil {
 		e := err.(*apperror.AppError)
 		return c.Status(e.Status).SendString(e.Message)
 	}

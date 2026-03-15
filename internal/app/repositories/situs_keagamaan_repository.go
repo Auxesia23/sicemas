@@ -82,18 +82,19 @@ func (r *situsKeagamaanRepositoryImpl) Create(ctx context.Context, in *dto.Situs
 
 func (r *situsKeagamaanRepositoryImpl) ReadAll(ctx context.Context) ([]dto.SitusKeagamaanResponse, error) {
 	query := `
-		SELECT
-			s.id,
-			s.nama,
-			j.nama_jenis AS jenis,
-			s.desa AS lokasi,
-			s.status_verifikasi AS status,
-			u.nama_lengkap AS pendata,
-			s.updated_at
-		FROM situs_keagamaan s
-		JOIN jenis_situs j ON s.jenis_situs_id = j.id
-		JOIN users u ON s.pendata_id = u.id;
-	`
+        SELECT
+            s.id,
+            s.situs_id,
+            s.nama,
+            j.nama_jenis AS jenis,
+            s.desa AS lokasi,
+            s.status_verifikasi AS status,
+            u.nama_lengkap AS pendata,
+            s.updated_at
+        FROM situs_keagamaan s
+        LEFT JOIN jenis_situs j ON s.jenis_situs_id = j.id
+        LEFT JOIN users u ON s.pendata_id = u.id;
+    `
 
 	var situs []dto.SitusKeagamaanResponse
 	err := r.DB.SelectContext(ctx, &situs, query)
@@ -109,6 +110,7 @@ func (r *situsKeagamaanRepositoryImpl) ReadOwn(ctx context.Context, userID uuid.
 	query := `
 		SELECT
 			s.id,
+			s.situs_id,
 			s.nama,
 			j.nama_jenis AS jenis,
 			s.desa AS lokasi,

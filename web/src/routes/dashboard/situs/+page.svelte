@@ -32,6 +32,7 @@
 	onMount(async () => {
 		await fetchData();
 	});
+
 	// Fetch sites and jenis situs on mount
 	async function fetchData() {
 		try {
@@ -58,10 +59,19 @@
 	// Function to filter sites based on search and filters
 	let filteredSites = $derived(
 		sites.filter((site) => {
+			const searchLower = searchTerm.toLowerCase();
+
+			// Handle null/undefined values safely and add situs_id to search
+			const siteIdKemenag = site.situs_id ? String(site.situs_id).toLowerCase() : '';
+			const siteName = site.nama ? site.nama.toLowerCase() : '';
+			const siteLocation = site.lokasi ? site.lokasi.toLowerCase() : '';
+			const sitePendata = site.pendata ? site.pendata.toLowerCase() : '';
+
 			const matchesSearch =
-				site.nama.toLowerCase().includes(searchTerm.toLowerCase()) ||
-				site.lokasi.toLowerCase().includes(searchTerm.toLowerCase()) ||
-				site.pendata.toLowerCase().includes(searchTerm.toLowerCase());
+				siteName.includes(searchLower) ||
+				siteLocation.includes(searchLower) ||
+				sitePendata.includes(searchLower) ||
+				siteIdKemenag.includes(searchLower);
 
 			const matchesStatus = statusFilter === 'all' || site.status === statusFilter;
 			const matchesType = typeFilter === 'all' || site.jenis === typeFilter;
@@ -147,7 +157,6 @@
 	}
 </script>
 
-<!-- Toast Notification -->
 <Toast
 	show={showToast}
 	message={toastMessage}
@@ -155,7 +164,6 @@
 	onclose={() => (showToast = false)}
 />
 
-<!-- Confirmation Modal -->
 <ConfirmModal
 	show={showDeleteModal}
 	title="Hapus Data Situs"
@@ -168,7 +176,6 @@
 />
 
 <div class="mx-auto max-w-7xl">
-	<!-- Page Header -->
 	<div class="mb-4 sm:mb-6">
 		<div class="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
 			<div>
@@ -196,7 +203,6 @@
 		</div>
 	</div>
 
-	<!-- Controls and Filters -->
 	<div class="card mb-4 border border-base-200 bg-base-100 shadow-md sm:mb-6 sm:shadow-xl">
 		<div class="card-body p-4 sm:p-5">
 			<div class="grid grid-cols-1 gap-3 sm:gap-4 md:grid-cols-4">
@@ -204,7 +210,7 @@
 					<div class="form-control">
 						<input
 							type="text"
-							placeholder="Cari situs, lokasi, atau pendata..."
+							placeholder="Cari ID Kemenag, situs, lokasi, atau pendata..."
 							class="input-bordered input min-h-11 w-full"
 							bind:value={searchTerm}
 						/>
@@ -266,7 +272,6 @@
 		</div>
 	</div>
 
-	<!-- Sites Table -->
 	<div class="card border border-base-200 bg-base-100 shadow-md sm:shadow-xl">
 		<div class="card-body overflow-x-auto p-0 sm:p-5">
 			{#if loading}
@@ -291,7 +296,7 @@
 						/>
 					</svg>
 					<p class="mb-4 text-error">{error}</p>
-					<button onclick={fetchSites} class="btn btn-sm btn-primary">Coba Lagi</button>
+					<button onclick={fetchData} class="btn btn-sm btn-primary">Coba Lagi</button>
 				</div>
 			{:else if filteredSites.length === 0}
 				<div class="flex flex-col items-center justify-center py-12">
@@ -316,8 +321,8 @@
 					<table class="table w-full table-zebra">
 						<thead>
 							<tr>
-								<th class="min-w-50">Nama Situs</th>
-								<th class="min-w-30">Jenis</th>
+								<th class="min-w-40">Nama Situs</th>
+								<th class="min-w-30">ID (Kemenag)</th> <th class="min-w-30">Jenis</th>
 								<th class="min-w-30">Lokasi</th>
 								<th class="min-w-30">Pendata</th>
 								<th class="min-w-25">Status Verifikasi</th>
@@ -330,6 +335,11 @@
 								<tr class="hover">
 									<td>
 										<div class="font-medium">{site.nama}</div>
+									</td>
+									<td>
+										<span class="font-mono text-sm text-base-content/80">
+											{site.situs_id || '-'}
+										</span>
 									</td>
 									<td>
 										<span class="badge badge-outline badge-sm">{site.jenis}</span>

@@ -7,6 +7,7 @@ import (
 
 	"github.com/go-playground/validator/v10"
 	"github.com/gofiber/fiber/v2"
+	"github.com/google/uuid"
 )
 
 type PolicyHandler interface {
@@ -28,6 +29,11 @@ func NewPolicyHandler(policyService services.PolicyService, validate *validator.
 }
 
 func (h *policyHandlerImpl) AddPolicy(c *fiber.Ctx) error {
+	claim := c.Locals("claim").(*dto.AccessToken)
+	actorId, err := uuid.Parse(claim.Subject)
+	if err != nil {
+		return c.Status(fiber.StatusInternalServerError).SendString(err.Error())
+	}
 	var body dto.PolicyRequest
 	if err := c.BodyParser(&body); err != nil {
 		return c.Status(fiber.StatusBadRequest).SendString(err.Error())
@@ -35,7 +41,7 @@ func (h *policyHandlerImpl) AddPolicy(c *fiber.Ctx) error {
 	if err := h.validate.Struct(&body); err != nil {
 		return c.Status(400).SendString(err.Error())
 	}
-	if err := h.policyService.AddPolicy(body); err != nil {
+	if err := h.policyService.AddPolicy(body, actorId); err != nil {
 		e := err.(*apperror.AppError)
 		return c.Status(e.Status).SendString(e.Error())
 	}
@@ -43,6 +49,11 @@ func (h *policyHandlerImpl) AddPolicy(c *fiber.Ctx) error {
 }
 
 func (h *policyHandlerImpl) RemovePolicy(c *fiber.Ctx) error {
+	claim := c.Locals("claim").(*dto.AccessToken)
+	actorId, err := uuid.Parse(claim.Subject)
+	if err != nil {
+		return c.Status(fiber.StatusInternalServerError).SendString(err.Error())
+	}
 	var body dto.PolicyRequest
 	if err := c.BodyParser(&body); err != nil {
 		return c.Status(fiber.StatusBadRequest).SendString(err.Error())
@@ -50,7 +61,7 @@ func (h *policyHandlerImpl) RemovePolicy(c *fiber.Ctx) error {
 	if err := h.validate.Struct(&body); err != nil {
 		return c.Status(400).SendString(err.Error())
 	}
-	if err := h.policyService.RemovePolicy(body); err != nil {
+	if err := h.policyService.RemovePolicy(body, actorId); err != nil {
 		e := err.(*apperror.AppError)
 		return c.Status(e.Status).SendString(e.Error())
 	}

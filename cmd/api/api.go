@@ -58,6 +58,13 @@ func (s *server) run() {
 		auth.Post("/logout", s.handlers.Auth.Logout)
 	}
 
+	dashboard := app.Group("/dashboard")
+	{
+		dashboard.Use(s.middlewares.Auth.JWTAuthenticator)
+		dashboard.Use(s.middlewares.Auth.ZeroTrustValidator)
+		dashboard.Get("/", s.handlers.DashboardHandler.GetActivities)
+	}
+
 	users := app.Group("/users")
 	{
 		users.Use(s.middlewares.Auth.JWTAuthenticator)

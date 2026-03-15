@@ -79,16 +79,15 @@ func (s *authServiceImpl) VerifyOTP(ctx context.Context, in *dto.UserVerifyOTP, 
 	if err != nil {
 		return nil, apperror.NewInternal("Terjadi Kesalahan.")
 	}
-	refreshToken, err := utils.GenerateRefreshToken(user, refreshTokenId)
-	if err != nil {
-		return nil, apperror.NewInternal("Terjadi Kesalahan.")
-	}
-
 	accesTokenId, err := uuid.NewV7()
 	if err != nil {
 		return nil, apperror.NewInternal("Terjadi Kesalahan.")
 	}
 
+	refreshToken, err := utils.GenerateRefreshToken(user, refreshTokenId)
+	if err != nil {
+		return nil, apperror.NewInternal("Terjadi Kesalahan.")
+	}
 	accesToken, err := utils.GenerateAccessToken(user, accesTokenId, refreshTokenId)
 	if err != nil {
 		return nil, apperror.NewInternal("Terjadi Kesalahan.")
@@ -103,24 +102,23 @@ func (s *authServiceImpl) VerifyOTP(ctx context.Context, in *dto.UserVerifyOTP, 
 		GeoLocation: loginContext.GeoLocation,
 		DeviceID:    loginContext.DeviceID,
 	}
+
 	err = s.cache.Set(ctx, sessionKey, sessionValue, 7*24*time.Hour)
 	if err != nil {
-		return nil, apperror.NewInternal("Terjadi Kesalahan.")
-	}
-
-	token := &dto.Token{
-		AccessToken:  accesToken,
-		RefreshToken: refreshToken,
+		return nil, apperror.NewInternal("Terjadi Kesalahan saat menyimpan sesi.")
 	}
 
 	s.cache.Delete(ctx, fmt.Sprintf("otp:%v", user.ID))
-	return token, nil
+	return &dto.Token{
+		AccessToken:  accesToken,
+		RefreshToken: refreshToken,
+	}, nil
 }
 
 func (s *authServiceImpl) RefreshToken(ctx context.Context, refreshToken string, requestContext *dto.SessionRequest) (*dto.Token, error) {
 	claim, err := utils.ParseRefreshToken(refreshToken)
 	if err != nil {
-		return nil, apperror.NewUnauthorized("Sesi tidak valid!")
+		return nil, apperror.NewUnauthorized("Sesi tidak valid atau telah kadaluarsa!")
 	}
 
 	user, err := s.userRepo.ReadById(ctx, claim.Subject)
@@ -136,7 +134,7 @@ func (s *authServiceImpl) RefreshToken(ctx context.Context, refreshToken string,
 	err = s.cache.Get(ctx, oldSessionKey, &oldSession)
 	if err != nil {
 		if err == redis.Nil {
-			return nil, apperror.NewUnauthorized("Sesi tidak valid!")
+			return nil, apperror.NewUnauthorized("Sesi telah digunakan atau tidak ditemukan!")
 		}
 		return nil, apperror.NewInternal("Terjadi kesalahan.")
 	}
@@ -144,17 +142,33 @@ func (s *authServiceImpl) RefreshToken(ctx context.Context, refreshToken string,
 	trustScore := utils.CalculateTrustScore(requestContext, &oldSession)
 	log.Printf("Score : %f", trustScore)
 	if trustScore <= 70 {
-		return nil, apperror.NewUnauthorized("Terdeteksi perubahan signifikan pada sesi anda!")
+		_ = s.cache.Delete(ctx, oldSessionKey)
+		return nil, apperror.NewUnauthorized("Terdeteksi aktivitas mencurigakan. Silakan login kembali.")
 	}
 
 	newRefreshJti, err := uuid.NewV7()
 	if err != nil {
-		return nil, apperror.NewInternal("Terjadi kesalahan.")
+		return nil, apperror.NewInternal("Terjadi kesalahan sistem.")
 	}
 	newAccessJti, err := uuid.NewV7()
 	if err != nil {
+		return nil, apperror.NewInternal("Terjadi kesalahan sistem.")
+	}
+
+	newAccessToken, err := utils.GenerateAccessToken(user, newAccessJti, newRefreshJti)
+	if err != nil {
 		return nil, apperror.NewInternal("Terjadi kesalahan.")
 	}
+	newRefreshToken, err := utils.GenerateRefreshToken(user, newRefreshJti)
+	if err != nil {
+		return nil, apperror.NewInternal("Terjadi kesalahan.")
+	}
+
+	err = s.cache.Delete(ctx, oldSessionKey)
+	if err != nil {
+		return nil, apperror.NewInternal("Terjadi Kesalahan saat membersihkan sesi lama.")
+	}
+
 	newSessionKey := fmt.Sprintf("rt:%v:%v", claim.Subject, newRefreshJti)
 	newSession := &dto.SessionValue{
 		UserID:      user.ID,
@@ -167,35 +181,34 @@ func (s *authServiceImpl) RefreshToken(ctx context.Context, refreshToken string,
 
 	err = s.cache.Set(ctx, newSessionKey, newSession, 7*24*time.Hour)
 	if err != nil {
-		return nil, apperror.NewInternal("Terjadi kesalahan.")
+		return nil, apperror.NewInternal("Terjadi kesalahan saat menyimpan sesi baru.")
 	}
 
-	newAccessToken, err := utils.GenerateAccessToken(user, newAccessJti, newRefreshJti)
-	newRefreshToken, err := utils.GenerateRefreshToken(user, newRefreshJti)
-
-	token := &dto.Token{
+	return &dto.Token{
 		AccessToken:  newAccessToken,
 		RefreshToken: newRefreshToken,
-	}
-
-	err = s.cache.Delete(ctx, oldSessionKey)
-	if err != nil {
-		return nil, apperror.NewInternal("Terjadi Kesalahan")
-	}
-	return token, nil
+	}, nil
 }
 
 func (s *authServiceImpl) Logout(ctx context.Context, refreshToken string, accessToken *string) error {
-	claim, _ := utils.ParseRefreshToken(refreshToken)
-	if accessToken != nil {
+	claim, err := utils.ParseRefreshToken(refreshToken)
+	if err != nil {
+		log.Println("Peringatan: Logout dipanggil dengan Refresh Token tidak valid:", err)
+		return apperror.NewBadRequest("Token tidak valid.")
+	}
+
+	if accessToken != nil && *accessToken != "" {
 		err := s.cache.Set(ctx, fmt.Sprintf("blocked:%v", *accessToken), true, time.Minute*5)
 		if err != nil {
-			return apperror.NewInternal("Terjadi Kesalahan")
+			return apperror.NewInternal("Terjadi Kesalahan saat blokir akses token")
 		}
 	}
-	err := s.cache.Delete(ctx, fmt.Sprintf("rt:%v:%v", claim.Subject, claim.ID))
+
+	sessionKey := fmt.Sprintf("rt:%v:%v", claim.Subject, claim.ID)
+	err = s.cache.Delete(ctx, sessionKey)
 	if err != nil {
-		return apperror.NewInternal("Terjadi Kesalahan")
+		return apperror.NewInternal("Terjadi Kesalahan saat menghapus sesi Redis")
 	}
+
 	return nil
 }
