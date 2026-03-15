@@ -41,7 +41,7 @@ func (s *server) run() {
 	})
 	app.Use(cors.New(cors.Config{
 		AllowOrigins:     "http://localhost:5173",
-		AllowHeaders:     "Origin, Content-Type, Accept, Authorization, X-Requested-With",
+		AllowHeaders:     "Origin, Content-Type, Accept, Authorization, X-Requested-With, X-Device-Id",
 		AllowMethods:     "GET, POST, PUT, PATCH, DELETE, OPTIONS",
 		AllowCredentials: true,
 	}))
@@ -163,12 +163,16 @@ func (s *server) run() {
 			s.middlewares.Auth.CasbinAuthz().RequiresPermissions([]string{"situs:read_all", "situs:read_own"}, casbin.WithValidationRule(casbin.AtLeastOneRule)),
 			s.handlers.SitusKeagamaan.GetDetailSitus,
 		)
+		situs.Put("/:id",
+			s.middlewares.Auth.CasbinAuthz().RequiresPermissions([]string{"situs:update"}, casbin.WithValidationRule(casbin.MatchAllRule)),
+			s.handlers.SitusKeagamaan.UpdateSitus,
+		)
 		situs.Patch("/:id/verify",
-			s.middlewares.Auth.CasbinAuthz().RequiresPermissions([]string{"situs:verify"}, casbin.WithValidationRule(casbin.AtLeastOneRule)),
+			s.middlewares.Auth.CasbinAuthz().RequiresPermissions([]string{"situs:verify"}, casbin.WithValidationRule(casbin.MatchAllRule)),
 			s.handlers.SitusKeagamaan.VerifySitus,
 		)
 		situs.Delete("/:id",
-			s.middlewares.Auth.CasbinAuthz().RequiresPermissions([]string{"situs:delete"}, casbin.WithValidationRule(casbin.AtLeastOneRule)),
+			s.middlewares.Auth.CasbinAuthz().RequiresPermissions([]string{"situs:delete"}, casbin.WithValidationRule(casbin.MatchAllRule)),
 			s.handlers.SitusKeagamaan.DeleteSitus,
 		)
 		situs.Post("/:id/foto",
@@ -176,7 +180,7 @@ func (s *server) run() {
 			s.handlers.SitusKeagamaan.UploadFotoSitus,
 		)
 		situs.Delete("/:id/foto",
-			s.middlewares.Auth.CasbinAuthz().RequiresPermissions([]string{"situs:delete"}, casbin.WithValidationRule(casbin.AtLeastOneRule)),
+			s.middlewares.Auth.CasbinAuthz().RequiresPermissions([]string{"situs:delete", "situs:update"}, casbin.WithValidationRule(casbin.AtLeastOneRule)),
 			s.handlers.SitusKeagamaan.DeleteFotoSitus,
 		)
 	}

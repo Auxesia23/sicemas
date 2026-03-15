@@ -85,7 +85,11 @@
 	}
 
 	function addFasilitasDisabilitas() {
-		newFasilitasDisabilitas = addToArray(detail.fasilitas_disabilitas, newFasilitasDisabilitas, true);
+		newFasilitasDisabilitas = addToArray(
+			detail.fasilitas_disabilitas,
+			newFasilitasDisabilitas,
+			true
+		);
 	}
 
 	function addKegiatan() {

@@ -15,6 +15,7 @@ type SitusKeagamaanRepository interface {
 	ReadAll(ctx context.Context) ([]dto.SitusKeagamaanResponse, error)
 	ReadOwn(ctx context.Context, userId uuid.UUID) ([]dto.SitusKeagamaanResponse, error)
 	ReadDetail(ctx context.Context, id uuid.UUID) (*dto.SitusKeagamaanDetailResponse, error)
+	Update(ctx context.Context, id uuid.UUID, in *dto.SitusKeagamaanUpdate) error
 	Delete(ctx context.Context, id uuid.UUID) error
 	Verify(ctx context.Context, id uuid.UUID, in *dto.VerifikasiSitusRequest) error
 	CheckOwnership(ctx context.Context, Id uuid.UUID, userId uuid.UUID) error
@@ -176,6 +177,74 @@ func (r *situsKeagamaanRepositoryImpl) ReadDetail(ctx context.Context, id uuid.U
 	return &detail, nil
 }
 
+func (r *situsKeagamaanRepositoryImpl) Update(ctx context.Context, id uuid.UUID, in *dto.SitusKeagamaanUpdate) error {
+	query := `
+		UPDATE situs_keagamaan
+		SET
+			nama = $1,
+			jenis_tipologi = $2,
+			nomor_telepon = $3,
+			email = $4,
+			website = $5,
+			nomor_badan_hukum = $6,
+			tahun_berdiri = $7,
+			provinsi = $8,
+			kabupaten_kota = $9,
+			kecamatan = $10,
+			desa = $11,
+			alamat_lengkap = $12,
+			koordinat = ST_SetSRID(ST_MakePoint($13, $14), 4326),
+			luas_tanah = $15,
+			luas_bangunan = $16,
+			status_tanah = $17,
+			nomor_aiw = $18,
+			nomor_sertifikat_wakaf = $19,
+			daya_tampung_max = $20,
+			detail = $21,
+			updated_at = CURRENT_TIMESTAMP
+		WHERE id = $22`
+
+	result, err := r.DB.ExecContext(ctx, query,
+		in.Nama,                 // $1
+		in.JenisTipologi,        // $2
+		in.NomorTelepon,         // $3
+		in.Email,                // $4
+		in.Website,              // $5
+		in.NomorBadanHukum,      // $6
+		in.TahunBerdiri,         // $7
+		in.Provinsi,             // $8
+		in.KabupatenKota,        // $9
+		in.Kecamatan,            // $10
+		in.Desa,                 // $11
+		in.AlamatLengkap,        // $12
+		in.Longitude,            // $13
+		in.Latitude,             // $14
+		in.LuasTanah,            // $15
+		in.LuasBangunan,         // $16
+		in.StatusTanah,          // $17
+		in.NomorAIW,             // $18
+		in.NomorSertifikatWakaf, // $19
+		in.DayaTampungMax,       // $20
+		in.Detail,               // $21
+		id,                      // $22
+	)
+
+	if err != nil {
+		log.Println("Error update situs keagamaan:", err.Error())
+		return err
+	}
+
+	rowsAffected, err := result.RowsAffected()
+	if err != nil {
+		return err
+	}
+
+	if rowsAffected == 0 {
+		return sql.ErrNoRows
+	}
+
+	return nil
+}
 func (r *situsKeagamaanRepositoryImpl) CheckOwnership(ctx context.Context, situsID, userID uuid.UUID) error {
 	query := `
 		SELECT id

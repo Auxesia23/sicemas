@@ -21,7 +21,6 @@
 	// State untuk pesan error/sukses
 	let tableError = $state('');
 	let modalError = $state('');
-	let successMessage = $state('');
 
 	// Modal and toast states for ConfirmModal & Toast
 	let showDeleteModal = $state(false);
@@ -92,7 +91,6 @@
 		isEditMode = false;
 		editingUserId = null;
 		modalError = '';
-		successMessage = '';
 		formData = {
 			nip: '',
 			nama_lengkap: '',
@@ -109,7 +107,6 @@
 		isEditMode = true;
 		editingUserId = user.id;
 		modalError = '';
-		successMessage = '';
 		formData = {
 			nip: user.nip || '',
 			nama_lengkap: user.nama_lengkap || '',
@@ -130,7 +127,6 @@
 
 	const handleSubmit = async () => {
 		modalError = '';
-		successMessage = '';
 
 		// 1. Validasi Client-side dengan Zod
 		const validation = userSchema.safeParse(formData);
@@ -156,17 +152,23 @@
 				throw new Error(textError || 'Gagal menyimpan data petugas');
 			}
 
-			successMessage = isEditMode
+			// SUCCESS: Close modal first, then show Toast
+			closeModal();
+
+			toastMessage = isEditMode
 				? 'Data petugas berhasil diperbarui'
 				: 'Petugas berhasil ditambahkan';
+			toastType = 'success';
+			showToast = true;
 
-			// Beri waktu user membaca sukses sebelum refresh
-			setTimeout(async () => {
-				closeModal();
-				await getAllUsers();
-			}, 1000);
+			await getAllUsers(); // Refresh data table
+
+			// Hide Toast after 3 seconds
+			setTimeout(() => {
+				showToast = false;
+			}, 3000);
 		} catch (error) {
-			modalError = error.message;
+			modalError = error.message; // Keep error inside modal
 		} finally {
 			isLoading = false;
 		}
@@ -241,7 +243,6 @@
 		bind:formData
 		{roles}
 		{modalError}
-		{successMessage}
 		onSubmit={handleSubmit}
 		onCancel={closeModal}
 	/>

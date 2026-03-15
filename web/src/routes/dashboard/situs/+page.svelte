@@ -5,6 +5,7 @@
 	import ConfirmModal from '$lib/components/ui/ConfirmModal.svelte';
 	import Toast from '$lib/components/ui/Toast.svelte';
 	import SitusTableActions from '$lib/components/ui/SitusTableActions.svelte';
+	import { onMount } from 'svelte';
 
 	let { data } = $props();
 	let user = $derived(data.user);
@@ -28,6 +29,9 @@
 	let toastMessage = $state('');
 	let toastType = $state('success');
 
+	onMount(async () => {
+		await fetchData();
+	});
 	// Fetch sites and jenis situs on mount
 	async function fetchData() {
 		try {
@@ -50,9 +54,6 @@
 			loading = false;
 		}
 	}
-
-	// Initial fetch
-	fetchData();
 
 	// Function to filter sites based on search and filters
 	let filteredSites = $derived(

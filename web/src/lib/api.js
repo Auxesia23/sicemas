@@ -1,12 +1,20 @@
 // API Service - Centralized HTTP client for all API calls
 import config from '$lib/config';
-import { browser } from '$app/environment'; // Pastikan ini di-import
+import { browser } from '$app/environment';
+
+// Import FingerprintJS for device identification
+let fpPromise = null;
+if (browser) {
+	fpPromise = import('@fingerprintjs/fingerprintjs').then((fp) => fp.default.load());
+}
 
 class ApiService {
 	constructor() {
 		// State untuk mengunci dan mengantrekan request
 		this.isRefreshing = false;
 		this.failedQueue = [];
+		// Cache for Device ID
+		this.deviceId = null;
 	}
 
 	// Fungsi untuk memproses semua request yang ngantri
@@ -21,93 +29,154 @@ class ApiService {
 		this.failedQueue = [];
 	}
 
+	// Get or generate Device ID using FingerprintJS
+	async getDeviceId() {
+		// Return cached ID if exists
+		if (this.deviceId) {
+			return this.deviceId;
+		}
+
+		// Only generate in browser
+		if (browser && fpPromise) {
+			try {
+				const fp = await fpPromise;
+				const result = await fp.get();
+				this.deviceId = result.visitorId;
+				return this.deviceId;
+			} catch (error) {
+				console.error('Failed to get fingerprint:', error);
+				// Fallback to a simple random ID
+				this.deviceId = `fallback-${Date.now()}-${Math.random().toString(36).substring(7)}`;
+				return this.deviceId;
+			}
+		}
+
+		// Server-side or fallback
+		this.deviceId = 'server-side';
+		return this.deviceId;
+	}
+
 	async request(endpoint, options = {}) {
 		const url = `${config.apiUrl}${endpoint}`;
 
 		// Check if body is FormData to handle Content-Type properly
 		const isFormData = options.body instanceof FormData;
 
+		// Get Device ID and inject into headers
+		const deviceId = await this.getDeviceId();
+
+		// Build headers
+		const requestHeaders = {
+			// Don't include default Content-Type for FormData
+			...(isFormData ? {} : config.defaultHeaders),
+			...options.headers,
+			// Always include Device ID
+			'X-Device-Id': deviceId
+		};
+
+		// Determine timeout - allow override for specific requests (e.g., file uploads)
+		const timeout = options.timeout || config.timeout;
+
+		// Create AbortController for timeout handling
+		const controller = new AbortController();
+		const timeoutId = setTimeout(() => {
+			controller.abort();
+		}, timeout);
+
 		const requestOptions = {
 			...config.defaultFetchOptions,
 			...options,
-			headers: {
-				// Don't include default Content-Type for FormData
-				...(isFormData ? {} : config.defaultHeaders),
-				...options.headers
-			}
+			headers: requestHeaders,
+			signal: controller.signal
 		};
 
-		let response = await fetch(url, requestOptions);
+		try {
+			let response = await fetch(url, requestOptions);
 
-		// ==========================================
-		// 1. PENANGANAN 401 UNAUTHORIZED (Refresh Token)
-		// ==========================================
-		if (response.status === 401 && endpoint !== '/auth/refresh') {
-			// JIKA SEDANG REFRESH: Masukkan request ini ke antrean (Queue)
-			if (this.isRefreshing) {
-				return new Promise((resolve, reject) => {
-					this.failedQueue.push({ resolve, reject });
-				})
-					.then(() => {
-						// Setelah token berhasil di-refresh oleh request lain, jalankan ulang fetch-nya
-						return fetch(url, requestOptions);
+			// Clear timeout after fetch completes
+			clearTimeout(timeoutId);
+
+			// ==========================================
+			// 1. PENANGANAN 401 UNAUTHORIZED (Refresh Token)
+			// ==========================================
+			if (response.status === 401 && endpoint !== '/auth/refresh') {
+				// JIKA SEDANG REFRESH: Masukkan request ini ke antrean (Queue)
+				if (this.isRefreshing) {
+					return new Promise((resolve, reject) => {
+						this.failedQueue.push({ resolve, reject });
 					})
-					.catch((err) => {
-						return Promise.reject(err);
-					});
-			}
-
-			// KUNCI PROSES REFRESH (Request pertama yang dapat 401 akan masuk ke sini)
-			this.isRefreshing = true;
-
-			const success = await this.refreshToken();
-
-			if (success) {
-				// BUKA KUNCI dan jalankan semua request yang ada di antrean
-				this.isRefreshing = false;
-				this.processQueue(null);
-
-				// Ulangi request utama yang gagal tadi
-				response = await fetch(url, requestOptions);
-			} else {
-				// Refresh gagal total, tolak semua request di antrean
-				this.isRefreshing = false;
-				this.processQueue(new Error('Refresh token failed'));
-			}
-		}
-
-		// ==========================================
-		// 2. PENANGANAN 403 & 500 SECARA GLOBAL
-		// ==========================================
-		if (response.status === 403 || response.status >= 500) {
-			if (browser) {
-				let errorMsg =
-					response.status === 403 ? 'Akses Ditolak (Forbidden)' : 'Terjadi Kesalahan Server';
-
-				try {
-					// Karena backend selalu me-return plaintext saat error,
-					// kita ekstrak menggunakan .text() bukan .json()
-					const textData = await response.clone().text();
-
-					// Jika textData tidak kosong, gunakan pesan dari backend
-					if (textData && textData.trim() !== '') {
-						errorMsg = textData.trim();
-					}
-				} catch (e) {
-					// Abaikan jika gagal baca text
+						.then(() => {
+							// Setelah token berhasil di-refresh oleh request lain, jalankan ulang fetch-nya
+							return fetch(url, requestOptions);
+						})
+						.catch((err) => {
+							return Promise.reject(err);
+						});
 				}
 
-				// Dinamis import goto untuk navigasi client-side SvelteKit
-				const { goto } = await import('$app/navigation');
-				goto(`/error-handler?code=${response.status}&message=${encodeURIComponent(errorMsg)}`);
+				// KUNCI PROSES REFRESH (Request pertama yang dapat 401 akan masuk ke sini)
+				this.isRefreshing = true;
+
+				const success = await this.refreshToken();
+
+				if (success) {
+					// BUKA KUNCI dan jalankan semua request yang ada di antrean
+					this.isRefreshing = false;
+					this.processQueue(null);
+
+					// Ulangi request utama yang gagal tadi
+					response = await fetch(url, requestOptions);
+				} else {
+					// Refresh gagal total, tolak semua request di antrean
+					this.isRefreshing = false;
+					this.processQueue(new Error('Refresh token failed'));
+				}
 			}
 
-			// Return promise yang "menggantung" agar sisa kode di komponen Svelte
-			// berhenti dieksekusi dan tidak memunculkan alert/error popup lokal.
-			return new Promise(() => {});
-		}
+			// ==========================================
+			// 2. PENANGANAN 403 & 500 SECARA GLOBAL
+			// ==========================================
+			if (response.status === 403 || response.status >= 500) {
+				if (browser) {
+					let errorMsg =
+						response.status === 403 ? 'Akses Ditolak (Forbidden)' : 'Terjadi Kesalahan Server';
 
-		return response;
+					try {
+						// Karena backend selalu me-return plaintext saat error,
+						// kita ekstrak menggunakan .text() bukan .json()
+						const textData = await response.clone().text();
+
+						// Jika textData tidak kosong, gunakan pesan dari backend
+						if (textData && textData.trim() !== '') {
+							errorMsg = textData.trim();
+						}
+					} catch (e) {
+						// Abaikan jika gagal baca text
+					}
+
+					// Dinamis import goto untuk navigasi client-side SvelteKit
+					const { goto } = await import('$app/navigation');
+					goto(`/error-handler?code=${response.status}&message=${encodeURIComponent(errorMsg)}`);
+				}
+
+				// Return promise yang "menggantung" agar sisa kode di komponen Svelte
+				// berhenti dieksekusi dan tidak memunculkan alert/error popup lokal.
+				return new Promise(() => {});
+			}
+
+			return response;
+		} catch (error) {
+			// Clear timeout on error
+			clearTimeout(timeoutId);
+
+			// Handle timeout error specifically
+			if (error.name === 'AbortError') {
+				throw new Error(`Request timeout after ${timeout}ms`);
+			}
+
+			// Re-throw other errors
+			throw error;
+		}
 	}
 
 	async refreshToken() {
@@ -187,10 +256,17 @@ class ApiService {
 
 	/** DELETE request */
 	delete(endpoint, body = null, headers = {}) {
+		const isFormData = body instanceof FormData;
+		const requestHeaders = { ...headers };
+
+		if (!isFormData && !requestHeaders['Content-Type']) {
+			requestHeaders['Content-Type'] = 'application/json';
+		}
+
 		return this.request(endpoint, {
 			method: 'DELETE',
-			body: body ? JSON.stringify(body) : null,
-			headers: { 'Content-Type': 'application/json', ...headers }
+			body: isFormData ? body : typeof body === 'object' ? JSON.stringify(body) : body,
+			headers: requestHeaders
 		});
 	}
 }

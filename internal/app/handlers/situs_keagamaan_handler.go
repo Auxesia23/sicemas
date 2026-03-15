@@ -15,6 +15,7 @@ type SitusKeagamaanHandler interface {
 	CreateSitus(c *fiber.Ctx) error
 	GetAllSitus(c *fiber.Ctx) error
 	GetDetailSitus(c *fiber.Ctx) error
+	UpdateSitus(c *fiber.Ctx) error
 	DeleteSitus(c *fiber.Ctx) error
 	UploadFotoSitus(c *fiber.Ctx) error
 	DeleteFotoSitus(c *fiber.Ctx) error
@@ -129,6 +130,33 @@ func (h *situsKeagamaanHandlerImpl) GetDetailSitus(c *fiber.Ctx) error {
 		return c.Status(e.Status).SendString(e.Message)
 	}
 	return c.Status(200).JSON(situs)
+}
+
+func (h *situsKeagamaanHandlerImpl) UpdateSitus(c *fiber.Ctx) error {
+	claim := c.Locals("claim").(*dto.AccessToken)
+	userId, err := uuid.Parse(claim.Subject)
+	if err != nil {
+		return c.Status(400).SendString(err.Error())
+	}
+
+	situsId, err := uuid.Parse(c.Params("id"))
+	if err != nil {
+		return c.Status(400).SendString(err.Error())
+	}
+
+	var body dto.SitusKeagamaanUpdate
+	if err := c.BodyParser(&body); err != nil {
+		return c.Status(400).SendString(err.Error())
+	}
+	if err := h.validate.Struct(&body); err != nil {
+		return c.Status(400).SendString(err.Error())
+	}
+
+	if err := h.situsService.UpdateSitus(c.Context(), situsId, userId, &body); err != nil {
+		e := err.(*apperror.AppError)
+		return c.Status(e.Status).SendString(e.Message)
+	}
+	return c.SendStatus(200)
 }
 
 func (h *situsKeagamaanHandlerImpl) DeleteSitus(c *fiber.Ctx) error {

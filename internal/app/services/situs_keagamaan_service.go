@@ -25,6 +25,7 @@ type SitusKeagamaanService interface {
 	DeleteFotoSitus(ctx context.Context, situsId uuid.UUID, foto *dto.DeleteFoto) error
 	GetAllSitusKeagamaan(ctx context.Context, userId uuid.UUID) ([]dto.SitusKeagamaanResponse, error)
 	GetDetailSitusKeagamaan(ctx context.Context, situsId, userId uuid.UUID) (*dto.SitusKeagamaanDetailResponse, error)
+	UpdateSitus(ctx context.Context, id, userId uuid.UUID, in *dto.SitusKeagamaanUpdate) error
 	DeleteSitus(ctx context.Context, id uuid.UUID) error
 	VerifySitus(ctx context.Context, situsId uuid.UUID, in *dto.VerifikasiSitusRequest) error
 }
@@ -238,6 +239,54 @@ func (s *situsKeagamaanServiceImpl) GetDetailSitusKeagamaan(ctx context.Context,
 	}
 
 	return situs, nil
+}
+
+func (s *situsKeagamaanServiceImpl) UpdateSitus(ctx context.Context, id, userId uuid.UUID, in *dto.SitusKeagamaanUpdate) error {
+	if err := s.situsRepo.CheckOwnership(ctx, id, userId); err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			return apperror.NewForbidden("Anda tidak memiliki izin untuk mengubah situs ini")
+		}
+		return apperror.NewInternal("Terjadi kesahalahan.")
+	}
+	if len(in.Detail) == 0 {
+		in.Detail = []byte("{}")
+	}
+
+	var err error
+	in.NomorBadanHukum, err = utils.Encrypt(in.NomorBadanHukum)
+	if err != nil {
+		return err
+	}
+
+	in.NomorAIW, err = utils.Encrypt(in.NomorAIW)
+	if err != nil {
+		return err
+	}
+
+	in.NomorSertifikatWakaf, err = utils.Encrypt(in.NomorSertifikatWakaf)
+	if err != nil {
+		return err
+	}
+
+	in.NomorTelepon, err = utils.Encrypt(in.NomorTelepon)
+	if err != nil {
+		return err
+	}
+
+	in.Email, err = utils.Encrypt(in.Email)
+	if err != nil {
+		return err
+	}
+
+	err = s.situsRepo.Update(ctx, id, in)
+	if err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			return apperror.NewNotFound("Situs tidak ditemukan")
+		}
+		return apperror.NewInternal("Terjadi kesalahan saat memperbarui data situs.")
+	}
+
+	return nil
 }
 
 func (s *situsKeagamaanServiceImpl) DeleteSitus(ctx context.Context, id uuid.UUID) error {

@@ -27,6 +27,8 @@
 		"vite": "^7.2.6"
 	},
 	"dependencies": {
+		"@fingerprintjs/fingerprintjs": "^5.1.0",
+		"fingerprintjs": "^0.5.3",
 		"leaflet": "^1.9.4",
 		"zod": "^4.3.6"
 	}
