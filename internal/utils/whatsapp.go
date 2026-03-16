@@ -32,6 +32,7 @@ func SendWhatsAppOTP(phone string, otp string) error {
 	}
 
 	req.Header.Set("Content-Type", "application/json")
+	req.Header.Set("X-Devic-Id", os.Getenv("GOWA_DEVICE_ID"))
 
 	req.SetBasicAuth("kuaci_emas", "kuaci_emas")
 

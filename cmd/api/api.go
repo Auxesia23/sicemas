@@ -2,6 +2,7 @@ package main
 
 import (
 	"log"
+	"os"
 	"situs-keagamaan/internal/app/handlers"
 	"situs-keagamaan/internal/middlewares"
 	"time"
@@ -40,7 +41,7 @@ func (s *server) run() {
 		IdleTimeout:  s.cfg.IdleTimeout,
 	})
 	app.Use(cors.New(cors.Config{
-		AllowOrigins:     "http://192.168.100.58:5173",
+		AllowOrigins:     os.Getenv("ALLOW_ORIGIN"),
 		AllowHeaders:     "Origin, Content-Type, Accept, Authorization, X-Requested-With, X-Device-Id",
 		AllowMethods:     "GET, POST, PUT, PATCH, DELETE, OPTIONS",
 		AllowCredentials: true,

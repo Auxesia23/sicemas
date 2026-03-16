@@ -1,3 +1,4 @@
+import { error } from '@sveltejs/kit';
 import { env } from '$env/dynamic/private';
 import { PUBLIC_API_URL } from '$env/static/public';
 

@@ -1,4 +1,5 @@
 import { env } from '$env/dynamic/private';
+import { error } from '@sveltejs/kit';
 import { PUBLIC_API_URL } from '$env/static/public';
 
 /** @type {import('./$types').PageServerLoad} */
