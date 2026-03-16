@@ -22,7 +22,7 @@
 			name: 'jenis-situs',
 			actions: ['create', 'read', 'update', 'delete']
 		},
-		{ name: 'role', actions: ['create', 'read', 'update', 'delete'] },
+		{ name: 'role', actions: ['create', 'read', 'delete'] },
 		{ name: 'policy', actions: ['create', 'read', 'update', 'delete'] }
 	];
 

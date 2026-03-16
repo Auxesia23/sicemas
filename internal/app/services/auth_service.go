@@ -48,9 +48,16 @@ func (s *authServiceImpl) Login(ctx context.Context, in *dto.UserLogin) error {
 	otp := utils.GenerateOTP6()
 	err = s.cache.Set(ctx, fmt.Sprintf("otp:%v", user.ID), otp, 5*time.Minute)
 	if err != nil {
-		return apperror.NewInternal("Terjadi kesalah.")
+		return apperror.NewInternal("Terjadi kesalahan.")
 	}
 	fmt.Println("OTP : ", otp)
+	phoneNum, err := utils.Decrypt(user.NomorTelepon)
+	if err != nil {
+		return apperror.NewInternal("Terjadi kesalahan.")
+	}
+	if err := utils.SendWhatsAppOTP(phoneNum, otp); err != nil {
+		return apperror.NewInternal("Terjadi kesalahan.")
+	}
 	return nil
 }
 

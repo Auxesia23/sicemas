@@ -19,6 +19,10 @@ type SitusKeagamaanRepository interface {
 	Delete(ctx context.Context, id uuid.UUID) error
 	Verify(ctx context.Context, id uuid.UUID, in *dto.VerifikasiSitusRequest) error
 	CheckOwnership(ctx context.Context, Id uuid.UUID, userId uuid.UUID) error
+
+	ReadForPublic(ctx context.Context, filter dto.PublicListFilter) ([]dto.SitusPublicListResponse, error)
+	ReadDetailForPublic(ctx context.Context, id uuid.UUID) (*dto.SitusPublicDetailResponse, error)
+	GetLandingStats(ctx context.Context) (*dto.LandingStatsResponse, error)
 }
 
 type situsKeagamaanRepositoryImpl struct {
@@ -294,4 +298,132 @@ func (r *situsKeagamaanRepositoryImpl) Delete(ctx context.Context, id uuid.UUID)
 	}
 
 	return nil
+}
+
+func (r *situsKeagamaanRepositoryImpl) ReadForPublic(ctx context.Context, filter dto.PublicListFilter) ([]dto.SitusPublicListResponse, error) {
+	var query string
+	var args []any
+
+	if filter.UserLat != nil && filter.UserLng != nil {
+		query = `
+			SELECT
+				s.id,
+				s.nama,
+				j.nama_jenis AS jenis,
+				s.desa,
+
+				ST_Y(s.koordinat::geometry) AS latitude,
+				ST_X(s.koordinat::geometry) AS longitude,
+
+				(SELECT image_url FROM foto_situs fs WHERE fs.situs_id = s.id ORDER BY created_at ASC LIMIT 1) AS foto_utama,
+
+				-- Ngitung Jarak
+				ST_DistanceSphere(
+					s.koordinat,
+					ST_SetSRID(ST_MakePoint($1, $2), 4326)
+				) AS jarak_meter
+
+			FROM situs_keagamaan s
+			LEFT JOIN jenis_situs j ON s.jenis_situs_id = j.id
+			WHERE s.status_verifikasi = 'terverifikasi'
+			ORDER BY jarak_meter ASC;
+		`
+		args = append(args, *filter.UserLng, *filter.UserLat)
+
+	} else {
+		query = `
+			SELECT
+				s.id,
+				s.nama,
+				j.nama_jenis AS jenis,
+				s.desa,
+
+				ST_Y(s.koordinat::geometry) AS latitude,
+				ST_X(s.koordinat::geometry) AS longitude,
+
+				(SELECT image_url FROM foto_situs fs WHERE fs.situs_id = s.id ORDER BY created_at ASC LIMIT 1) AS foto_utama
+				-- Gak ada kolom jarak_meter di sini
+
+			FROM situs_keagamaan s
+			LEFT JOIN jenis_situs j ON s.jenis_situs_id = j.id
+			WHERE s.status_verifikasi = 'terverifikasi'
+			ORDER BY s.nama ASC; -- Urut abjad aja
+		`
+	}
+
+	var results []dto.SitusPublicListResponse
+
+	err := r.DB.SelectContext(ctx, &results, query, args...)
+	if err != nil {
+		log.Println(err)
+		return nil, err
+	}
+
+	return results, nil
+}
+
+func (r *situsKeagamaanRepositoryImpl) ReadDetailForPublic(ctx context.Context, id uuid.UUID) (*dto.SitusPublicDetailResponse, error) {
+	query := `
+		SELECT
+			sk.id,
+			sk.nama,
+			js.nama_jenis AS jenis,
+			sk.alamat_lengkap,
+			sk.desa,
+
+			ST_Y(sk.koordinat::geometry) AS latitude,
+			ST_X(sk.koordinat::geometry) AS longitude,
+
+			COALESCE(sk.luas_tanah, 0) AS luas_tanah,
+			COALESCE(sk.daya_tampung_max, 0) AS daya_tampung,
+
+			-- FIX: Tambahin COALESCE biar kalau MT (ga ada fasilitas), DB balikin '{}' bukan NULL
+			COALESCE(
+				(
+					SELECT jsonb_object_agg(key, value)
+					FROM jsonb_each(sk.detail)
+					WHERE key LIKE 'fasilitas_%'
+				),
+				'{}'::jsonb
+			) AS fasilitas,
+
+			COALESCE(
+				(SELECT json_agg(fs.image_url) FROM foto_situs fs WHERE fs.situs_id = sk.id),
+				'[]'::json
+			) AS galeri
+
+		FROM situs_keagamaan sk
+		JOIN jenis_situs js ON sk.jenis_situs_id = js.id
+		WHERE sk.id = $1 AND sk.status_verifikasi = 'terverifikasi';
+	`
+
+	var result dto.SitusPublicDetailResponse
+
+	if err := r.DB.GetContext(ctx, &result, query, id); err != nil {
+		log.Println("Error GetPublicDetail:", err)
+		return nil, err
+	}
+
+	return &result, nil
+}
+
+func (r *situsKeagamaanRepositoryImpl) GetLandingStats(ctx context.Context) (*dto.LandingStatsResponse, error) {
+	query := `
+		SELECT
+		    COUNT(id) AS total_situs,
+		    COUNT(DISTINCT desa) AS total_desa,
+		    COUNT(DISTINCT jenis_situs_id) AS total_kategori,
+		    COALESCE(SUM(daya_tampung_max), 0) AS total_kapasitas
+		FROM situs_keagamaan
+		WHERE status_verifikasi = 'terverifikasi';
+	`
+
+	var result dto.LandingStatsResponse
+
+	if err := r.DB.GetContext(ctx, &result, query); err != nil {
+		log.Println("Error GetLandingStats:", err)
+		return nil, err
+	}
+
+	return &result, nil
 }

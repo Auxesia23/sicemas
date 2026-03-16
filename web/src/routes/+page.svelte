@@ -1,11 +1,33 @@
+<script>
+	let { data } = $props();
+	let stats = $derived(
+		data.stats || { total_situs: 0, total_desa: 0, total_kategori: 0, total_kapasitas: 0 }
+	);
+	let user = $derived(data.user);
+	function formatAngkaBesar(num) {
+		if (!num) return '0';
+
+		if (num >= 1000000) {
+			return (num / 1000000).toFixed(1).replace('.', ',') + ' Juta';
+		}
+		if (num >= 10000) {
+			return (num / 1000).toFixed(1).replace('.', ',') + ' Ribu';
+		}
+
+		return num.toLocaleString('id-ID');
+	}
+</script>
+
 <div class="min-h-screen bg-linear-to-b from-base-100 to-base-200">
 	<!-- Navigation -->
 	<nav class="navbar bg-base-100 px-4 sm:px-6 lg:px-8">
 		<div class="flex-1">
-			<a href="/" class="btn text-xl font-bold text-primary btn-ghost">SitusKeagamaan.ID</a>
+			<a href="/" class="btn text-xl font-bold text-primary btn-ghost">SICEMAS</a>
 		</div>
 		<div class="flex-none">
-			<a href="/login" class="btn btn-primary">Masuk</a>
+			<a href="/login" class="btn btn-primary"
+				>{#if user}Dashboard{:else}Masuk{/if}</a
+			>
 		</div>
 	</nav>
 
@@ -15,9 +37,9 @@
 			<div class="mx-auto max-w-3xl">
 				<span class="mb-4 badge badge-primary">KUA Kecamatan Ciemas</span>
 				<h1 class="mb-6 text-4xl leading-tight font-bold text-gray-800 md:text-6xl">
-					Sistem Pendataan <span
+					Sistem Informasi Catatan Elektronik <span
 						class="bg-linear-to-r from-primary to-secondary bg-clip-text text-transparent"
-						>Situs Keagamaan</span
+						>Masjid Area Ciemas</span
 					>
 				</h1>
 				<p class="mx-auto mb-10 max-w-2xl text-lg text-gray-600 md:text-xl">
@@ -26,7 +48,7 @@
 				</p>
 				<div class="flex flex-col justify-center gap-4 sm:flex-row">
 					<a href="/dashboard" class="btn px-8 btn-lg btn-primary">Mulai Mengelola Data</a>
-					<a href="#features" class="btn px-8 btn-outline btn-lg">Pelajari Fitur</a>
+					<a href="/situs" class="btn px-8 btn-outline btn-lg">Jelajahi Situs</a>
 				</div>
 			</div>
 
@@ -49,20 +71,25 @@
 					>
 						<div class="grid grid-cols-2 gap-6 text-center md:grid-cols-4">
 							<div class="p-4">
-								<div class="text-3xl font-bold text-primary">50+</div>
-								<div class="text-sm text-gray-500">Situs Teregistrasi</div>
+								<div class="text-3xl font-bold text-primary">{stats.total_situs}</div>
+								<div class="text-sm text-gray-500">Situs Terdata</div>
 							</div>
+
 							<div class="p-4">
-								<div class="text-3xl font-bold text-secondary">12</div>
-								<div class="text-sm text-gray-500">Jenis Situs</div>
+								<div class="text-3xl font-bold text-secondary">{stats.total_desa}</div>
+								<div class="text-sm text-gray-500">Desa Terjangkau</div>
 							</div>
+
 							<div class="p-4">
-								<div class="text-3xl font-bold text-accent">98%</div>
-								<div class="text-sm text-gray-500">Akurasi Data</div>
+								<div class="text-3xl font-bold text-accent">{stats.total_kategori}</div>
+								<div class="text-sm text-gray-500">Kategori Situs</div>
 							</div>
+
 							<div class="p-4">
-								<div class="text-3xl font-bold text-primary">24/7</div>
-								<div class="text-sm text-gray-500">Monitoring</div>
+								<div class="text-3xl font-bold text-primary">
+									{formatAngkaBesar(stats.total_kapasitas)}
+								</div>
+								<div class="text-sm text-gray-500">Kapasitas Jamaah</div>
 							</div>
 						</div>
 					</div>
@@ -83,6 +110,7 @@
 			</div>
 
 			<div class="grid grid-cols-1 gap-8 md:grid-cols-2 lg:grid-cols-3">
+				<!-- Feature 1: Pencarian Pintar -->
 				<div
 					class="card border border-base-200 bg-base-100 shadow-lg transition-shadow duration-300 hover:shadow-xl"
 				>
@@ -101,17 +129,19 @@
 									stroke-linecap="round"
 									stroke-linejoin="round"
 									stroke-width="2"
-									d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"
+									d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"
 								/>
 							</svg>
 						</div>
-						<h3 class="card-title text-lg font-bold text-gray-800">Manajemen Data Lengkap</h3>
+						<h3 class="card-title text-lg font-bold text-gray-800">Pencarian Pintar</h3>
 						<p class="text-gray-600">
-							Pengelolaan informasi menyeluruh tentang situs-situs keagamaan beserta dokumentasinya
+							Cari masjid, majelis taklim, atau pesantren berdasarkan nama, jenis, atau nama desa
+							dengan cepat.
 						</p>
 					</div>
 				</div>
 
+				<!-- Feature 2: Detail Fasilitas & Galeri -->
 				<div
 					class="card border border-base-200 bg-base-100 shadow-lg transition-shadow duration-300 hover:shadow-xl"
 				>
@@ -130,18 +160,19 @@
 									stroke-linecap="round"
 									stroke-linejoin="round"
 									stroke-width="2"
-									d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"
+									d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"
 								/>
 							</svg>
 						</div>
-						<h3 class="card-title text-lg font-bold text-gray-800">Monitoring Berkala</h3>
+						<h3 class="card-title text-lg font-bold text-gray-800">Detail Fasilitas & Galeri</h3>
 						<p class="text-gray-600">
-							Pemantauan kondisi dan perkembangan situs secara berkala serta pelaporan yang
-							terstruktur
+							Lihat kelengkapan fasilitas, kapasitas jamaah, luas tanah, hingga foto-foto kondisi
+							situs terkini.
 						</p>
 					</div>
 				</div>
 
+				<!-- Feature 3: Integrasi Navigasi -->
 				<div
 					class="card border border-base-200 bg-base-100 shadow-lg transition-shadow duration-300 hover:shadow-xl"
 				>
@@ -160,13 +191,20 @@
 									stroke-linecap="round"
 									stroke-linejoin="round"
 									stroke-width="2"
-									d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"
+									d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z"
+								/>
+								<path
+									stroke-linecap="round"
+									stroke-linejoin="round"
+									stroke-width="2"
+									d="M15 11a3 3 0 11-6 0 3 3 0 016 0z"
 								/>
 							</svg>
 						</div>
-						<h3 class="card-title text-lg font-bold text-gray-800">Laporan Administratif</h3>
+						<h3 class="card-title text-lg font-bold text-gray-800">Integrasi Navigasi</h3>
 						<p class="text-gray-600">
-							Generate laporan administratif dan statistik penggunaan untuk kebutuhan manajemen
+							Dapatkan titik koordinat akurat dan panduan rute langsung menggunakan integrasi Google
+							Maps.
 						</p>
 					</div>
 				</div>
@@ -179,20 +217,22 @@
 		<div class="container mx-auto px-4">
 			<div class="grid grid-cols-2 gap-8 text-center md:grid-cols-4">
 				<div>
-					<div class="text-4xl font-bold md:text-5xl">50+</div>
-					<div class="text-sm opacity-80">Situs Terdaftar</div>
+					<div class="text-4xl font-bold md:text-5xl">{stats.total_situs}</div>
+					<div class="text-sm opacity-80">Situs Terdata</div>
 				</div>
 				<div>
-					<div class="text-4xl font-bold md:text-5xl">12</div>
-					<div class="text-sm opacity-80">Jenis Situs</div>
+					<div class="text-4xl font-bold md:text-5xl">{stats.total_desa}</div>
+					<div class="text-sm opacity-80">Desa Terjangkau</div>
 				</div>
 				<div>
-					<div class="text-4xl font-bold md:text-5xl">98%</div>
-					<div class="text-sm opacity-80">Akurasi Data</div>
+					<div class="text-4xl font-bold md:text-5xl">{stats.total_kategori}</div>
+					<div class="text-sm opacity-80">Kategori Situs</div>
 				</div>
 				<div>
-					<div class="text-4xl font-bold md:text-5xl">24/7</div>
-					<div class="text-sm opacity-80">Monitoring</div>
+					<div class="text-4xl font-bold md:text-5xl">
+						{formatAngkaBesar(stats.total_kapasitas)}
+					</div>
+					<div class="text-sm opacity-80">Kapasitas Jemaah</div>
 				</div>
 			</div>
 		</div>
@@ -224,50 +264,17 @@
 					<div
 						class="w-full max-w-md rounded-2xl bg-linear-to-br from-primary to-secondary p-1 shadow-xl"
 					>
-						<div class="rounded-xl bg-base-100 p-8 text-center">
-							<div class="online avatar mb-6">
-								<div class="mx-auto h-24 w-24 rounded-full">
-									<img
-										src="https://placehold.co/400x400/ffffff/000000?text=KUA"
-										alt="Logo KUA Ciemas"
-									/>
-								</div>
-							</div>
-							<h3 class="text-xl font-bold text-gray-800">KUA Kecamatan Ciemas</h3>
-							<p class="mb-4 text-gray-600">Kabupaten Sukabumi</p>
-							<div class="rating">
-								<input
-									type="radio"
-									name="rating-1"
-									class="mask bg-orange-400 mask-star-2"
-									checked
-								/>
-								<input
-									type="radio"
-									name="rating-1"
-									class="mask bg-orange-400 mask-star-2"
-									checked
-								/>
-								<input
-									type="radio"
-									name="rating-1"
-									class="mask bg-orange-400 mask-star-2"
-									checked
-								/>
-								<input
-									type="radio"
-									name="rating-1"
-									class="mask bg-orange-400 mask-star-2"
-									checked
-								/>
-								<input
-									type="radio"
-									name="rating-1"
-									class="mask bg-orange-400 mask-star-2"
-									checked
-								/>
-							</div>
-						</div>
+						<iframe
+							title="KUA Ciemas"
+							src="https://www.google.com/maps/embed?pb=!1m18!1m12!1m3!1d3958.02010347061!2d106.51973537553341!3d-7.238545592767754!2m3!1f0!2f0!3f0!3m2!1i1024!2i768!4f13.1!3m3!1m2!1s0x2e68200002b8911b%3A0xae335d95d6fefa1d!2sKUA%20KEC.%20CIEMAS!5e0!3m2!1sen!2sid!4v1773645785108!5m2!1sen!2sid"
+							width="100%"
+							height="400"
+							style="border:0;"
+							allowfullscreen=""
+							loading="lazy"
+							referrerpolicy="no-referrer-when-downgrade"
+							class="min-h-75 rounded-xl"
+						></iframe>
 					</div>
 				</div>
 			</div>
@@ -292,27 +299,12 @@
 
 	<!-- Footer -->
 	<footer class="footer-center footer rounded bg-base-200 p-10 text-base-content">
-		<div class="grid grid-flow-col gap-4">
-			<a href="/about" class="link link-hover">About us</a>
-			<a href="/contact" class="link link-hover">Contact</a>
-			<a href="/jobs" class="link link-hover">Jobs</a>
-		</div>
 		<div>
 			<div class="grid grid-flow-col gap-4">
-				<a href="/" aria-label="Facebook">
-					<svg
-						xmlns="http://www.w3.org/2000/svg"
-						width="24"
-						height="24"
-						viewBox="0 0 24 24"
-						class="fill-current"
-					>
-						<path
-							d="M9 8h-3v4h3v12h5v-12h3.642l.358-4h-4v-1.667c0-.955.192-1.333 1.115-1.333h2.885v-5h-3.808c-3.596 0-5.192 1.583-5.192 4.615v3.385z"
-						></path>
-					</svg>
-				</a>
-				<a href="/" aria-label="TikTok">
+				<a
+					href="https://www.tiktok.com/@kuaciemas?is_from_webapp=1&sender_device=pc"
+					aria-label="TikTok"
+				>
 					<svg
 						xmlns="http://www.w3.org/2000/svg"
 						width="24"
@@ -325,7 +317,7 @@
 						></path>
 					</svg>
 				</a>
-				<a href="/" aria-label="Instagram">
+				<a href="https://www.instagram.com/kuaciemas_official/" aria-label="Instagram">
 					<svg
 						xmlns="http://www.w3.org/2000/svg"
 						width="24"
@@ -339,9 +331,6 @@
 					</svg>
 				</a>
 			</div>
-		</div>
-		<div>
-			<p>Copyright © 2023 - Sistem Pendataan Situs Keagamaan KUA Kecamatan Ciemas</p>
 		</div>
 	</footer>
 </div>

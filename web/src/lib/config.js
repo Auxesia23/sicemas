@@ -1,7 +1,8 @@
+import { PUBLIC_API_URL } from '$env/static/public';
 // API Configuration
 const config = {
 	// Base URL for API calls - can be overridden by environment variables
-	apiUrl: import.meta.env.VITE_API_URL,
+	apiUrl: PUBLIC_API_URL,
 
 	// Timeout for API requests (in milliseconds) - default 30 seconds
 	timeout: 30000,

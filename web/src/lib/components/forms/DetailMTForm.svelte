@@ -88,7 +88,6 @@
 					id="pengurus_ketua"
 					type="text"
 					class="input-bordered input min-h-11 w-full"
-					placeholder="Hj. Siti Aminah"
 					value={detail.pengurus?.ketua ?? ''}
 					oninput={(e) => updatePengurus('ketua', e.target.value)}
 				/>
@@ -101,7 +100,6 @@
 					id="pengurus_sekretaris"
 					type="text"
 					class="input-bordered input min-h-11 w-full"
-					placeholder="Ibu Nurul Aini"
 					value={detail.pengurus?.sekretaris ?? ''}
 					oninput={(e) => updatePengurus('sekretaris', e.target.value)}
 				/>
@@ -114,7 +112,6 @@
 					id="pengurus_bendahara"
 					type="text"
 					class="input-bordered input min-h-11 w-full"
-					placeholder="Ibu Dewi Sartika"
 					value={detail.pengurus?.bendahara ?? ''}
 					oninput={(e) => updatePengurus('bendahara', e.target.value)}
 				/>
@@ -257,7 +254,11 @@
 						onkeydown={handleEnterKey}
 					/>
 				</div>
-				<button type="button" class="btn min-h-11 btn-secondary sm:col-span-2" onclick={addPenceramah}>
+				<button
+					type="button"
+					class="btn min-h-11 btn-secondary sm:col-span-2"
+					onclick={addPenceramah}
+				>
 					Tambah
 				</button>
 			</div>
@@ -265,7 +266,9 @@
 			<!-- Penceramah List -->
 			<div class="flex flex-col gap-2">
 				{#each detail.penceramah || [] as penceramah, index (index)}
-					<div class="flex items-center justify-between rounded-lg border border-base-300 bg-base-200 p-3">
+					<div
+						class="flex items-center justify-between rounded-lg border border-base-300 bg-base-200 p-3"
+					>
 						<div class="flex-1">
 							<div class="font-medium">{penceramah.nama}</div>
 							<div class="text-sm text-base-content/70">{penceramah.materi}</div>

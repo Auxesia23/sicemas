@@ -68,7 +68,7 @@
 		isLoading = false;
 
 		// Here you would typically redirect to another page
-		goto('/dashboard');
+		window.location.href = '/dashboard';
 	};
 
 	// Reset form
@@ -82,7 +82,7 @@
 </script>
 
 <div
-	class="flex min-h-screen items-center justify-center bg-gradient-to-b from-base-100 to-base-200 p-4"
+	class="flex min-h-screen items-center justify-center bg-linear-to-b from-base-100 to-base-200 p-4"
 >
 	<div class="absolute inset-0 overflow-hidden">
 		<div
@@ -100,9 +100,7 @@
 		<div class="card overflow-hidden rounded-2xl border border-base-200 shadow-xl">
 			<div class="flex flex-col md:flex-row">
 				<!-- Abstract Graphic Section -->
-				<div
-					class="hidden w-full bg-gradient-to-br from-primary to-secondary p-8 md:block md:w-2/5"
-				>
+				<div class="hidden w-full bg-linear-to-br from-primary to-secondary p-8 md:block md:w-2/5">
 					<div
 						class="relative flex h-full flex-col items-center justify-center overflow-hidden text-center"
 					>
@@ -148,7 +146,7 @@
 						<!-- Header -->
 						<div class="mb-8 text-center">
 							<div
-								class="mb-4 inline-block rounded-full bg-gradient-to-r from-primary to-secondary p-3"
+								class="mb-4 inline-block rounded-full bg-linear-to-r from-primary to-secondary p-3"
 							>
 								<svg
 									xmlns="http://www.w3.org/2000/svg"
@@ -166,7 +164,7 @@
 								</svg>
 							</div>
 							<h1
-								class="bg-gradient-to-r from-primary to-secondary bg-clip-text text-3xl font-bold text-transparent"
+								class="bg-linear-to-r from-primary to-secondary bg-clip-text text-3xl font-bold text-transparent"
 							>
 								Selamat Datang
 							</h1>
@@ -214,7 +212,7 @@
 						{/if}
 
 						<!-- Login Form -->
-						<form class="flex-grow">
+						<form class="grow">
 							<!-- NIP Input -->
 							{#if !isOtpSent}
 								<div class="mb-6">
@@ -344,11 +342,6 @@
 								</div>
 							{/if}
 						</form>
-
-						<!-- Footer -->
-						<div class="mt-auto bg-base-200 p-4 text-center text-sm text-base-content/60">
-							© 2023 Situs Keagamaan. Hak Cipta Dilindungi.
-						</div>
 					</div>
 				</div>
 			</div>

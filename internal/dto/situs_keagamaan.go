@@ -117,3 +117,39 @@ type VerifikasiSitusRequest struct {
 	StatusVerifikasi string `json:"status_verifikasi" validate:"required,oneof=terverifikasi ditolak"`
 	SitusID          string `json:"situs_id"`
 }
+
+type SitusPublicListResponse struct {
+	ID         uuid.UUID `json:"id" db:"id"`
+	Nama       string    `json:"nama" db:"nama"`
+	Jenis      string    `json:"jenis" db:"jenis"`
+	Desa       *string   `json:"desa" db:"desa"`
+	Latitude   *float64  `json:"latitude" db:"latitude"`
+	Longitude  *float64  `json:"longitude" db:"longitude"`
+	FotoUtama  *string   `json:"foto_utama" db:"foto_utama"` // 1 Foto aja
+	JarakMeter *float64  `json:"jarak_meter,omitempty" db:"jarak_meter"`
+}
+
+type SitusPublicDetailResponse struct {
+	ID            string `json:"id" db:"id"`
+	Nama          string `json:"nama" db:"nama"`
+	Jenis         string `json:"jenis" db:"jenis"`
+	AlamatLengkap string `json:"alamat_lengkap" db:"alamat_lengkap"`
+	Desa          string `json:"desa" db:"desa"`
+
+	Latitude  *float64 `json:"latitude" db:"latitude"`
+	Longitude *float64 `json:"longitude" db:"longitude"`
+
+	LuasTanah   float64 `json:"luas_tanah" db:"luas_tanah"`
+	DayaTampung int     `json:"daya_tampung" db:"daya_tampung"`
+
+	GaleriJSON    []byte `json:"-" db:"galeri"`
+	FasilitasJSON []byte `json:"-" db:"fasilitas"`
+
+	Galeri    []string       `json:"galeri"`
+	Fasilitas map[string]any `json:"fasilitas"` // <-- Kuncinya di sini
+}
+
+type PublicListFilter struct {
+	UserLat *float64
+	UserLng *float64
+}

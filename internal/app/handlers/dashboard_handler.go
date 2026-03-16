@@ -8,7 +8,7 @@ import (
 )
 
 type DashboardHandler interface {
-	GetActivities(c *fiber.Ctx) error
+	GetDashboardData(c *fiber.Ctx) error
 }
 
 type dashboardHandlerImpl struct {
@@ -19,8 +19,8 @@ func NewDashboardHandler(dashboardService services.DashboardService) *dashboardH
 	return &dashboardHandlerImpl{dashboardService: dashboardService}
 }
 
-func (h *dashboardHandlerImpl) GetActivities(c *fiber.Ctx) error {
-	activities, err := h.dashboardService.GetActivities(c.Context())
+func (h *dashboardHandlerImpl) GetDashboardData(c *fiber.Ctx) error {
+	activities, err := h.dashboardService.GetDashboardData(c.Context())
 	if err != nil {
 		e := err.(*apperror.AppError)
 		return c.Status(e.Status).SendString(e.Message)

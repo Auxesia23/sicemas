@@ -3,6 +3,7 @@ package services
 import (
 	"context"
 	"database/sql"
+	"encoding/json"
 	"errors"
 	"mime/multipart"
 	apperror "situs-keagamaan/internal/app/appError"
@@ -29,6 +30,10 @@ type SitusKeagamaanService interface {
 	UpdateSitus(ctx context.Context, id, userId uuid.UUID, in *dto.SitusKeagamaanUpdate, actorId uuid.UUID) error
 	DeleteSitus(ctx context.Context, id uuid.UUID, actorId uuid.UUID) error
 	VerifySitus(ctx context.Context, situsId uuid.UUID, in *dto.VerifikasiSitusRequest, actorId uuid.UUID) error
+
+	GetAllSitusForPublic(ctx context.Context, filter dto.PublicListFilter) ([]dto.SitusPublicListResponse, error)
+	GetSitusDetailForPublic(ctx context.Context, id uuid.UUID) (*dto.SitusPublicDetailResponse, error)
+	GetLandingStats(ctx context.Context) (*dto.LandingStatsResponse, error)
 }
 
 type situsKeagamaanServiceImpl struct {
@@ -350,4 +355,45 @@ func (s *situsKeagamaanServiceImpl) VerifySitus(ctx context.Context, id uuid.UUI
 		TargetName: situsTarget.Nama,
 	})
 	return nil
+}
+
+func (s *situsKeagamaanServiceImpl) GetAllSitusForPublic(ctx context.Context, filter dto.PublicListFilter) ([]dto.SitusPublicListResponse, error) {
+	situs, err := s.situsRepo.ReadForPublic(ctx, filter)
+	if err != nil {
+		return nil, apperror.NewInternal("Terjadi kesalahan.")
+	}
+	if len(situs) == 0 {
+		return []dto.SitusPublicListResponse{}, nil
+	}
+	return situs, nil
+}
+
+func (s *situsKeagamaanServiceImpl) GetSitusDetailForPublic(ctx context.Context, id uuid.UUID) (*dto.SitusPublicDetailResponse, error) {
+	situs, err := s.situsRepo.ReadDetailForPublic(ctx, id)
+	if err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			return nil, apperror.NewNotFound("Situs tidak ditemukan")
+		}
+		return nil, apperror.NewInternal("Terjadi kesalahan.")
+	}
+
+	situs.Fasilitas = make(map[string]any)
+	if len(situs.FasilitasJSON) > 0 {
+		_ = json.Unmarshal(situs.FasilitasJSON, &situs.Fasilitas)
+	}
+
+	situs.Galeri = []string{}
+	if len(situs.GaleriJSON) > 0 {
+		_ = json.Unmarshal(situs.GaleriJSON, &situs.Galeri)
+	}
+
+	return situs, nil
+}
+
+func (s *situsKeagamaanServiceImpl) GetLandingStats(ctx context.Context) (*dto.LandingStatsResponse, error) {
+	stats, err := s.situsRepo.GetLandingStats(ctx)
+	if err != nil {
+		return nil, apperror.NewInternal("Terjadi kesalahan.")
+	}
+	return stats, nil
 }

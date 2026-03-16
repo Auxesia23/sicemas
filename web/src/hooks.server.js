@@ -1,3 +1,5 @@
+import { PUBLIC_API_URL } from '$env/static/public';
+
 /** @type {import('@sveltejs/kit').Handle} */
 export async function handle({ event, resolve }) {
 	let accessToken = event.cookies.get('access_token');
@@ -12,7 +14,7 @@ export async function handle({ event, resolve }) {
 
 	// Fungsi helper untuk hit API profile
 	const fetchProfile = async () => {
-		return await event.fetch(`${import.meta.env.VITE_API_URL}/users/me`, {
+		return await event.fetch(`${PUBLIC_API_URL}/users/me`, {
 			headers: contextHeaders
 		});
 	};
@@ -20,7 +22,7 @@ export async function handle({ event, resolve }) {
 	// Fungsi untuk refresh token dan SINKRONISASI COOKIE
 	const tryRefreshAndSync = async () => {
 		try {
-			const refreshRes = await event.fetch(`${import.meta.env.VITE_API_URL}/auth/refresh`, {
+			const refreshRes = await event.fetch(`${PUBLIC_API_URL}/auth/refresh`, {
 				method: 'POST',
 				headers: contextHeaders
 			});

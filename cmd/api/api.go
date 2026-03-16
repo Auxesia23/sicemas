@@ -40,7 +40,7 @@ func (s *server) run() {
 		IdleTimeout:  s.cfg.IdleTimeout,
 	})
 	app.Use(cors.New(cors.Config{
-		AllowOrigins:     "http://localhost:5173",
+		AllowOrigins:     "http://192.168.100.58:5173",
 		AllowHeaders:     "Origin, Content-Type, Accept, Authorization, X-Requested-With, X-Device-Id",
 		AllowMethods:     "GET, POST, PUT, PATCH, DELETE, OPTIONS",
 		AllowCredentials: true,
@@ -49,6 +49,13 @@ func (s *server) run() {
 	app.Get("/", func(c *fiber.Ctx) error {
 		return c.SendString("Hallo, dari server KUA Ciemas")
 	})
+
+	public := app.Group("/public")
+	{
+		public.Get("/situs", s.handlers.SitusKeagamaan.GetAllSitusForPublic)
+		public.Get("/situs/:id", s.handlers.SitusKeagamaan.GetSitusDetailForPublic)
+		public.Get("/stats", s.handlers.SitusKeagamaan.GetLandingStats)
+	}
 
 	auth := app.Group("/auth")
 	{
@@ -62,7 +69,9 @@ func (s *server) run() {
 	{
 		dashboard.Use(s.middlewares.Auth.JWTAuthenticator)
 		dashboard.Use(s.middlewares.Auth.ZeroTrustValidator)
-		dashboard.Get("/", s.handlers.DashboardHandler.GetActivities)
+		dashboard.Get("/",
+			s.middlewares.Auth.CasbinAuthz().RequiresPermissions([]string{"situs:verify", "user:create"}, casbin.WithValidationRule(casbin.AtLeastOneRule)),
+			s.handlers.DashboardHandler.GetDashboardData)
 	}
 
 	users := app.Group("/users")

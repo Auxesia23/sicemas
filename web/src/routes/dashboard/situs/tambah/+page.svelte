@@ -454,7 +454,6 @@
 								id="nama"
 								type="text"
 								class="input-bordered input min-h-11 w-full"
-								placeholder="Masukkan nama situs"
 								bind:value={formData.nama}
 							/>
 						</div>
@@ -534,7 +533,6 @@
 								id="nomor_badan_hukum"
 								type="text"
 								class="input-bordered input min-h-11 w-full"
-								placeholder="BH-12345-2023"
 								bind:value={formData.nomor_badan_hukum}
 							/>
 						</div>
@@ -606,7 +604,6 @@
 								id="desa"
 								type="text"
 								class="input-bordered input min-h-11 w-full"
-								placeholder="Ciemas"
 								bind:value={formData.desa}
 							/>
 						</div>
@@ -618,7 +615,6 @@
 								required
 								id="alamat_lengkap"
 								class="textarea-bordered textarea min-h-20 w-full"
-								placeholder="Jl. Raya Ciemas No. 45, RT 01 RW 02"
 								bind:value={formData.alamat_lengkap}
 								rows="2"
 							></textarea>
@@ -668,7 +664,6 @@
 									type="number"
 									step="any"
 									class="input-bordered input min-h-11 w-full"
-									placeholder="-6.2088"
 									bind:value={formData.latitude}
 								/>
 							</div>
@@ -682,7 +677,6 @@
 									type="number"
 									step="any"
 									class="input-bordered input min-h-11 w-full"
-									placeholder="106.8456"
 									bind:value={formData.longitude}
 								/>
 							</div>
@@ -717,7 +711,6 @@
 								min="0"
 								step="any"
 								class="input-bordered input min-h-11 w-full"
-								placeholder="1200.50"
 								bind:value={formData.luas_tanah}
 							/>
 						</div>
@@ -732,7 +725,6 @@
 								min="0"
 								step="any"
 								class="input-bordered input min-h-11 w-full"
-								placeholder="800.00"
 								bind:value={formData.luas_bangunan}
 							/>
 						</div>
@@ -763,7 +755,6 @@
 								type="number"
 								min="0"
 								class="input-bordered input min-h-11 w-full"
-								placeholder="1000"
 								bind:value={formData.daya_tampung_max}
 							/>
 						</div>
@@ -775,7 +766,6 @@
 								id="nomor_aiw"
 								type="text"
 								class="input-bordered input min-h-11 w-full"
-								placeholder="AIW-112233"
 								bind:value={formData.nomor_aiw}
 							/>
 						</div>
@@ -787,7 +777,6 @@
 								id="nomor_sertifikat_wakaf"
 								type="text"
 								class="input-bordered input min-h-11 w-full"
-								placeholder="WKF-998877"
 								bind:value={formData.nomor_sertifikat_wakaf}
 							/>
 						</div>

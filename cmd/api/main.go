@@ -69,6 +69,7 @@ func main() {
 	situsKeagamaanRepo := repositories.NewSitusKeagamaanRepo(db)
 	fotoSitusRepo := repositories.NewFotoSitusRepo(db)
 	activityRepo := repositories.NewActivityRepo(db)
+	dashboardRepo := repositories.NewDashboardRepo(db)
 
 	// Initiate service layer
 	userService := services.NewUserService(userRepo, activityRepo, enforcer, cache)
@@ -77,7 +78,7 @@ func main() {
 	policyService := services.NewPolicyService(enforcer, activityRepo)
 	jenisSitusService := services.NewJenisSitusService(jenisSitusRepo, activityRepo)
 	situsKeagamaanService := services.NewSitusKeagamaanService(situsKeagamaanRepo, fotoSitusRepo, activityRepo, cld, enforcer)
-	dashboardService := services.NewDashboardService(activityRepo)
+	dashboardService := services.NewDashboardService(activityRepo, dashboardRepo)
 
 	// Initiate handler layer
 	userHandler := handlers.NewUserHandler(userService, validate)
@@ -96,7 +97,7 @@ func main() {
 	middlewares := middlewares.NewMiddlewares(authMiddleware)
 
 	cfg := config{
-		Addr:         ":8080",
+		Addr:         "0.0.0.0:8080",
 		WriteTimeout: 10 * time.Second,
 		ReadTimeout:  10 * time.Second,
 		IdleTimeout:  20 * time.Second,

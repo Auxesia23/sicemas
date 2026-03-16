@@ -21,6 +21,10 @@
 	let statusFilter = $state('all');
 	let typeFilter = $state('all');
 
+	// Pagination states
+	let currentPage = $state(1);
+	let itemsPerPage = $state(10);
+
 	// Modal and toast states
 	let showDeleteModal = $state(false);
 	let siteToDelete = $state(null);
@@ -79,6 +83,28 @@
 			return matchesSearch && matchesStatus && matchesType;
 		})
 	);
+
+	// Pagination Logic
+	let totalPages = $derived(Math.ceil(filteredSites.length / itemsPerPage) || 1);
+
+	let paginatedSites = $derived(
+		filteredSites.slice((currentPage - 1) * itemsPerPage, currentPage * itemsPerPage)
+	);
+
+	// Reset ke halaman 1 setiap kali admin ngetik pencarian atau ganti filter
+	$effect(() => {
+		searchTerm;
+		statusFilter;
+		typeFilter;
+		itemsPerPage;
+		currentPage = 1;
+	});
+
+	function goToPage(page) {
+		if (page >= 1 && page <= totalPages) {
+			currentPage = page;
+		}
+	}
 
 	// Format date to Indonesian locale
 	function formatDate(dateString) {
@@ -238,8 +264,17 @@
 
 			<div class="mt-4 flex flex-col items-start justify-between gap-3 sm:flex-row sm:items-center">
 				<div>
-					<span class="text-sm text-base-content/70">
-						Menampilkan {filteredSites.length} dari {sites.length} situs
+					<span class="text-sm font-medium text-base-content/70">
+						Menampilkan
+						<span class="text-base-content">
+							{filteredSites.length === 0 ? 0 : (currentPage - 1) * itemsPerPage + 1}
+						</span>
+						-
+						<span class="text-base-content">
+							{Math.min(currentPage * itemsPerPage, filteredSites.length)}
+						</span>
+						dari
+						<span class="text-base-content">{filteredSites.length}</span> data
 					</span>
 				</div>
 				<div class="flex w-full gap-2 sm:w-auto">
@@ -322,7 +357,8 @@
 						<thead>
 							<tr>
 								<th class="min-w-40">Nama Situs</th>
-								<th class="min-w-30">ID (Kemenag)</th> <th class="min-w-30">Jenis</th>
+								<th class="min-w-30">ID (Kemenag)</th>
+								<th class="min-w-30">Jenis</th>
 								<th class="min-w-30">Lokasi</th>
 								<th class="min-w-30">Pendata</th>
 								<th class="min-w-25">Status Verifikasi</th>
@@ -331,7 +367,7 @@
 							</tr>
 						</thead>
 						<tbody>
-							{#each filteredSites as site (site.id)}
+							{#each paginatedSites as site (site.id)}
 								<tr class="hover">
 									<td>
 										<div class="font-medium">{site.nama}</div>
@@ -364,6 +400,79 @@
 							{/each}
 						</tbody>
 					</table>
+				</div>
+
+				<div class="mt-6 mb-2 flex flex-col items-center justify-between gap-4 px-4 sm:flex-row">
+					<div class="flex items-center gap-2" title="Pilih jumlah baris per halaman">
+						<div
+							class="flex h-8 w-8 items-center justify-center rounded-md bg-base-200 text-base-content/70"
+						>
+							<svg
+								xmlns="http://www.w3.org/2000/svg"
+								class="h-5 w-5"
+								fill="none"
+								viewBox="0 0 24 24"
+								stroke="currentColor"
+							>
+								<path
+									stroke-linecap="round"
+									stroke-linejoin="round"
+									stroke-width="2"
+									d="M4 6h16M4 12h16M4 18h7"
+								/>
+							</svg>
+						</div>
+						<select class="select-bordered select select-sm font-medium" bind:value={itemsPerPage}>
+							<option value={5}>5</option>
+							<option value={10}>10</option>
+							<option value={25}>25</option>
+							<option value={50}>50</option>
+						</select>
+					</div>
+
+					<div class="join">
+						<button
+							class="btn join-item px-2 btn-sm"
+							disabled={currentPage === 1}
+							onclick={() => goToPage(currentPage - 1)}
+							title="Halaman Sebelumnya"
+						>
+							<svg
+								xmlns="http://www.w3.org/2000/svg"
+								class="h-5 w-5"
+								fill="none"
+								viewBox="0 0 24 24"
+								stroke="currentColor"
+								stroke-width="2"
+							>
+								<path stroke-linecap="round" stroke-linejoin="round" d="M15 19l-7-7 7-7" />
+							</svg>
+						</button>
+
+						<button
+							class="no-animation btn pointer-events-none join-item flex items-center justify-center bg-base-200 px-4 font-medium text-base-content/80 btn-sm"
+						>
+							Halaman {currentPage} / {totalPages}
+						</button>
+
+						<button
+							class="btn join-item px-2 btn-sm"
+							disabled={currentPage === totalPages}
+							onclick={() => goToPage(currentPage + 1)}
+							title="Halaman Selanjutnya"
+						>
+							<svg
+								xmlns="http://www.w3.org/2000/svg"
+								class="h-5 w-5"
+								fill="none"
+								viewBox="0 0 24 24"
+								stroke="currentColor"
+								stroke-width="2"
+							>
+								<path stroke-linecap="round" stroke-linejoin="round" d="M9 5l7 7-7 7" />
+							</svg>
+						</button>
+					</div>
 				</div>
 			{/if}
 		</div>

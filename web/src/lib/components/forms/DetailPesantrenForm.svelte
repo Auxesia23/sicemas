@@ -96,7 +96,6 @@
 					id="nama_yayasan"
 					type="text"
 					class="input-bordered input min-h-11 w-full"
-					placeholder="Yayasan Pendidikan Islam Darussalam"
 					value={detail.nama_yayasan ?? ''}
 					oninput={(e) => updateNamaYayasan(e.target.value)}
 				/>
@@ -109,7 +108,6 @@
 					id="pimpinan_pesantren"
 					type="text"
 					class="input-bordered input min-h-11 w-full"
-					placeholder="K.H. Ahmad Maulana"
 					value={detail.pimpinan_pesantren ?? ''}
 					oninput={(e) => updatePimpinanPesantren(e.target.value)}
 				/>
@@ -131,7 +129,6 @@
 					id="ketua"
 					type="text"
 					class="input-bordered input min-h-11 w-full"
-					placeholder="Ust. Zainuddin"
 					value={detail.kepengurusan?.ketua ?? ''}
 					oninput={(e) => updateKepengurusan('ketua', e.target.value)}
 				/>
@@ -144,7 +141,6 @@
 					id="sekretaris"
 					type="text"
 					class="input-bordered input min-h-11 w-full"
-					placeholder="Ust. Hasan Basri"
 					value={detail.kepengurusan?.sekretaris ?? ''}
 					oninput={(e) => updateKepengurusan('sekretaris', e.target.value)}
 				/>
@@ -157,7 +153,6 @@
 					id="bendahara"
 					type="text"
 					class="input-bordered input min-h-11 w-full"
-					placeholder="Hj. Fatimah"
 					value={detail.kepengurusan?.bendahara ?? ''}
 					oninput={(e) => updateKepengurusan('bendahara', e.target.value)}
 				/>
@@ -224,7 +219,8 @@
 								class="input-bordered input min-h-10 w-full"
 								placeholder="0"
 								value={detail.santri?.tidak_mondok?.pria ?? ''}
-								oninput={(e) => updateSantri('tidak_mondok', 'pria', e.target.valueAsNumber || null)}
+								oninput={(e) =>
+									updateSantri('tidak_mondok', 'pria', e.target.valueAsNumber || null)}
 							/>
 						</div>
 						<div class="form-control">
@@ -238,7 +234,8 @@
 								class="input-bordered input min-h-10 w-full"
 								placeholder="0"
 								value={detail.santri?.tidak_mondok?.wanita ?? ''}
-								oninput={(e) => updateSantri('tidak_mondok', 'wanita', e.target.valueAsNumber || null)}
+								oninput={(e) =>
+									updateSantri('tidak_mondok', 'wanita', e.target.valueAsNumber || null)}
 							/>
 						</div>
 					</div>
