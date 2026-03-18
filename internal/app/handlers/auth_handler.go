@@ -70,8 +70,8 @@ func (h *authHandlerImpl) VerifyOTP(c *fiber.Ctx) error {
 		Path:     "/",
 		Expires:  time.Now().Add(time.Hour * 24 * 7),
 		HTTPOnly: true,
-		Secure:   false,
-		SameSite: "lax",
+		Secure:   true,
+		SameSite: "Lax",
 	})
 	c.Cookie(&fiber.Cookie{
 		Name:     "access_token",
@@ -79,8 +79,8 @@ func (h *authHandlerImpl) VerifyOTP(c *fiber.Ctx) error {
 		Path:     "/",
 		Expires:  time.Now().Add(time.Minute * 15),
 		HTTPOnly: true,
-		Secure:   false,
-		SameSite: "lax",
+		Secure:   true,
+		SameSite: "Lax",
 	})
 	return c.SendStatus(200)
 }
@@ -103,8 +103,8 @@ func (h *authHandlerImpl) Refresh(c *fiber.Ctx) error {
 		Path:     "/",
 		Expires:  time.Now().Add(time.Hour * 24 * 7),
 		HTTPOnly: true,
-		Secure:   false,
-		SameSite: "lax",
+		Secure:   true,
+		SameSite: "Lax",
 	})
 	c.Cookie(&fiber.Cookie{
 		Name:     "access_token",
@@ -112,8 +112,8 @@ func (h *authHandlerImpl) Refresh(c *fiber.Ctx) error {
 		Path:     "/",
 		Expires:  time.Now().Add(time.Minute * 15),
 		HTTPOnly: true,
-		Secure:   false,
-		SameSite: "lax",
+		Secure:   true,
+		SameSite: "Lax",
 	})
 	return c.SendStatus(200)
 }
@@ -137,16 +137,22 @@ func (h *authHandlerImpl) Logout(c *fiber.Ctx) error {
 		return c.Status(e.Status).SendString(e.Error())
 	}
 	c.Cookie(&fiber.Cookie{
-		Name:    "refresh_token",
-		Value:   "",
-		Path:    "/",
-		Expires: time.Now().Add(-time.Hour),
+		Name:     "refresh_token",
+		Value:    "",
+		Path:     "/",
+		Expires:  time.Now().Add(-time.Hour),
+		HTTPOnly: true,
+		Secure:   true,
+		SameSite: "Lax",
 	})
 	c.Cookie(&fiber.Cookie{
-		Name:    "access_token",
-		Value:   "",
-		Path:    "/",
-		Expires: time.Now().Add(-time.Hour),
+		Name:     "access_token",
+		Value:    "",
+		Path:     "/",
+		Expires:  time.Now().Add(-time.Hour),
+		HTTPOnly: true,
+		Secure:   true,
+		SameSite: "Lax",
 	})
 	return c.SendStatus(200)
 }
