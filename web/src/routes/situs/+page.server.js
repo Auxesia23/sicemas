@@ -1,13 +1,12 @@
 import { error } from '@sveltejs/kit';
-import { env } from '$env/dynamic/private';
-import { PUBLIC_API_URL } from '$env/static/public';
+import { env } from '$env/dynamic/public';
 
 /** @type {import('./$types').PageServerLoad} */
 export async function load({ fetch, url }) {
 	const lat = url.searchParams.get('lat');
 	const lng = url.searchParams.get('lng');
 
-	let apiUrl = `${PUBLIC_API_URL}/public/situs`;
+	let apiUrl = `${env.PUBLIC_API_URL}/public/situs`;
 	if (lat && lng) {
 		apiUrl += `?lat=${lat}&lng=${lng}`;
 	}

@@ -1,10 +1,10 @@
 import { error } from '@sveltejs/kit';
-import { PUBLIC_API_URL } from '$env/static/public';
+import { env } from '$env/dynamic/public';
 
 /** @type {import('./$types').PageLoad} */
 export async function load({ params, fetch }) {
 	try {
-		const response = await fetch(`${PUBLIC_API_URL}/public/situs/${params.id}`);
+		const response = await fetch(`${env.PUBLIC_API_URL}/public/situs/${params.id}`);
 
 		if (!response.ok) {
 			if (response.status === 404) {

@@ -2,14 +2,13 @@ package main
 
 import (
 	"log"
-	"os"
 	"situs-keagamaan/internal/app/handlers"
 	"situs-keagamaan/internal/middlewares"
 	"time"
 
 	"github.com/gofiber/contrib/casbin"
 	"github.com/gofiber/fiber/v2"
-	"github.com/gofiber/fiber/v2/middleware/cors"
+	"golang.org/x/time/rate"
 )
 
 type server struct {
@@ -40,12 +39,12 @@ func (s *server) run() {
 		WriteTimeout: s.cfg.WriteTimeout,
 		IdleTimeout:  s.cfg.IdleTimeout,
 	})
-	app.Use(cors.New(cors.Config{
-		AllowOrigins:     os.Getenv("ALLOW_ORIGIN"),
-		AllowHeaders:     "Origin, Content-Type, Accept, Authorization, X-Requested-With, X-Device-Id",
-		AllowMethods:     "GET, POST, PUT, PATCH, DELETE, OPTIONS",
-		AllowCredentials: true,
-	}))
+	// app.Use(cors.New(cors.Config{
+	// 	AllowOrigins:     os.Getenv("ALLOW_ORIGIN"),
+	// 	AllowHeaders:     "Origin, Content-Type, Accept, Authorization, X-Requested-With, X-Device-Id",
+	// 	AllowMethods:     "GET, POST, PUT, PATCH, DELETE, OPTIONS",
+	// 	AllowCredentials: true,
+	// }))
 
 	app.Get("/", func(c *fiber.Ctx) error {
 		return c.SendString("Hallo, dari server KUA Ciemas")
@@ -53,6 +52,7 @@ func (s *server) run() {
 
 	public := app.Group("/public")
 	{
+		app.Use(s.middlewares.Limiter.LimiterByDevice(rate.Every(time.Second), 10))
 		public.Get("/situs", s.handlers.SitusKeagamaan.GetAllSitusForPublic)
 		public.Get("/situs/:id", s.handlers.SitusKeagamaan.GetSitusDetailForPublic)
 		public.Get("/stats", s.handlers.SitusKeagamaan.GetLandingStats)
@@ -60,6 +60,7 @@ func (s *server) run() {
 
 	auth := app.Group("/auth")
 	{
+		auth.Use(s.middlewares.Limiter.LimiterByDevice(rate.Every(10*time.Second), 6))
 		auth.Post("/login", s.handlers.Auth.Login)
 		auth.Post("/verify-otp", s.middlewares.Auth.GetContext, s.handlers.Auth.VerifyOTP)
 		auth.Post("/refresh", s.middlewares.Auth.GetContext, s.handlers.Auth.Refresh)
@@ -70,6 +71,8 @@ func (s *server) run() {
 	{
 		dashboard.Use(s.middlewares.Auth.JWTAuthenticator)
 		dashboard.Use(s.middlewares.Auth.ZeroTrustValidator)
+		dashboard.Use(s.middlewares.Limiter.LimiterByDevice(rate.Every(time.Second), 10))
+		dashboard.Use(s.middlewares.Limiter.LimiterByUser(rate.Every(time.Second), 10))
 		dashboard.Get("/",
 			s.middlewares.Auth.CasbinAuthz().RequiresPermissions([]string{"situs:verify", "user:create"}, casbin.WithValidationRule(casbin.AtLeastOneRule)),
 			s.handlers.DashboardHandler.GetDashboardData)
@@ -78,12 +81,13 @@ func (s *server) run() {
 	users := app.Group("/users")
 	{
 		users.Use(s.middlewares.Auth.JWTAuthenticator)
-
-		users.Get("/profile", s.handlers.User.Profile)
 		users.Get("/me", s.handlers.User.Me)
-
 		users.Use(s.middlewares.Auth.ZeroTrustValidator)
 
+		users.Use(s.middlewares.Limiter.LimiterByDevice(rate.Every(time.Second), 10))
+		users.Use(s.middlewares.Limiter.LimiterByUser(rate.Every(time.Second), 10))
+
+		users.Get("/profile", s.handlers.User.Profile)
 		users.Get("/",
 			s.middlewares.Auth.CasbinAuthz().RequiresPermissions([]string{"user:read"}, casbin.WithValidationRule(casbin.MatchAllRule)),
 			s.handlers.User.GetAllUser,
@@ -107,6 +111,9 @@ func (s *server) run() {
 		roles.Use(s.middlewares.Auth.JWTAuthenticator)
 		roles.Use(s.middlewares.Auth.ZeroTrustValidator)
 
+		roles.Use(s.middlewares.Limiter.LimiterByDevice(rate.Every(time.Second), 10))
+		roles.Use(s.middlewares.Limiter.LimiterByUser(rate.Every(time.Second), 10))
+
 		roles.Get("/",
 			s.middlewares.Auth.CasbinAuthz().RequiresPermissions([]string{"role:read"}, casbin.WithValidationRule(casbin.MatchAllRule)),
 			s.handlers.Role.GetAllRole,
@@ -126,6 +133,9 @@ func (s *server) run() {
 		policies.Use(s.middlewares.Auth.JWTAuthenticator)
 		policies.Use(s.middlewares.Auth.ZeroTrustValidator)
 
+		policies.Use(s.middlewares.Limiter.LimiterByDevice(rate.Every(time.Second), 10))
+		policies.Use(s.middlewares.Limiter.LimiterByUser(rate.Every(time.Second), 10))
+
 		policies.Get("/",
 			s.middlewares.Auth.CasbinAuthz().RequiresPermissions([]string{"policy:read"}, casbin.WithValidationRule(casbin.MatchAllRule)),
 			s.handlers.Policy.GetFilteredPolicy,
@@ -144,6 +154,9 @@ func (s *server) run() {
 	{
 		jenisSitus.Use(s.middlewares.Auth.JWTAuthenticator)
 		jenisSitus.Use(s.middlewares.Auth.ZeroTrustValidator)
+
+		jenisSitus.Use(s.middlewares.Limiter.LimiterByDevice(rate.Every(time.Second), 10))
+		jenisSitus.Use(s.middlewares.Limiter.LimiterByUser(rate.Every(time.Second), 10))
 
 		jenisSitus.Get("/",
 			s.middlewares.Auth.CasbinAuthz().RequiresPermissions([]string{"jenis-situs:read"}, casbin.WithValidationRule(casbin.AtLeastOneRule)),
@@ -167,6 +180,9 @@ func (s *server) run() {
 	{
 		situs.Use(s.middlewares.Auth.JWTAuthenticator)
 		situs.Use(s.middlewares.Auth.ZeroTrustValidator)
+
+		situs.Use(s.middlewares.Limiter.LimiterByDevice(rate.Every(time.Second), 10))
+		situs.Use(s.middlewares.Limiter.LimiterByUser(rate.Every(time.Second), 10))
 
 		situs.Post("/",
 			s.middlewares.Auth.CasbinAuthz().RequiresPermissions([]string{"situs:create"}, casbin.WithValidationRule(casbin.MatchAllRule)),

@@ -93,8 +93,9 @@ func main() {
 
 	// Initiate middleware
 	authMiddleware := middlewares.NewAuthMiddleware(enforcer, locator, cache)
+	rateLimiter := middlewares.NewRateLimiter()
 	// middlewares compositor
-	middlewares := middlewares.NewMiddlewares(authMiddleware)
+	middlewares := middlewares.NewMiddlewares(authMiddleware, &rateLimiter)
 
 	cfg := config{
 		Addr:         "0.0.0.0:8080",

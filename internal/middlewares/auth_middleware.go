@@ -112,7 +112,10 @@ func (m *authMiddlewareImpl) CasbinAuthz() *fcasbin.Middleware {
 
 func (m *authMiddlewareImpl) GetContext(c *fiber.Ctx) error {
 	var ipStr string
-	ipStr = c.Get("X-Forwarded-For")
+	ipStr = c.Get("X-True-Client-IP")
+	if ipStr == "" {
+		ipStr = c.Get("X-Forwarded-For")
+	}
 	if ipStr == "" {
 		ipStr = c.IP()
 	}

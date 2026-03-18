@@ -31,27 +31,26 @@ class ApiService {
 
 	// Get or generate Device ID using FingerprintJS
 	async getDeviceId() {
-		// Return cached ID if exists
-		if (this.deviceId) {
-			return this.deviceId;
-		}
+		if (this.deviceId) return this.deviceId;
 
-		// Only generate in browser
 		if (browser && fpPromise) {
 			try {
 				const fp = await fpPromise;
 				const result = await fp.get();
 				this.deviceId = result.visitorId;
+
+				document.cookie = `device_id=${this.deviceId}; path=/; max-age=31536000; SameSite=Lax`;
+				// -------------------------------------------------------------
+
 				return this.deviceId;
 			} catch (error) {
 				console.error('Failed to get fingerprint:', error);
-				// Fallback to a simple random ID
 				this.deviceId = `fallback-${Date.now()}-${Math.random().toString(36).substring(7)}`;
+				document.cookie = `device_id=${this.deviceId}; path=/; max-age=31536000; SameSite=Lax`;
 				return this.deviceId;
 			}
 		}
 
-		// Server-side or fallback
 		this.deviceId = 'server-side';
 		return this.deviceId;
 	}
@@ -133,35 +132,47 @@ class ApiService {
 				}
 			}
 
-			// ==========================================
-			// 2. PENANGANAN 403 & 500 SECARA GLOBAL
-			// ==========================================
-			if (response.status === 403 || response.status >= 500) {
-				if (browser) {
-					let errorMsg =
-						response.status === 403 ? 'Akses Ditolak (Forbidden)' : 'Terjadi Kesalahan Server';
-
-					try {
-						// Karena backend selalu me-return plaintext saat error,
-						// kita ekstrak menggunakan .text() bukan .json()
-						const textData = await response.clone().text();
-
-						// Jika textData tidak kosong, gunakan pesan dari backend
-						if (textData && textData.trim() !== '') {
-							errorMsg = textData.trim();
-						}
-					} catch (e) {
-						// Abaikan jika gagal baca text
+			if (response.status === 429) {
+				// Coba ambil pesan dari Go lu, atau pake pesan default
+				let errorMsg = 'Terlalu banyak permintaan. Silakan tunggu beberapa saat.';
+				try {
+					const textData = await response.clone().text();
+					if (textData && textData.trim() !== '') {
+						errorMsg = textData.trim();
 					}
-
-					// Dinamis import goto untuk navigasi client-side SvelteKit
-					const { goto } = await import('$app/navigation');
-					goto(`/error-handler?code=${response.status}&message=${encodeURIComponent(errorMsg)}`);
+				} catch (e) {
+					// Abaikan
 				}
 
-				// Return promise yang "menggantung" agar sisa kode di komponen Svelte
-				// berhenti dieksekusi dan tidak memunculkan alert/error popup lokal.
-				return new Promise(() => {});
+				if (browser) {
+					const { goto } = await import('$app/navigation');
+					goto(`/error-handler?code=429&message=${encodeURIComponent(errorMsg)}`);
+					return new Promise(() => {}); // Gantung promise agar eksekusi komponen berhenti
+				} else {
+					throw new Error(`API Error: 429 - ${errorMsg}`);
+				}
+			}
+
+			if (response.status === 403 || response.status >= 500) {
+				let errorMsg =
+					response.status === 403 ? 'Akses Ditolak (Forbidden)' : 'Terjadi Kesalahan Server';
+
+				try {
+					const textData = await response.clone().text();
+					if (textData && textData.trim() !== '') {
+						errorMsg = textData.trim();
+					}
+				} catch (e) {
+					// Abaikan jika gagal baca text
+				}
+
+				if (browser) {
+					const { goto } = await import('$app/navigation');
+					goto(`/error-handler?code=${response.status}&message=${encodeURIComponent(errorMsg)}`);
+					return new Promise(() => {});
+				} else {
+					throw new Error(`API Error: ${response.status} - ${errorMsg}`);
+				}
 			}
 
 			return response;

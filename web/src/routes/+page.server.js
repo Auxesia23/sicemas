@@ -1,10 +1,9 @@
-import { env } from '$env/dynamic/private';
 import { error } from '@sveltejs/kit';
-import { PUBLIC_API_URL } from '$env/static/public';
+import { env } from '$env/dynamic/public';
 
 /** @type {import('./$types').PageServerLoad} */
 export async function load({ fetch }) {
-	let apiUrl = `${PUBLIC_API_URL}/public/stats`;
+	let apiUrl = `${env.PUBLIC_API_URL}/public/stats`;
 	try {
 		const response = await fetch(apiUrl);
 		if (!response.ok) {

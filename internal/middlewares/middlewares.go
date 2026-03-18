@@ -1,11 +1,13 @@
 package middlewares
 
 type Middlewares struct {
-	Auth AuthMiddleware
+	Auth    AuthMiddleware
+	Limiter RateLimiter
 }
 
-func NewMiddlewares(auth AuthMiddleware) *Middlewares {
+func NewMiddlewares(auth AuthMiddleware, limiter *RateLimiter) *Middlewares {
 	return &Middlewares{
-		Auth: auth,
+		Auth:    auth,
+		Limiter: *limiter,
 	}
 }

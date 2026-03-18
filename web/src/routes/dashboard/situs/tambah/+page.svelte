@@ -102,6 +102,16 @@
 		}
 		if (mapContainer && !map) {
 			const L = await import('leaflet');
+			await import('leaflet/dist/leaflet.css');
+
+			delete L.Icon.Default.prototype._getIconUrl;
+			L.Icon.Default.mergeOptions({
+				iconRetinaUrl:
+					'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/images/marker-icon-2x.png',
+				iconUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/images/marker-icon.png',
+				shadowUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/images/marker-shadow.png'
+			});
+
 			map = L.map(mapContainer).setView([-6.2088, 106.8456], 13);
 
 			L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
@@ -147,15 +157,6 @@
 		}
 	});
 
-	// Effect: Update map marker when coordinates change
-	$effect(() => {
-		if (map && marker && formData.latitude !== null && formData.longitude !== null) {
-			const newLatLng = new L.LatLng(formData.latitude, formData.longitude);
-			marker.setLatLng(newLatLng);
-			map.setView(newLatLng, 15);
-		}
-	});
-
 	// Handle jenis situs change
 	function handleJenisSitusChange(event) {
 		const selectedId = event.target.value;
@@ -196,11 +197,18 @@
 	}
 
 	// Get current location
+	// Get current location
 	async function getCurrentLocation() {
 		if (!navigator.geolocation) {
 			alert('Geolocation is not supported by your browser');
 			return;
 		}
+
+		// Opsional: Bikin tombol loading saat nyari lokasi
+		const btn = event.currentTarget;
+		const originalText = btn.innerHTML;
+		btn.innerHTML = '<span class="loading loading-spinner loading-sm"></span> Mencari...';
+		btn.disabled = true;
 
 		try {
 			const position = await new Promise((resolve, reject) => {
@@ -211,8 +219,17 @@
 				});
 			});
 
-			formData.latitude = position.coords.latitude;
-			formData.longitude = position.coords.longitude;
+			const lat = position.coords.latitude;
+			const lng = position.coords.longitude;
+
+			formData.latitude = lat;
+			formData.longitude = lng;
+
+			// --- FIX MARKER: Paksa peta dan marker pindah pakai Array ---
+			if (map && marker) {
+				marker.setLatLng([lat, lng]);
+				map.flyTo([lat, lng], 16, { animate: true, duration: 1.5 }); // Animasi terbang mulus
+			}
 		} catch (error) {
 			console.error('Geolocation error:', error);
 			let errorMessage = 'Unable to get your location.';
@@ -225,6 +242,10 @@
 				errorMessage = 'Location request timed out. Please try again.';
 			}
 			alert(errorMessage);
+		} finally {
+			// Kembalikan tombol seperti semula
+			btn.innerHTML = originalText;
+			btn.disabled = false;
 		}
 	}
 
@@ -493,6 +514,7 @@
 								<span class="label-text font-medium">Nomor Telepon</span>
 							</label>
 							<input
+								required
 								id="nomor_telepon"
 								type="tel"
 								class="input-bordered input min-h-11 w-full"
@@ -529,7 +551,6 @@
 								<span class="label-text font-medium">Nomor Badan Hukum</span>
 							</label>
 							<input
-								required
 								id="nomor_badan_hukum"
 								type="text"
 								class="input-bordered input min-h-11 w-full"

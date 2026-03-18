@@ -1,50 +1,66 @@
-import { PUBLIC_API_URL } from '$env/static/public';
+import { env } from '$env/dynamic/public';
 
 /** @type {import('@sveltejs/kit').Handle} */
 export async function handle({ event, resolve }) {
+	if (event.url.pathname.startsWith('/api')) {
+		return await resolve(event);
+	}
+
 	let accessToken = event.cookies.get('access_token');
 	const refreshToken = event.cookies.get('refresh_token');
 
-	// Ambil identitas asli untuk Zero Trust di Go
-	const contextHeaders = {
+	const deviceId = event.cookies.get('device_id') || '';
+
+	let contextHeaders = {
 		'User-Agent': event.request.headers.get('user-agent') || '',
 		'X-Forwarded-For': event.getClientAddress(),
-		Accept: 'application/json'
+		'X-True-Client-IP': event.getClientAddress(),
+		Accept: 'application/json',
+		Cookie: event.request.headers.get('cookie') || '',
+		'X-Device-Id': deviceId
 	};
 
-	// Fungsi helper untuk hit API profile
 	const fetchProfile = async () => {
-		return await event.fetch(`${PUBLIC_API_URL}/users/me`, {
+		return await fetch(`${env.PUBLIC_API_URL}/users/me`, {
 			headers: contextHeaders
 		});
 	};
 
-	// Fungsi untuk refresh token dan SINKRONISASI COOKIE
 	const tryRefreshAndSync = async () => {
 		try {
-			const refreshRes = await event.fetch(`${PUBLIC_API_URL}/auth/refresh`, {
+			const refreshRes = await fetch(`${env.PUBLIC_API_URL}/auth/refresh`, {
 				method: 'POST',
 				headers: contextHeaders
 			});
 
 			if (refreshRes.ok) {
-				// Ambil semua Set-Cookie dari respons Go (Access & Refresh Token baru)
 				const setCookieHeaders = refreshRes.headers.getSetCookie();
 
+				let newTokens = {};
+
 				setCookieHeaders.forEach((cookieString) => {
-					// Split untuk ambil "nama=value"
 					const [nameValue] = cookieString.split(';');
 					const [name, value] = nameValue.split('=');
 
-					// Set manual ke event.cookies SvelteKit
-					// Atribut lain (HttpOnly, Path, dll) sebaiknya disesuaikan
-					event.cookies.set(name.trim(), value.trim(), {
+					const cookieName = name.trim();
+					const cookieVal = value.trim();
+
+					event.cookies.set(cookieName, cookieVal, {
 						path: '/',
 						httpOnly: true,
 						sameSite: 'lax',
-						secure: process.env.NODE_ENV === 'production'
+						secure: process.env.NODE_ENV === 'production',
+						maxAge: cookieName === 'refresh_token' ? 60 * 60 * 24 * 7 : 60 * 15
 					});
+
+					newTokens[cookieName] = cookieVal;
 				});
+
+				if (newTokens.access_token) {
+					contextHeaders['Cookie'] =
+						`access_token=${newTokens.access_token}; refresh_token=${newTokens.refresh_token || refreshToken}`;
+				}
+
 				return true;
 			}
 		} catch (err) {
@@ -53,8 +69,6 @@ export async function handle({ event, resolve }) {
 		return false;
 	};
 
-	// LOGIKA UTAMA
-	// 1. Kasus Access Token expired (401)
 	if (accessToken) {
 		try {
 			let response = await fetchProfile();
@@ -67,7 +81,13 @@ export async function handle({ event, resolve }) {
 			}
 
 			if (response.ok) {
-				event.locals.user = await response.json();
+				// 3. HATI-HATI STRUKTUR JSON GO LU
+				const body = await response.json();
+
+				// Kalau API lu balikin: { "data": { "id": 1, "permissions": [...] } }
+				// Lu harus pake body.data. Kalau langsung body, nanti crash di dashboard.
+				event.locals.user = body.data || body;
+
 				return resolve(event);
 			}
 		} catch (err) {
@@ -75,14 +95,14 @@ export async function handle({ event, resolve }) {
 		}
 	}
 
-	// 2. Kasus Access Token hilang/kosong tapi Refresh Token masih ada
 	if (!accessToken && refreshToken) {
 		const refreshed = await tryRefreshAndSync();
 		if (refreshed) {
 			try {
 				const response = await fetchProfile();
 				if (response.ok) {
-					event.locals.user = await response.json();
+					const body = await response.json();
+					event.locals.user = body.data || body;
 				}
 			} catch (err) {
 				console.log('Error after silent refresh:', err);
@@ -90,12 +110,9 @@ export async function handle({ event, resolve }) {
 		}
 	}
 
-	// Pastikan locals.user tidak undefined
 	event.locals.user = event.locals.user || null;
 
-	// Jika gagal semua, hapus cookies agar tidak loop
 	if (!event.locals.user && (accessToken || refreshToken)) {
-		// Optional: Hapus jika ingin benar-benar clean saat auth gagal
 		event.cookies.delete('access_token', { path: '/' });
 		event.cookies.delete('refresh_token', { path: '/' });
 	}

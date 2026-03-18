@@ -15,7 +15,7 @@ type SitusKeagamaanRequest struct {
 	NomorTelepon    string `json:"nomor_telepon" validate:"required"`
 	Email           string `json:"email"`
 	Website         string `json:"website"`
-	NomorBadanHukum string `json:"nomor_badan_hukum" validate:"required"`
+	NomorBadanHukum string `json:"nomor_badan_hukum"`
 	TahunBerdiri    int    `json:"tahun_berdiri" validate:"required"`
 
 	Provinsi      string `json:"provinsi" validate:"required"`
@@ -146,7 +146,7 @@ type SitusPublicDetailResponse struct {
 	FasilitasJSON []byte `json:"-" db:"fasilitas"`
 
 	Galeri    []string       `json:"galeri"`
-	Fasilitas map[string]any `json:"fasilitas"` // <-- Kuncinya di sini
+	Fasilitas map[string]any `json:"fasilitas"`
 }
 
 type PublicListFilter struct {
