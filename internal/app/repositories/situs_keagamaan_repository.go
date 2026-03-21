@@ -208,7 +208,7 @@ func (r *situsKeagamaanRepositoryImpl) Update(ctx context.Context, id uuid.UUID,
 			daya_tampung_max = $20,
 			detail = $21,
 			updated_at = CURRENT_TIMESTAMP
-		WHERE id = $22`
+		WHERE id = $22 AND status_verifikasi IN ('menunggu', 'ditolak')`
 
 	result, err := r.DB.ExecContext(ctx, query,
 		in.Nama,                 // $1
