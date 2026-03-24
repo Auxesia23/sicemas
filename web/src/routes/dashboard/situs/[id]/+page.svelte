@@ -88,11 +88,7 @@
 			const lng = Number(situs.longitude);
 
 			map = L.map(node, {
-				// Biarkan default Leaflet mengatur interaksinya (otomatis true)
-				// Kita hanya matikan scrollWheelZoom agar halaman tidak "nyangkut" saat user men-scroll ke bawah
 				scrollWheelZoom: false,
-
-				// Tampilkan kontrol zoom, tapi opsional
 				zoomControl: true,
 				attributionControl: false
 			}).setView([lat, lng], 15);
@@ -138,7 +134,6 @@
 	// Submit verification
 	async function submitVerifikasi(e) {
 		e.preventDefault();
-
 		if (isVerifying) return; // Prevent double submit
 
 		isVerifying = true;
@@ -154,8 +149,6 @@
 				toastType = 'success';
 				showToast = true;
 
-				// Reload halaman setelah delay agar toast terlihat
-				// Tombol tetap disabled karena isVerifying tidak di-false-kan di sini
 				setTimeout(() => {
 					location.reload();
 				}, 2000);
@@ -164,7 +157,7 @@
 				toastMessage = 'Gagal menyimpan verifikasi: ' + errText;
 				toastType = 'error';
 				showToast = true;
-				isVerifying = false; // Aktifkan tombol lagi jika gagal
+				isVerifying = false;
 
 				setTimeout(() => {
 					showToast = false;
@@ -175,24 +168,21 @@
 			toastMessage = 'Terjadi kesalahan sistem saat menyimpan verifikasi';
 			toastType = 'error';
 			showToast = true;
-			isVerifying = false; // Aktifkan tombol lagi jika error
+			isVerifying = false;
 
 			setTimeout(() => {
 				showToast = false;
 			}, 4000);
 		}
-		// Tidak ada finally block agar tombol tidak kembali enable saat sukses
 	}
 
-	// Go back to situs list
 	function goBack() {
 		goto('/dashboard/situs');
 	}
 
-	// Get status badge class
 	function getStatusBadgeClass(status) {
 		if (!status) return 'badge-ghost';
-		switch (status) {
+		switch (status.toLowerCase()) {
 			case 'terverifikasi':
 				return 'badge-success';
 			case 'ditolak':
@@ -265,7 +255,7 @@
 					</button>
 					<div>
 						<h1 class="text-2xl font-bold text-primary sm:text-3xl">{situs.nama}</h1>
-						<div class="mt-1 flex items-center gap-2">
+						<div class="mt-1 flex flex-wrap items-center gap-2">
 							<span class="badge badge-lg badge-primary">{situs.jenis_tipologi}</span>
 							<span class="badge badge-outline">{situs.jenis_situs}</span>
 							{#if situs.status_verifikasi}
@@ -285,13 +275,28 @@
 				<div class="card-body p-4 sm:p-6">
 					<h2 class="mb-4 card-title text-lg">Informasi Umum</h2>
 					<div class="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
+						<div class="sm:col-span-2 lg:col-span-3">
+							<p class="mb-1 text-xs font-medium text-base-content/70">Nomor Telepon Pengurus</p>
+							{#if situs.nomor_telpon_pengurus && situs.nomor_telpon_pengurus.length > 0}
+								<div class="flex flex-wrap gap-2">
+									{#each situs.nomor_telpon_pengurus as phone}
+										<span class="badge badge-outline badge-lg font-medium badge-primary"
+											>{phone}</span
+										>
+									{/each}
+								</div>
+							{:else}
+								<p class="font-medium">-</p>
+							{/if}
+						</div>
+
+						<div>
+							<p class="text-xs font-medium text-base-content/70">Nomor Telepon Instansi</p>
+							<p class="font-medium">{situs.nomor_telepon || '-'}</p>
+						</div>
 						<div>
 							<p class="text-xs font-medium text-base-content/70">Email</p>
 							<p class="font-medium">{situs.email || '-'}</p>
-						</div>
-						<div>
-							<p class="text-xs font-medium text-base-content/70">Nomor Telepon</p>
-							<p class="font-medium">{situs.nomor_telepon || '-'}</p>
 						</div>
 						<div>
 							<p class="text-xs font-medium text-base-content/70">Website</p>
@@ -499,9 +504,9 @@
 									/>
 									{#if verifyStatus === 'ditolak'}
 										<label for="verifySitusId" class="label">
-											<span class="label-text-alt text-error">
-												Tidak dapat diisi saat status ditolak
-											</span>
+											<span class="label-text-alt text-error"
+												>Tidak dapat diisi saat status ditolak</span
+											>
 										</label>
 									{/if}
 								</div>
@@ -510,8 +515,7 @@
 							<div class="flex justify-end gap-2">
 								<button type="submit" class="btn btn-primary" disabled={isVerifying}>
 									{#if isVerifying}
-										<span class="loading loading-spinner"></span>
-										Menyimpan...
+										<span class="loading loading-spinner"></span> Menyimpan...
 									{:else}
 										<svg
 											xmlns="http://www.w3.org/2000/svg"

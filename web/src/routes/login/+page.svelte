@@ -231,11 +231,6 @@
 										disabled={isLoading}
 										oninput={(e) => (nip = e.target.value.replace(/\D/g, ''))}
 									/>
-									<div class="label">
-										<span class="label-text-alt text-base-content/60"
-											>Contoh: 198501012010011001</span
-										>
-									</div>
 								</div>
 							{/if}
 

@@ -1,22 +1,24 @@
 <script>
-	// Svelte 5 Runes: Bindable prop for two-way binding with parent
-	let { detail = $bindable() } = $props();
+	// Tambahkan prop errors untuk menangkap pesan validasi dari parent
+	// Gunakan $bindable agar sinkronisasi data lancar
+	let { detail = $bindable(), errors = $bindable({}) } = $props();
 
-	// Local state for dynamic list inputs
+	// Local state for dynamic list inputs (Badge System)
 	let newJenisBuku = $state('');
 	let newNamaImam = $state('');
 	let newNamaMuazdin = $state('');
+	let newSekretaris = $state('');
+	let newBendahara = $state('');
 	let newFasilitasUmum = $state('');
 	let newFasilitasRamanAnak = $state('');
 	let newFasilitasDisabilitas = $state('');
 	let newKegiatan = $state('');
 
-	// Initialize detail object if not exists
 	function initDetail() {
 		detail = {
 			perpustakaan: {
-				luas_m2: null,
-				jumlah_pengurus: null,
+				luas_m2: 0,
+				jumlah_pengurus: 0,
 				kondisi: '',
 				jenis_buku: []
 			},
@@ -25,17 +27,17 @@
 				tanggal_kalibrasi: ''
 			},
 			sdm_masjid: {
-				jumlah_pengurus: null,
-				jumlah_imam: null,
-				jumlah_khotib: null,
-				jumlah_muadzin: null,
-				jumlah_remaja: null,
-				jumlah_jemaah: null
+				jumlah_pengurus: 0,
+				jumlah_imam: 0,
+				jumlah_khotib: 0,
+				jumlah_muadzin: 0,
+				jumlah_remaja: 0,
+				jumlah_jemaah: 0
 			},
 			pengurus_dkm: {
 				ketua: '',
-				sekretaris: '',
-				bendahara: '',
+				sekretaris: [],
+				bendahara: [],
 				nama_imam: [],
 				nama_muazdin: []
 			},
@@ -46,16 +48,21 @@
 		};
 	}
 
-	// Ensure detail is initialized
 	if (!detail?.perpustakaan) {
 		initDetail();
 	}
 
-	// Dynamic list helpers
-	function addToArray(array, value, clearInput = true) {
-		if (value.trim()) {
+	// Fix data lama jika sekretaris/bendahara masih berupa string
+	if (typeof detail.pengurus_dkm?.sekretaris === 'string')
+		detail.pengurus_dkm.sekretaris = [detail.pengurus_dkm.sekretaris].filter(Boolean);
+	if (typeof detail.pengurus_dkm?.bendahara === 'string')
+		detail.pengurus_dkm.bendahara = [detail.pengurus_dkm.bendahara].filter(Boolean);
+
+	// Helper penambah array (Badge)
+	function addToArray(array, value) {
+		if (value.trim() && !array.includes(value.trim())) {
 			array.push(value.trim());
-			if (clearInput) return '';
+			return ''; // Reset input field
 		}
 		return value;
 	}
@@ -64,39 +71,7 @@
 		array.splice(index, 1);
 	}
 
-	function addJenisBuku() {
-		newJenisBuku = addToArray(detail.perpustakaan?.jenis_buku, newJenisBuku, true);
-	}
-
-	function addNamaImam() {
-		newNamaImam = addToArray(detail.pengurus_dkm?.nama_imam, newNamaImam, true);
-	}
-
-	function addNamaMuazdin() {
-		newNamaMuazdin = addToArray(detail.pengurus_dkm?.nama_muazdin, newNamaMuazdin, true);
-	}
-
-	function addFasilitasUmum() {
-		newFasilitasUmum = addToArray(detail.fasilitas_umum, newFasilitasUmum, true);
-	}
-
-	function addFasilitasRamanAnak() {
-		newFasilitasRamanAnak = addToArray(detail.fasilitas_raman_anak, newFasilitasRamanAnak, true);
-	}
-
-	function addFasilitasDisabilitas() {
-		newFasilitasDisabilitas = addToArray(
-			detail.fasilitas_disabilitas,
-			newFasilitasDisabilitas,
-			true
-		);
-	}
-
-	function addKegiatan() {
-		newKegiatan = addToArray(detail.kegiatan, newKegiatan, true);
-	}
-
-	// Handle enter key for list inputs
+	// Event Handlers
 	function handleEnterKey(event, addFn) {
 		if (event.key === 'Enter') {
 			event.preventDefault();
@@ -104,68 +79,284 @@
 		}
 	}
 
-	// Helper functions for detail field bindings
-	function updatePerpustakaan(field, value) {
-		if (!detail.perpustakaan) initDetail();
-		detail.perpustakaan[field] = value;
-	}
-
-	function updateKalibrasi(field, value) {
-		if (!detail.kalibrasi_arah_kiblat) initDetail();
-		detail.kalibrasi_arah_kiblat[field] = value;
-	}
-
-	function updateSdm(field, value) {
-		if (!detail.sdm_masjid) initDetail();
-		detail.sdm_masjid[field] = value;
-	}
-
-	function updatePengurus(field, value) {
-		if (!detail.pengurus_dkm) initDetail();
-		detail.pengurus_dkm[field] = value;
+	// Fungsi pembantu untuk hapus error saat mengetik
+	function clearError(parent, child) {
+		if (errors?.[parent]?.[child]) {
+			errors[parent][child] = null;
+		}
 	}
 </script>
 
-<!-- Perpustakaan -->
-<div class="card bg-base-100 shadow-md sm:shadow-xl">
+<div class="card mt-4 bg-base-100 shadow-md sm:shadow-xl">
+	<div class="card-body p-4 sm:p-5">
+		<h2 class="mb-3 card-title text-base text-primary sm:text-lg">
+			SDM Masjid <span class="text-error">*</span>
+		</h2>
+		{#if errors?.sdm_masjid && typeof errors.sdm_masjid === 'string'}
+			<div class="mb-2 text-sm text-error">{errors.sdm_masjid}</div>
+		{/if}
+		<div class="grid grid-cols-2 gap-2 sm:grid-cols-3 sm:gap-4">
+			{#each [{ id: 'pengurus', label: 'Jml Pengurus', path: 'jumlah_pengurus' }, { id: 'imam', label: 'Jml Imam', path: 'jumlah_imam' }, { id: 'khotib', label: 'Jml Khotib', path: 'jumlah_khotib' }, { id: 'muadzin', label: 'Jml Muadzin', path: 'jumlah_muadzin' }, { id: 'remaja', label: 'Jml Remaja', path: 'jumlah_remaja' }, { id: 'jemaah', label: 'Jml Jemaah', path: 'jumlah_jemaah' }] as item}
+				<div class="form-control">
+					<label class="label" for="sdm_{item.id}">
+						<span class="label-text font-medium"
+							>{item.label} <span class="text-error">*</span></span
+						>
+					</label>
+					<input
+						id="sdm_{item.id}"
+						type="number"
+						min="0"
+						class="input-bordered input min-h-11 w-full {errors?.sdm_masjid?.[item.path]
+							? 'input-error'
+							: ''}"
+						bind:value={detail.sdm_masjid[item.path]}
+						oninput={() => clearError('sdm_masjid', item.path)}
+					/>
+					{#if errors?.sdm_masjid?.[item.path]}
+						<span class="mt-1 text-[10px] text-error">{errors.sdm_masjid[item.path]}</span>
+					{/if}
+				</div>
+			{/each}
+		</div>
+	</div>
+</div>
+
+<div class="card mt-4 bg-base-100 shadow-md sm:shadow-xl">
+	<div class="card-body p-4 sm:p-5">
+		<h2 class="mb-3 card-title text-base text-primary sm:text-lg">
+			Pengurus DKM <span class="text-error">*</span>
+		</h2>
+
+		<div class="form-control mb-4">
+			<label class="label" for="pengurus_ketua">
+				<span class="label-text font-medium">Nama Ketua DKM <span class="text-error">*</span></span>
+			</label>
+			<input
+				id="pengurus_ketua"
+				type="text"
+				class="input-bordered input min-h-11 w-full {errors?.pengurus_dkm?.ketua
+					? 'input-error'
+					: ''}"
+				bind:value={detail.pengurus_dkm.ketua}
+				oninput={() => clearError('pengurus_dkm', 'ketua')}
+			/>
+			{#if errors?.pengurus_dkm?.ketua}<span class="mt-1 text-xs text-error"
+					>{errors.pengurus_dkm.ketua}</span
+				>{/if}
+		</div>
+
+		<div class="grid grid-cols-1 gap-4 sm:grid-cols-2">
+			<div class="form-control">
+				<label class="label" for="sek_in"
+					><span class="label-text font-medium">Sekretaris <span class="text-error">*</span></span
+					></label
+				>
+				<div class="flex gap-2">
+					<input
+						id="sek_in"
+						type="text"
+						class="input-bordered input flex-1 {errors?.pengurus_dkm?.sekretaris
+							? 'input-error'
+							: ''}"
+						placeholder="Tambah Sekretaris..."
+						bind:value={newSekretaris}
+						onkeydown={(e) =>
+							handleEnterKey(
+								e,
+								() => (newSekretaris = addToArray(detail.pengurus_dkm.sekretaris, newSekretaris))
+							)}
+					/>
+					<button
+						type="button"
+						class="btn btn-secondary"
+						onclick={() =>
+							(newSekretaris = addToArray(detail.pengurus_dkm.sekretaris, newSekretaris))}
+						>Tambah</button
+					>
+				</div>
+				<div class="mt-2 flex flex-wrap gap-2">
+					{#each detail.pengurus_dkm.sekretaris as p, i}
+						<div class="badge h-8 gap-2 text-white badge-info">
+							{p}<button
+								type="button"
+								onclick={() => removeFromArray(detail.pengurus_dkm.sekretaris, i)}>✕</button
+							>
+						</div>
+					{/each}
+				</div>
+				{#if errors?.pengurus_dkm?.sekretaris}<span class="mt-1 text-xs text-error"
+						>{errors.pengurus_dkm.sekretaris}</span
+					>{/if}
+			</div>
+
+			<div class="form-control">
+				<label class="label" for="ben_in"
+					><span class="label-text font-medium">Bendahara <span class="text-error">*</span></span
+					></label
+				>
+				<div class="flex gap-2">
+					<input
+						id="ben_in"
+						type="text"
+						class="input-bordered input flex-1 {errors?.pengurus_dkm?.bendahara
+							? 'input-error'
+							: ''}"
+						placeholder="Tambah Bendahara..."
+						bind:value={newBendahara}
+						onkeydown={(e) =>
+							handleEnterKey(
+								e,
+								() => (newBendahara = addToArray(detail.pengurus_dkm.bendahara, newBendahara))
+							)}
+					/>
+					<button
+						type="button"
+						class="btn btn-secondary"
+						onclick={() => (newBendahara = addToArray(detail.pengurus_dkm.bendahara, newBendahara))}
+						>Tambah</button
+					>
+				</div>
+				<div class="mt-2 flex flex-wrap gap-2">
+					{#each detail.pengurus_dkm.bendahara as p, i}
+						<div class="badge h-8 gap-2 badge-warning">
+							{p}<button
+								type="button"
+								onclick={() => removeFromArray(detail.pengurus_dkm.bendahara, i)}>✕</button
+							>
+						</div>
+					{/each}
+				</div>
+				{#if errors?.pengurus_dkm?.bendahara}<span class="mt-1 text-xs text-error"
+						>{errors.pengurus_dkm.bendahara}</span
+					>{/if}
+			</div>
+		</div>
+
+		<div class="mt-4 grid grid-cols-1 gap-4 sm:grid-cols-2">
+			<div class="form-control">
+				<label class="label" for="imam_in"
+					><span class="label-text font-medium">Nama Imam <span class="text-error">*</span></span
+					></label
+				>
+				<div class="flex gap-2">
+					<input
+						id="imam_in"
+						type="text"
+						class="input-bordered input flex-1 {errors?.pengurus_dkm?.nama_imam
+							? 'input-error'
+							: ''}"
+						bind:value={newNamaImam}
+						onkeydown={(e) =>
+							handleEnterKey(
+								e,
+								() => (newNamaImam = addToArray(detail.pengurus_dkm.nama_imam, newNamaImam))
+							)}
+					/>
+					<button
+						type="button"
+						class="btn btn-secondary"
+						onclick={() => (newNamaImam = addToArray(detail.pengurus_dkm.nama_imam, newNamaImam))}
+						>Tambah</button
+					>
+				</div>
+				<div class="mt-2 flex flex-wrap gap-2">
+					{#each detail.pengurus_dkm.nama_imam as p, i}
+						<div class="badge h-8 gap-2 badge-primary">
+							{p}<button
+								type="button"
+								onclick={() => removeFromArray(detail.pengurus_dkm.nama_imam, i)}>✕</button
+							>
+						</div>
+					{/each}
+				</div>
+				{#if errors?.pengurus_dkm?.nama_imam}<span class="mt-1 text-xs text-error"
+						>{errors.pengurus_dkm.nama_imam}</span
+					>{/if}
+			</div>
+
+			<div class="form-control">
+				<label class="label" for="mua_in"
+					><span class="label-text font-medium">Nama Muadzin <span class="text-error">*</span></span
+					></label
+				>
+				<div class="flex gap-2">
+					<input
+						id="mua_in"
+						type="text"
+						class="input-bordered input flex-1 {errors?.pengurus_dkm?.nama_muazdin
+							? 'input-error'
+							: ''}"
+						bind:value={newNamaMuazdin}
+						onkeydown={(e) =>
+							handleEnterKey(
+								e,
+								() =>
+									(newNamaMuazdin = addToArray(detail.pengurus_dkm.nama_muazdin, newNamaMuazdin))
+							)}
+					/>
+					<button
+						type="button"
+						class="btn btn-secondary"
+						onclick={() =>
+							(newNamaMuazdin = addToArray(detail.pengurus_dkm.nama_muazdin, newNamaMuazdin))}
+						>Tambah</button
+					>
+				</div>
+				<div class="mt-2 flex flex-wrap gap-2">
+					{#each detail.pengurus_dkm.nama_muazdin as p, i}
+						<div class="badge h-8 gap-2 badge-primary">
+							{p}<button
+								type="button"
+								onclick={() => removeFromArray(detail.pengurus_dkm.nama_muazdin, i)}>✕</button
+							>
+						</div>
+					{/each}
+				</div>
+				{#if errors?.pengurus_dkm?.nama_muazdin}<span class="mt-1 text-xs text-error"
+						>{errors.pengurus_dkm.nama_muazdin}</span
+					>{/if}
+			</div>
+		</div>
+	</div>
+</div>
+
+<div class="card mt-4 bg-base-100 shadow-md sm:shadow-xl">
 	<div class="card-body p-4 sm:p-5">
 		<h2 class="mb-3 card-title text-base sm:text-lg">Perpustakaan</h2>
 		<div class="grid grid-cols-2 gap-2 sm:grid-cols-3 sm:gap-4">
 			<div class="form-control">
-				<label class="label" for="perpustakaan_luas_m2">
-					<span class="label-text font-medium">Luas (m²)</span>
-				</label>
+				<label class="label" for="perpustakaan_luas_m2"
+					><span class="label-text font-medium">Luas (m²)</span></label
+				>
 				<input
 					id="perpustakaan_luas_m2"
 					type="number"
 					min="0"
-					class="input-bordered input min-h-11 w-full"
-					value={detail.perpustakaan?.luas_m2 ?? ''}
-					oninput={(e) => updatePerpustakaan('luas_m2', e.target.valueAsNumber || null)}
+					class="input-bordered input w-full"
+					bind:value={detail.perpustakaan.luas_m2}
 				/>
 			</div>
 			<div class="form-control">
-				<label class="label" for="perpustakaan_jumlah_pengurus">
-					<span class="label-text font-medium">Jml. Pengurus</span>
-				</label>
+				<label class="label" for="perpustakaan_jumlah_pengurus"
+					><span class="label-text font-medium">Jml. Pengurus</span></label
+				>
 				<input
 					id="perpustakaan_jumlah_pengurus"
 					type="number"
 					min="0"
-					class="input-bordered input min-h-11 w-full"
-					value={detail.perpustakaan?.jumlah_pengurus ?? ''}
-					oninput={(e) => updatePerpustakaan('jumlah_pengurus', e.target.valueAsNumber || null)}
+					class="input-bordered input w-full"
+					bind:value={detail.perpustakaan.jumlah_pengurus}
 				/>
 			</div>
 			<div class="form-control col-span-2 sm:col-span-1">
-				<label class="label" for="perpustakaan_kondisi">
-					<span class="label-text font-medium">Kondisi</span>
-				</label>
+				<label class="label" for="perpustakaan_kondisi"
+					><span class="label-text font-medium">Kondisi</span></label
+				>
 				<select
 					id="perpustakaan_kondisi"
-					class="select-bordered select min-h-11 w-full"
-					value={detail.perpustakaan?.kondisi ?? ''}
-					oninput={(e) => updatePerpustakaan('kondisi', e.target.value)}
+					class="select-bordered select w-full"
+					bind:value={detail.perpustakaan.kondisi}
 				>
 					<option value="">Pilih...</option>
 					<option value="Baik">Baik</option>
@@ -176,35 +367,37 @@
 			</div>
 		</div>
 
-		<!-- Jenis Buku List -->
-		<div class="mt-3 sm:mt-4">
-			<label class="label" for="jenis_buku_input">
-				<span class="label-text font-medium">Jenis Buku</span>
-			</label>
-			<div class="mb-2 flex flex-col gap-2 sm:flex-row">
+		<div class="mt-4">
+			<label class="label" for="jenis_buku_input"
+				><span class="label-text font-medium">Jenis Buku</span></label
+			>
+			<div class="mb-2 flex gap-2">
 				<input
 					id="jenis_buku_input"
 					type="text"
-					class="input-bordered input min-h-11 flex-1"
+					class="input-bordered input flex-1"
 					placeholder="Tambah jenis buku..."
 					bind:value={newJenisBuku}
-					onkeydown={(e) => handleEnterKey(e, addJenisBuku)}
+					onkeydown={(e) =>
+						handleEnterKey(
+							e,
+							() => (newJenisBuku = addToArray(detail.perpustakaan.jenis_buku, newJenisBuku))
+						)}
 				/>
-				<button type="button" class="btn min-h-11 btn-secondary" onclick={addJenisBuku}>
-					Tambah
-				</button>
+				<button
+					type="button"
+					class="btn btn-secondary"
+					onclick={() => (newJenisBuku = addToArray(detail.perpustakaan.jenis_buku, newJenisBuku))}
+					>Tambah</button
+				>
 			</div>
 			<div class="flex flex-wrap gap-2">
-				{#each detail.perpustakaan?.jenis_buku || [] as buku, index (index)}
-					<div class="badge min-h-8 gap-2 badge-primary">
-						{buku}
-						<button
+				{#each detail.perpustakaan.jenis_buku as buku, index}
+					<div class="badge h-8 gap-2 badge-primary">
+						{buku}<button
 							type="button"
-							class="btn btn-ghost btn-xs"
-							onclick={() => removeFromArray(detail.perpustakaan.jenis_buku, index)}
+							onclick={() => removeFromArray(detail.perpustakaan.jenis_buku, index)}>✕</button
 						>
-							✕
-						</button>
 					</div>
 				{/each}
 			</div>
@@ -212,384 +405,145 @@
 	</div>
 </div>
 
-<!-- Kalibrasi Arah Kiblat -->
-<div class="card bg-base-100 shadow-md sm:shadow-xl">
+<div class="card mt-4 bg-base-100 shadow-md sm:shadow-xl">
 	<div class="card-body p-4 sm:p-5">
 		<h2 class="mb-3 card-title text-base sm:text-lg">Kalibrasi Kiblat</h2>
 		<div class="grid grid-cols-1 gap-3 sm:grid-cols-2 sm:gap-4">
 			<div class="form-control">
-				<label class="label" for="kalibrasi_azimut">
-					<span class="label-text font-medium">Azimut</span>
-				</label>
+				<label class="label" for="kalibrasi_azimut"
+					><span class="label-text font-medium">Azimut</span></label
+				>
 				<input
 					id="kalibrasi_azimut"
 					type="text"
-					class="input-bordered input min-h-11 w-full"
+					class="input-bordered input w-full"
 					placeholder="295.12"
-					value={detail.kalibrasi_arah_kiblat?.azimut ?? ''}
-					oninput={(e) => updateKalibrasi('azimut', e.target.value)}
+					bind:value={detail.kalibrasi_arah_kiblat.azimut}
 				/>
 			</div>
 			<div class="form-control">
-				<label class="label" for="kalibrasi_tanggal">
-					<span class="label-text font-medium">Tanggal</span>
-				</label>
+				<label class="label" for="kalibrasi_tanggal"
+					><span class="label-text font-medium">Tanggal Kalibrasi</span></label
+				>
 				<input
 					id="kalibrasi_tanggal"
 					type="date"
-					class="input-bordered input min-h-11 w-full"
-					value={detail.kalibrasi_arah_kiblat?.tanggal_kalibrasi ?? ''}
-					oninput={(e) => updateKalibrasi('tanggal_kalibrasi', e.target.value)}
+					class="input-bordered input w-full"
+					bind:value={detail.kalibrasi_arah_kiblat.tanggal_kalibrasi}
 				/>
 			</div>
 		</div>
 	</div>
 </div>
 
-<!-- SDM Masjid -->
-<div class="card bg-base-100 shadow-md sm:shadow-xl">
+<div class="card mt-4 bg-base-100 shadow-md sm:shadow-xl">
 	<div class="card-body p-4 sm:p-5">
-		<h2 class="mb-3 card-title text-base sm:text-lg">SDM Masjid</h2>
-		<div class="grid grid-cols-2 gap-2 sm:grid-cols-3 sm:gap-4">
-			<div class="form-control">
-				<label class="label" for="sdm_jumlah_pengurus">
-					<span class="label-text font-medium">Pengurus</span>
-				</label>
-				<input
-					id="sdm_jumlah_pengurus"
-					type="number"
-					min="0"
-					class="input-bordered input min-h-11 w-full"
-					value={detail.sdm_masjid?.jumlah_pengurus ?? ''}
-					oninput={(e) => updateSdm('jumlah_pengurus', e.target.valueAsNumber || null)}
-				/>
-			</div>
-			<div class="form-control">
-				<label class="label" for="sdm_jumlah_imam">
-					<span class="label-text font-medium">Imam</span>
-				</label>
-				<input
-					id="sdm_jumlah_imam"
-					type="number"
-					min="0"
-					class="input-bordered input min-h-11 w-full"
-					value={detail.sdm_masjid?.jumlah_imam ?? ''}
-					oninput={(e) => updateSdm('jumlah_imam', e.target.valueAsNumber || null)}
-				/>
-			</div>
-			<div class="form-control">
-				<label class="label" for="sdm_jumlah_khotib">
-					<span class="label-text font-medium">Khotib</span>
-				</label>
-				<input
-					id="sdm_jumlah_khotib"
-					type="number"
-					min="0"
-					class="input-bordered input min-h-11 w-full"
-					value={detail.sdm_masjid?.jumlah_khotib ?? ''}
-					oninput={(e) => updateSdm('jumlah_khotib', e.target.valueAsNumber || null)}
-				/>
-			</div>
-			<div class="form-control">
-				<label class="label" for="sdm_jumlah_muadzin">
-					<span class="label-text font-medium">Muadzin</span>
-				</label>
-				<input
-					id="sdm_jumlah_muadzin"
-					type="number"
-					min="0"
-					class="input-bordered input min-h-11 w-full"
-					value={detail.sdm_masjid?.jumlah_muadzin ?? ''}
-					oninput={(e) => updateSdm('jumlah_muadzin', e.target.valueAsNumber || null)}
-				/>
-			</div>
-			<div class="form-control">
-				<label class="label" for="sdm_jumlah_remaja">
-					<span class="label-text font-medium">Remaja</span>
-				</label>
-				<input
-					id="sdm_jumlah_remaja"
-					type="number"
-					min="0"
-					class="input-bordered input min-h-11 w-full"
-					value={detail.sdm_masjid?.jumlah_remaja ?? ''}
-					oninput={(e) => updateSdm('jumlah_remaja', e.target.valueAsNumber || null)}
-				/>
-			</div>
-			<div class="form-control">
-				<label class="label" for="sdm_jumlah_jemaah">
-					<span class="label-text font-medium">Jemaah</span>
-				</label>
-				<input
-					id="sdm_jumlah_jemaah"
-					type="number"
-					class="input-bordered input min-h-11 w-full"
-					value={detail.sdm_masjid?.jumlah_jemaah ?? ''}
-					oninput={(e) => updateSdm('jumlah_jemaah', e.target.valueAsNumber || null)}
-				/>
-			</div>
-		</div>
-	</div>
-</div>
+		<h2 class="mb-3 card-title text-base sm:text-lg">Fasilitas & Kegiatan</h2>
 
-<!-- Pengurus DKM -->
-<div class="card bg-base-100 shadow-md sm:shadow-xl">
-	<div class="card-body p-4 sm:p-5">
-		<h2 class="mb-3 card-title text-base sm:text-lg">Pengurus DKM</h2>
-		<div class="mb-3 grid grid-cols-1 gap-3 sm:mb-4 sm:grid-cols-3 sm:gap-4">
-			<div class="form-control">
-				<label class="label" for="pengurus_ketua">
-					<span class="label-text font-medium">Ketua</span>
-				</label>
+		<div class="mb-4">
+			<label class="label" for="fu_in"
+				><span class="label-text font-medium">Fasilitas Umum</span></label
+			>
+			<div class="mb-2 flex gap-2">
 				<input
-					id="pengurus_ketua"
+					id="fu_in"
 					type="text"
-					class="input-bordered input min-h-11 w-full"
-					value={detail.pengurus_dkm?.ketua ?? ''}
-					oninput={(e) => updatePengurus('ketua', e.target.value)}
-				/>
-			</div>
-			<div class="form-control">
-				<label class="label" for="pengurus_sekretaris">
-					<span class="label-text font-medium">Sekretaris</span>
-				</label>
-				<input
-					id="pengurus_sekretaris"
-					type="text"
-					class="input-bordered input min-h-11 w-full"
-					value={detail.pengurus_dkm?.sekretaris ?? ''}
-					oninput={(e) => updatePengurus('sekretaris', e.target.value)}
-				/>
-			</div>
-			<div class="form-control">
-				<label class="label" for="pengurus_bendahara">
-					<span class="label-text font-medium">Bendahara</span>
-				</label>
-				<input
-					id="pengurus_bendahara"
-					type="text"
-					class="input-bordered input min-h-11 w-full"
-					value={detail.pengurus_dkm?.bendahara ?? ''}
-					oninput={(e) => updatePengurus('bendahara', e.target.value)}
-				/>
-			</div>
-		</div>
-
-		<!-- Nama Imam List -->
-		<div class="mb-3 sm:mb-4">
-			<label class="label" for="nama_imam_input">
-				<span class="label-text font-medium">Nama Imam</span>
-			</label>
-			<div class="mb-2 flex flex-col gap-2 sm:flex-row">
-				<input
-					id="nama_imam_input"
-					type="text"
-					class="input-bordered input min-h-11 flex-1"
-					placeholder="Tambah nama imam..."
-					bind:value={newNamaImam}
-					onkeydown={(e) => handleEnterKey(e, addNamaImam)}
-				/>
-				<button type="button" class="btn min-h-11 btn-secondary" onclick={addNamaImam}>
-					Tambah
-				</button>
-			</div>
-			<div class="flex flex-wrap gap-2">
-				{#each detail.pengurus_dkm?.nama_imam || [] as imam, index (index)}
-					<div class="badge min-h-8 gap-2 badge-primary">
-						{imam}
-						<button
-							type="button"
-							class="btn btn-ghost btn-xs"
-							onclick={() => removeFromArray(detail.pengurus_dkm.nama_imam, index)}
-						>
-							✕
-						</button>
-					</div>
-				{/each}
-			</div>
-		</div>
-
-		<!-- Nama Muazdin List -->
-		<div class="mb-3 sm:mb-4">
-			<label class="label" for="nama_muazdin_input">
-				<span class="label-text font-medium">Nama Muazdin</span>
-			</label>
-			<div class="mb-2 flex flex-col gap-2 sm:flex-row">
-				<input
-					id="nama_muazdin_input"
-					type="text"
-					class="input-bordered input min-h-11 flex-1"
-					placeholder="Tambah nama muazdin..."
-					bind:value={newNamaMuazdin}
-					onkeydown={(e) => handleEnterKey(e, addNamaMuazdin)}
-				/>
-				<button type="button" class="btn min-h-11 btn-secondary" onclick={addNamaMuazdin}>
-					Tambah
-				</button>
-			</div>
-			<div class="flex flex-wrap gap-2">
-				{#each detail.pengurus_dkm?.nama_muazdin || [] as muazdin, index (index)}
-					<div class="badge min-h-8 gap-2 badge-primary">
-						{muazdin}
-						<button
-							type="button"
-							class="btn btn-ghost btn-xs"
-							onclick={() => removeFromArray(detail.pengurus_dkm.nama_muazdin, index)}
-						>
-							✕
-						</button>
-					</div>
-				{/each}
-			</div>
-		</div>
-	</div>
-</div>
-
-<!-- Fasilitas -->
-<div class="card bg-base-100 shadow-md sm:shadow-xl">
-	<div class="card-body p-4 sm:p-5">
-		<h2 class="mb-3 card-title text-base sm:text-lg">Fasilitas</h2>
-
-		<!-- Fasilitas Umum -->
-		<div class="mb-3 sm:mb-4">
-			<label class="label" for="fasilitas_umum_input">
-				<span class="label-text font-medium">Fasilitas Umum</span>
-			</label>
-			<div class="mb-2 flex flex-col gap-2 sm:flex-row">
-				<input
-					id="fasilitas_umum_input"
-					type="text"
-					class="input-bordered input min-h-11 flex-1"
-					placeholder="Tambah fasilitas..."
+					class="input-bordered input flex-1"
+					placeholder="Contoh: Area Parkir"
 					bind:value={newFasilitasUmum}
-					onkeydown={(e) => handleEnterKey(e, addFasilitasUmum)}
+					onkeydown={(e) =>
+						handleEnterKey(
+							e,
+							() => (newFasilitasUmum = addToArray(detail.fasilitas_umum, newFasilitasUmum))
+						)}
 				/>
-				<button type="button" class="btn min-h-11 btn-secondary" onclick={addFasilitasUmum}>
-					Tambah
-				</button>
+				<button
+					type="button"
+					class="btn btn-secondary"
+					onclick={() => (newFasilitasUmum = addToArray(detail.fasilitas_umum, newFasilitasUmum))}
+					>Tambah</button
+				>
 			</div>
 			<div class="flex flex-wrap gap-2">
-				{#each detail.fasilitas_umum || [] as fasilitas, index (index)}
-					<div class="badge min-h-8 gap-2 badge-secondary">
-						{fasilitas}
-						<button
-							type="button"
-							class="btn btn-ghost btn-xs"
-							onclick={() => removeFromArray(detail.fasilitas_umum, index)}
+				{#each detail.fasilitas_umum as f, i}
+					<div class="badge h-8 gap-2 badge-secondary">
+						{f}<button type="button" onclick={() => removeFromArray(detail.fasilitas_umum, i)}
+							>✕</button
 						>
-							✕
-						</button>
 					</div>
 				{/each}
 			</div>
 		</div>
 
-		<!-- Fasilitas Ramah Anak -->
-		<div class="mb-3 sm:mb-4">
-			<label class="label" for="fasilitas_raman_anak_input">
-				<span class="label-text font-medium">Fasilitas Anak</span>
-			</label>
-			<div class="mb-2 flex flex-col gap-2 sm:flex-row">
+		<div class="mb-4">
+			<label class="label" for="fra_in"
+				><span class="label-text font-medium">Fasilitas Ramah Anak</span></label
+			>
+			<div class="mb-2 flex gap-2">
 				<input
-					id="fasilitas_raman_anak_input"
+					id="fra_in"
 					type="text"
-					class="input-bordered input min-h-11 flex-1"
-					placeholder="Tambah fasilitas..."
+					class="input-bordered input flex-1"
+					placeholder="Contoh: Ruang Bermain"
 					bind:value={newFasilitasRamanAnak}
-					onkeydown={(e) => handleEnterKey(e, addFasilitasRamanAnak)}
+					onkeydown={(e) =>
+						handleEnterKey(
+							e,
+							() =>
+								(newFasilitasRamanAnak = addToArray(
+									detail.fasilitas_raman_anak,
+									newFasilitasRamanAnak
+								))
+						)}
 				/>
-				<button type="button" class="btn min-h-11 btn-secondary" onclick={addFasilitasRamanAnak}>
-					Tambah
-				</button>
+				<button
+					type="button"
+					class="btn btn-secondary"
+					onclick={() =>
+						(newFasilitasRamanAnak = addToArray(
+							detail.fasilitas_raman_anak,
+							newFasilitasRamanAnak
+						))}>Tambah</button
+				>
 			</div>
 			<div class="flex flex-wrap gap-2">
-				{#each detail.fasilitas_raman_anak || [] as fasilitas, index (index)}
-					<div class="badge min-h-8 gap-2 badge-accent">
-						{fasilitas}
-						<button
-							type="button"
-							class="btn btn-ghost btn-xs"
-							onclick={() => removeFromArray(detail.fasilitas_raman_anak, index)}
+				{#each detail.fasilitas_raman_anak as f, i}
+					<div class="badge h-8 gap-2 badge-accent">
+						{f}<button type="button" onclick={() => removeFromArray(detail.fasilitas_raman_anak, i)}
+							>✕</button
 						>
-							✕
-						</button>
 					</div>
 				{/each}
 			</div>
 		</div>
 
-		<!-- Fasilitas Disabilitas -->
-		<div class="mb-3 sm:mb-4">
-			<label class="label" for="fasilitas_disabilitas_input">
-				<span class="label-text font-medium">Fasilitas Disabilitas</span>
-			</label>
-			<div class="mb-2 flex flex-col gap-2 sm:flex-row">
+		<div>
+			<label class="label" for="keg_in"
+				><span class="label-text font-medium">Kegiatan Rutin</span></label
+			>
+			<div class="mb-2 flex gap-2">
 				<input
-					id="fasilitas_disabilitas_input"
+					id="keg_in"
 					type="text"
-					class="input-bordered input min-h-11 flex-1"
-					placeholder="Tambah fasilitas..."
-					bind:value={newFasilitasDisabilitas}
-					onkeydown={(e) => handleEnterKey(e, addFasilitasDisabilitas)}
+					class="input-bordered input flex-1"
+					placeholder="Contoh: Pengajian Mingguan"
+					bind:value={newKegiatan}
+					onkeydown={(e) =>
+						handleEnterKey(e, () => (newKegiatan = addToArray(detail.kegiatan, newKegiatan)))}
 				/>
-				<button type="button" class="btn min-h-11 btn-secondary" onclick={addFasilitasDisabilitas}>
-					Tambah
-				</button>
+				<button
+					type="button"
+					class="btn btn-secondary"
+					onclick={() => (newKegiatan = addToArray(detail.kegiatan, newKegiatan))}>Tambah</button
+				>
 			</div>
 			<div class="flex flex-wrap gap-2">
-				{#each detail.fasilitas_disabilitas || [] as fasilitas, index (index)}
-					<div class="badge min-h-8 gap-2 badge-outline">
-						{fasilitas}
-						<button
-							type="button"
-							class="btn btn-ghost btn-xs"
-							onclick={() => removeFromArray(detail.fasilitas_disabilitas, index)}
-						>
-							✕
-						</button>
+				{#each detail.kegiatan as k, i}
+					<div class="badge h-8 gap-2 badge-success">
+						{k}<button type="button" onclick={() => removeFromArray(detail.kegiatan, i)}>✕</button>
 					</div>
 				{/each}
-				{#if detail.fasilitas_disabilitas?.length === 0}
-					<span class="text-sm text-base-content/50">Belum ada fasilitas disabilitas</span>
-				{/if}
 			</div>
-		</div>
-	</div>
-</div>
-
-<!-- Kegiatan -->
-<div class="card bg-base-100 shadow-md sm:shadow-xl">
-	<div class="card-body p-4 sm:p-5">
-		<h2 class="mb-3 card-title text-base sm:text-lg">Kegiatan</h2>
-		<div class="mb-2 flex flex-col gap-2 sm:flex-row">
-			<label class="label" for="kegiatan_input">
-				<span class="label-text font-medium">Tambah Kegiatan</span>
-			</label>
-			<input
-				id="kegiatan_input"
-				type="text"
-				class="input-bordered input min-h-11 flex-1"
-				placeholder="Tambah kegiatan..."
-				bind:value={newKegiatan}
-				onkeydown={(e) => handleEnterKey(e, addKegiatan)}
-			/>
-			<button type="button" class="btn min-h-11 btn-secondary" onclick={addKegiatan}>
-				Tambah
-			</button>
-		</div>
-		<div class="flex flex-wrap gap-2">
-			{#each detail.kegiatan || [] as kegiatan, index (index)}
-				<div class="badge min-h-8 gap-2 badge-success">
-					{kegiatan}
-					<button
-						type="button"
-						class="btn btn-ghost btn-xs"
-						onclick={() => removeFromArray(detail.kegiatan, index)}
-					>
-						✕
-					</button>
-				</div>
-			{/each}
 		</div>
 	</div>
 </div>

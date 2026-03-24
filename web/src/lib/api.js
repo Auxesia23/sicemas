@@ -194,7 +194,11 @@ class ApiService {
 		try {
 			const res = await fetch(`${config.apiUrl}/auth/refresh`, {
 				method: 'POST',
-				credentials: 'include'
+				credentials: 'include',
+				headers: {
+					'X-Device-Id': this.deviceId,
+					Accept: 'application/json'
+				}
 			});
 
 			if (res.ok) {
@@ -203,8 +207,6 @@ class ApiService {
 		} catch (e) {
 			console.error('Refresh token failed', e);
 		}
-
-		window.location.reload();
 		return false;
 	}
 

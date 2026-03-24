@@ -11,49 +11,139 @@
 	import Toast from '$lib/components/ui/Toast.svelte';
 	import ConfirmModal from '$lib/components/ui/ConfirmModal.svelte';
 
-	let { data } = $props();
-	let user = $derived(data.user);
+	import { z } from 'zod';
 
-	// State for form data (no jenis_situs_id anymore)
+	let { data } = $props();
+
 	let formData = $state({
+		jenis_situs_id: '',
 		nama: '',
 		jenis_tipologi: '',
 		nomor_telepon: '',
+		nomor_telpon_pengurus: [],
 		email: '',
 		website: '',
 		nomor_badan_hukum: '',
-		tahun_berdiri: '',
+		tahun_berdiri: 2024, // Default tahun
 		provinsi: 'Jawa Barat',
 		kabupaten_kota: 'Kab. Sukabumi',
 		kecamatan: 'Ciemas',
 		desa: '',
 		alamat_lengkap: '',
-		latitude: null,
+		latitude: null, // Khusus koordinat biarkan null dulu biar divalidasi peta
 		longitude: null,
-		luas_tanah: null,
-		luas_bangunan: null,
+		luas_tanah: 0, // Default 0
+		luas_bangunan: 0, // Default 0
 		status_tanah: '',
 		nomor_aiw: '',
 		nomor_sertifikat_wakaf: '',
-		daya_tampung_max: null,
+		daya_tampung_max: 0, // Default 0
 		detail: {}
 	});
+	let validationErrors = $state({});
 
-	// Simple state for jenis situs name (direct string from backend)
+	const detailPesantrenSchema = z.object({
+		nama_yayasan: z.string().min(1, 'Nama Yayasan wajib diisi'),
+		pimpinan_pesantren: z.string().min(1, 'Nama Pimpinan wajib diisi'),
+		kepengurusan: z.object({
+			ketua: z.string().min(1, 'Ketua wajib diisi'),
+			sekretaris: z.array(z.string()).min(1, 'Minimal 1 sekretaris wajib'),
+			bendahara: z.array(z.string()).min(1, 'Minimal 1 bendahara wajib')
+		}),
+		santri: z.object({
+			mondok: z.object({ pria: z.number().min(0), wanita: z.number().min(0) }),
+			tidak_mondok: z.object({ pria: z.number().min(0), wanita: z.number().min(0) }),
+			total: z.object({ pria: z.number().min(0), wanita: z.number().min(0) })
+		})
+	});
+
+	const detailMTSchema = z.object({
+		pengurus: z.object({
+			ketua: z.string().min(1, 'Ketua wajib diisi'),
+			sekretaris: z.array(z.string()).min(1, 'Minimal 1 sekretaris'),
+			bendahara: z.array(z.string()).min(1, 'Minimal 1 bendahara')
+		}),
+		penceramah: z
+			.array(
+				z.object({
+					nama: z.string().min(1),
+					materi: z.string().min(1)
+				})
+			)
+			.min(1, 'Minimal 1 penceramah wajib')
+	});
+
+	const detailMusholaSchema = z.object({
+		sdm_masjid: z.object({
+			jumlah_imam: z.number().min(1, 'Jumlah imam wajib diisi'),
+			jumlah_muadzin: z.number().min(1, 'Jumlah muadzin wajib diisi'),
+			jumlah_jemaah: z.number().min(1, 'Jumlah jemaah wajib diisi')
+		}),
+		nama_imam: z.array(z.string()).min(1, 'Minimal 1 nama imam wajib diisi'),
+		nama_muadzin: z.array(z.string()).min(1, 'Minimal 1 nama muadzin wajib diisi')
+	});
+
+	const detailMasjidSchema = z.object({
+		sdm_masjid: z.object({
+			jumlah_pengurus: z.number().min(1, 'Jumlah pengurus wajib diisi'),
+			jumlah_imam: z.number().min(1, 'Jumlah imam wajib diisi'),
+			jumlah_khotib: z.number().min(1, 'Jumlah khotib wajib diisi'),
+			jumlah_muadzin: z.number().min(1, 'Jumlah muadzin wajib diisi'),
+			jumlah_remaja: z.number().min(1, 'Jumlah remaja wajib diisi'),
+			jumlah_jemaah: z.number().min(1, 'Jumlah jemaah wajib diisi')
+		}),
+		pengurus_dkm: z.object({
+			ketua: z.string().min(1, 'Ketua DKM wajib diisi'),
+			sekretaris: z.array(z.string()).min(1, 'Minimal 1 sekretaris wajib diisi'),
+			bendahara: z.array(z.string()).min(1, 'Minimal 1 bendahara wajib diisi'),
+			nama_imam: z.array(z.string()).min(1, 'Minimal 1 nama imam wajib diisi'),
+			nama_muazdin: z.array(z.string()).min(1, 'Minimal 1 nama muadzin wajib diisi')
+		})
+	});
+
+	const situsSchema = z.object({
+		nama: z.string().min(1, 'Nama situs wajib diisi'),
+		jenis_tipologi: z.string().min(1, 'Tipologi wajib dipilih'),
+		tahun_berdiri: z.number().min(1000, 'Tahun tidak valid'),
+		provinsi: z.string().min(1),
+		kabupaten_kota: z.string().min(1),
+		kecamatan: z.string().min(1),
+		desa: z.string().min(1, 'Desa wajib diisi'),
+		alamat_lengkap: z.string().min(5, 'Alamat kurang lengkap'),
+		latitude: z.number({ invalid_type_error: 'Tentukan lokasi di peta' }),
+		longitude: z.number({ invalid_type_error: 'Tentukan lokasi di peta' }),
+		luas_tanah: z.number().min(1, 'Luas tanah wajib diisi'),
+		luas_bangunan: z.number().min(1, 'Luas bangunan wajib diisi'),
+		nomor_telpon_pengurus: z.array(z.string()).min(1, 'Minimal 1 nomor pengurus'),
+		status_tanah: z.string().min(1, 'Status tanah wajib dipilih'),
+		daya_tampung_max: z.number().min(1, 'Daya tampung wajib diisi')
+	});
+
+	let currentPhoneInput = $state('');
+
+	function addPhone() {
+		const phone = currentPhoneInput.trim();
+		if (phone && !formData.nomor_telpon_pengurus.includes(phone)) {
+			formData.nomor_telpon_pengurus = [...formData.nomor_telpon_pengurus, phone];
+			currentPhoneInput = '';
+			if (validationErrors.nomor_telpon_pengurus) validationErrors.nomor_telpon_pengurus = null;
+		}
+	}
+
+	function removePhone(index) {
+		formData.nomor_telpon_pengurus = formData.nomor_telpon_pengurus.filter((_, i) => i !== index);
+	}
+
 	let jenisSitusName = $state('');
-
-	// State for images
 	let existingPhotos = $state([]);
 	let photosToDelete = $state([]);
 	let newPhotos = $state([]);
 	let isConverting = $state(false);
 	let fileInputRef = $state();
 
-	// State for map
 	let map;
 	let marker;
 
-	// State for toast and modal
 	let showToast = $state(false);
 	let toastMessage = $state('');
 	let toastType = $state('success');
@@ -61,7 +151,6 @@
 	let isSubmitting = $state(false);
 	let isLoading = $state(true);
 
-	// Derived states based on direct string
 	let isMasjid = $derived(jenisSitusName.toLowerCase().trim().includes('masjid'));
 	let isPesantren = $derived(
 		jenisSitusName.toLowerCase().trim().includes('ponpes') ||
@@ -76,7 +165,6 @@
 			jenisSitusName.toLowerCase().trim().includes('majelis')
 	);
 
-	// Tipologi options
 	const tipologiOptions = {
 		Masjid: ['Masjid Besar', 'Masjid Jami', 'Masjid Bersejarah', 'Masjid Publik'],
 		Mushola: ['Musholla'],
@@ -101,16 +189,12 @@
 		return ['Umum', 'Khusus'];
 	}
 
-	// Map Action using Svelte action pattern
 	function mapAction(node) {
 		let L;
-
-		// Gunakan setTimeout agar kontainer DOM selesai dirender sebelum peta diinisialisasi
 		setTimeout(async () => {
 			L = await import('leaflet');
 			await import('leaflet/dist/leaflet.css');
 
-			// Default coordinate
 			const initialLat = formData.latitude || -6.2088;
 			const initialLng = formData.longitude || 106.8456;
 
@@ -129,7 +213,6 @@
 				attribution: '© OpenStreetMap contributors'
 			}).addTo(map);
 
-			// FIX BUGS VITE: Perbaiki link icon marker default Leaflet yang pecah
 			delete L.Icon.Default.prototype._getIconUrl;
 			L.Icon.Default.mergeOptions({
 				iconRetinaUrl:
@@ -140,7 +223,6 @@
 
 			marker = L.marker([initialLat, initialLng], { draggable: true }).addTo(map);
 
-			// FIX BUGS LEAFLET: Paksa peta menghitung ulang ukuran pembungkusnya
 			setTimeout(() => {
 				if (map) map.invalidateSize();
 			}, 300);
@@ -149,12 +231,14 @@
 				const latlng = e.target.getLatLng();
 				formData.latitude = latlng.lat;
 				formData.longitude = latlng.lng;
+				validationErrors.latitude = null;
 			});
 
 			map.on('click', (e) => {
 				formData.latitude = e.latlng.lat;
 				formData.longitude = e.latlng.lng;
 				marker.setLatLng(e.latlng);
+				validationErrors.latitude = null;
 			});
 		}, 100);
 
@@ -188,40 +272,36 @@
 		isLoading = true;
 		try {
 			const response = await apiService.get(`/situs/${$page.params.id}`);
-			if (!response.ok) {
-				throw new Error('Gagal memuat data situs');
-			}
+			if (!response.ok) throw new Error('Gagal memuat data situs');
 			const siteData = await response.json();
 
-			// Set string jenis situs
 			jenisSitusName = siteData.jenis_situs || '';
 
-			// Populate form data
 			formData = {
 				nama: siteData.nama || '',
 				jenis_tipologi: siteData.jenis_tipologi || '',
 				nomor_telepon: siteData.nomor_telepon || '',
+				nomor_telpon_pengurus: siteData.nomor_telpon_pengurus || [],
 				email: siteData.email || '',
 				website: siteData.website || '',
 				nomor_badan_hukum: siteData.nomor_badan_hukum || '',
-				tahun_berdiri: siteData.tahun_berdiri ? Number(siteData.tahun_berdiri) : '',
+				tahun_berdiri: siteData.tahun_berdiri ? Number(siteData.tahun_berdiri) : null,
 				provinsi: siteData.provinsi || 'Jawa Barat',
 				kabupaten_kota: siteData.kabupaten_kota || 'Kab. Sukabumi',
 				kecamatan: siteData.kecamatan || 'Ciemas',
 				desa: siteData.desa || '',
 				alamat_lengkap: siteData.alamat_lengkap || '',
-				latitude: siteData.latitude ?? null,
-				longitude: siteData.longitude ?? null,
-				luas_tanah: siteData.luas_tanah ?? null,
-				luas_bangunan: siteData.luas_bangunan ?? null,
+				latitude: siteData.latitude ?? 0,
+				longitude: siteData.longitude ?? 0,
+				luas_tanah: siteData.luas_tanah ?? 0,
+				luas_bangunan: siteData.luas_bangunan ?? 0,
 				status_tanah: siteData.status_tanah || '',
 				nomor_aiw: siteData.nomor_aiw || '',
 				nomor_sertifikat_wakaf: siteData.nomor_sertifikat_wakaf || '',
-				daya_tampung_max: siteData.daya_tampung_max ?? null,
+				daya_tampung_max: siteData.daya_tampung_max ?? 0,
 				detail: siteData.detail || {}
 			};
 
-			// Load foto existing
 			existingPhotos = (siteData.foto || []).map((f) => ({
 				id: f.id,
 				url: f.image_url || f.url
@@ -262,6 +342,7 @@
 			});
 			formData.latitude = position.coords.latitude;
 			formData.longitude = position.coords.longitude;
+			validationErrors.latitude = null;
 		} catch (error) {
 			toastMessage = 'Gagal mendapatkan lokasi';
 			toastType = 'error';
@@ -344,6 +425,56 @@
 	}
 
 	function confirmUpdate() {
+		let errors = {};
+		let hasError = false;
+
+		const mapZodErrors = (issues) => {
+			hasError = true;
+			issues.forEach((issue) => {
+				const path = issue.path;
+
+				if (path.length === 1) {
+					errors[path[0]] = issue.message;
+				} else if (path.length === 2) {
+					if (!errors[path[0]]) errors[path[0]] = {};
+					errors[path[0]][path[1]] = issue.message;
+				} else if (path.length === 3) {
+					if (!errors[path[0]]) errors[path[0]] = {};
+					if (!errors[path[0]][path[1]]) errors[path[0]][path[1]] = {};
+					errors[path[0]][path[1]][path[2]] = issue.message;
+				}
+			});
+		};
+
+		const result = situsSchema.safeParse(formData);
+		if (!result.success) mapZodErrors(result.error.issues);
+
+		if (isMasjid) {
+			const detailResult = detailMasjidSchema.safeParse(formData.detail);
+			if (!detailResult.success) mapZodErrors(detailResult.error.issues);
+		} else if (isMusholla) {
+			const detailResult = detailMusholaSchema.safeParse(formData.detail);
+			if (!detailResult.success) mapZodErrors(detailResult.error.issues);
+		} else if (isMT) {
+			const detailResult = detailMTSchema.safeParse(formData.detail);
+			if (!detailResult.success) mapZodErrors(detailResult.error.issues);
+		} else if (isPesantren) {
+			const detailResult = detailPesantrenSchema.safeParse(formData.detail);
+			if (!detailResult.success) mapZodErrors(detailResult.error.issues);
+		}
+
+		if (hasError) {
+			validationErrors = errors;
+
+			toastMessage = 'Tolong periksa kembali form isian Anda';
+			toastType = 'error';
+			showToast = true;
+			setTimeout(() => (showToast = false), 3000);
+			window.scrollTo({ top: 0, behavior: 'smooth' });
+			return;
+		}
+
+		validationErrors = {};
 		showConfirmModal = true;
 	}
 
@@ -352,13 +483,6 @@
 		showConfirmModal = false;
 
 		try {
-			// Parsing untuk Zod di Backend Go
-			formData.tahun_berdiri = parseInt(formData.tahun_berdiri) || 0;
-			formData.daya_tampung_max = parseInt(formData.daya_tampung_max) || 0;
-			formData.luas_tanah = parseFloat(formData.luas_tanah) || 0;
-			formData.luas_bangunan = parseFloat(formData.luas_bangunan) || 0;
-
-			// STEP A: PUT data text (must complete first)
 			const updateResponse = await apiService.put(`/situs/${$page.params.id}`, formData);
 			if (!updateResponse.ok) {
 				const errorText = await updateResponse.text();
@@ -367,7 +491,6 @@
 
 			const situsId = $page.params.id;
 
-			// STEP B & C: Parallel photo processing
 			const uploadPromise = newPhotos.length > 0 ? uploadNewImages(situsId) : Promise.resolve(true);
 			const deletePromise =
 				photosToDelete.length > 0 ? deleteMarkedImages(situsId) : Promise.resolve(true);
@@ -494,10 +617,17 @@
 									required
 									id="nama"
 									type="text"
-									class="input-bordered input min-h-11 w-full"
+									class="input-bordered input min-h-11 w-full {validationErrors.nama
+										? 'input-error'
+										: ''}"
 									bind:value={formData.nama}
+									oninput={() => (validationErrors.nama = null)}
 								/>
+								{#if validationErrors.nama}<span class="mt-1 text-xs text-error"
+										>{validationErrors.nama}</span
+									>{/if}
 							</div>
+
 							<div class="form-control">
 								<label class="label" for="jenis_tipologi">
 									<span class="label-text font-medium"
@@ -515,9 +645,12 @@
 								{:else}
 									<select
 										id="jenis_tipologi"
-										class="select-bordered select min-h-11 w-full"
+										class="select-bordered select min-h-11 w-full {validationErrors.jenis_tipologi
+											? 'select-error'
+											: ''}"
 										required
 										bind:value={formData.jenis_tipologi}
+										onchange={() => (validationErrors.jenis_tipologi = null)}
 									>
 										<option value="" disabled>Pilih jenis tipologi...</option>
 										{#each getTipologiOptions() as option}
@@ -525,11 +658,64 @@
 										{/each}
 									</select>
 								{/if}
+								{#if validationErrors.jenis_tipologi}<span class="mt-1 text-xs text-error"
+										>{validationErrors.jenis_tipologi}</span
+									>{/if}
 							</div>
+
+							<div class="form-control sm:col-span-2">
+								<label class="label" for="nomor_pengurus">
+									<span class="label-text font-medium"
+										>No. Telepon Pengurus <span class="text-error">*</span></span
+									>
+								</label>
+								<div class="flex gap-2">
+									<input
+										id="nomor_pengurus"
+										type="tel"
+										placeholder="Contoh: 0812345678"
+										class="input-bordered input min-h-11 flex-1 {validationErrors.nomor_telpon_pengurus
+											? 'input-error'
+											: ''}"
+										bind:value={currentPhoneInput}
+										onkeydown={(e) => {
+											if (e.key === 'Enter') {
+												e.preventDefault();
+												addPhone();
+											}
+										}}
+									/>
+									<button type="button" class="btn btn-primary" onclick={addPhone}>Tambah</button>
+								</div>
+								<div class="mt-2 flex flex-wrap gap-2">
+									{#each formData.nomor_telpon_pengurus as phone, index}
+										<div class="badge gap-2 badge-lg badge-primary">
+											{phone}
+											<button
+												type="button"
+												onclick={() => removePhone(index)}
+												class="btn btn-circle h-4 min-h-0 w-4 p-0 text-white btn-ghost btn-xs"
+											>
+												✕
+											</button>
+										</div>
+									{/each}
+								</div>
+								{#if validationErrors.nomor_telpon_pengurus}
+									<span class="mt-1 text-xs text-error"
+										>{validationErrors.nomor_telpon_pengurus}</span
+									>
+								{/if}
+							</div>
+
 							<div class="form-control">
-								<label class="label" for="nomor_telepon"
-									><span class="label-text font-medium">Nomor Telepon</span></label
-								>
+								<label class="label" for="nomor_telepon">
+									<span class="label-text font-medium"
+										>Nomor Telepon Instansi/Situs <span class="text-xs text-base-content/50"
+											>(Opsional)</span
+										></span
+									>
+								</label>
 								<input
 									id="nomor_telepon"
 									type="tel"
@@ -537,32 +723,55 @@
 									bind:value={formData.nomor_telepon}
 								/>
 							</div>
+
 							<div class="form-control">
-								<label class="label" for="email"
-									><span class="label-text font-medium">Email</span></label
-								>
+								<label class="label" for="email">
+									<span class="label-text font-medium"
+										>Email <span class="text-xs text-base-content/50">(Opsional)</span></span
+									>
+								</label>
 								<input
 									id="email"
 									type="email"
-									class="input-bordered input min-h-11 w-full"
+									class="input-bordered input min-h-11 w-full {validationErrors.email
+										? 'input-error'
+										: ''}"
 									bind:value={formData.email}
+									oninput={() => (validationErrors.email = null)}
 								/>
+								{#if validationErrors.email}<span class="mt-1 text-xs text-error"
+										>{validationErrors.email}</span
+									>{/if}
 							</div>
+
 							<div class="form-control">
-								<label class="label" for="website"
-									><span class="label-text font-medium">Website</span></label
-								>
+								<label class="label" for="website">
+									<span class="label-text font-medium"
+										>Website <span class="text-xs text-base-content/50">(Opsional)</span></span
+									>
+								</label>
 								<input
 									id="website"
 									type="url"
-									class="input-bordered input min-h-11 w-full"
+									class="input-bordered input min-h-11 w-full {validationErrors.website
+										? 'input-error'
+										: ''}"
+									placeholder="https://..."
 									bind:value={formData.website}
+									oninput={() => (validationErrors.website = null)}
 								/>
+								{#if validationErrors.website}<span class="mt-1 text-xs text-error"
+										>{validationErrors.website}</span
+									>{/if}
 							</div>
+
 							<div class="form-control">
-								<label class="label" for="nomor_badan_hukum"
-									><span class="label-text font-medium">Nomor Badan Hukum</span></label
-								>
+								<label class="label" for="nomor_badan_hukum">
+									<span class="label-text font-medium"
+										>Nomor Badan Hukum <span class="text-xs text-base-content/50">(Opsional)</span
+										></span
+									>
+								</label>
 								<input
 									id="nomor_badan_hukum"
 									type="text"
@@ -570,20 +779,27 @@
 									bind:value={formData.nomor_badan_hukum}
 								/>
 							</div>
+
 							<div class="form-control">
-								<label class="label" for="tahun_berdiri"
-									><span class="label-text font-medium"
+								<label class="label" for="tahun_berdiri">
+									<span class="label-text font-medium"
 										>Tahun Berdiri <span class="text-error">*</span></span
-									></label
-								>
+									>
+								</label>
 								<input
 									required
 									id="tahun_berdiri"
 									type="number"
 									min="0"
-									class="input-bordered input min-h-11 w-full"
+									class="input-bordered input min-h-11 w-full {validationErrors.tahun_berdiri
+										? 'input-error'
+										: ''}"
 									bind:value={formData.tahun_berdiri}
+									oninput={() => (validationErrors.tahun_berdiri = null)}
 								/>
+								{#if validationErrors.tahun_berdiri}<span class="mt-1 text-xs text-error"
+										>{validationErrors.tahun_berdiri}</span
+									>{/if}
 							</div>
 						</div>
 					</div>
@@ -639,9 +855,15 @@
 									required
 									id="desa"
 									type="text"
-									class="input-bordered input min-h-11 w-full"
+									class="input-bordered input min-h-11 w-full {validationErrors.desa
+										? 'input-error'
+										: ''}"
 									bind:value={formData.desa}
+									oninput={() => (validationErrors.desa = null)}
 								/>
+								{#if validationErrors.desa}<span class="mt-1 text-xs text-error"
+										>{validationErrors.desa}</span
+									>{/if}
 							</div>
 							<div class="form-control sm:col-span-2">
 								<label class="label" for="alamat_lengkap"
@@ -652,60 +874,94 @@
 								<textarea
 									required
 									id="alamat_lengkap"
-									class="textarea-bordered textarea min-h-20 w-full"
+									class="textarea-bordered textarea min-h-20 w-full {validationErrors.alamat_lengkap
+										? 'textarea-error'
+										: ''}"
 									bind:value={formData.alamat_lengkap}
 									rows="2"
+									oninput={() => (validationErrors.alamat_lengkap = null)}
 								></textarea>
+								{#if validationErrors.alamat_lengkap}<span class="mt-1 text-xs text-error"
+										>{validationErrors.alamat_lengkap}</span
+									>{/if}
 							</div>
-						</div>
 
-						<div class="mt-4 sm:mt-6">
-							<button
-								type="button"
-								class="btn mb-3 btn-outline sm:mb-4"
-								onclick={getCurrentLocation}
-							>
-								Gunakan Lokasi Saat Ini
-							</button>
-							<div class="mb-3 grid grid-cols-2 gap-2 sm:mb-4 sm:gap-4">
-								<div class="form-control">
-									<label class="label" for="latitude"
-										><span class="label-text font-medium"
-											>Latitude <span class="text-error">*</span></span
-										></label
+							<div class="mt-4 sm:col-span-2">
+								<button
+									type="button"
+									class="btn min-h-11 flex-1 btn-primary sm:flex-none"
+									onclick={getCurrentLocation}
+									><svg
+										xmlns="http://www.w3.org/2000/svg"
+										class="h-5 w-5"
+										fill="none"
+										viewBox="0 0 24 24"
+										stroke="currentColor"
+										><path
+											stroke-linecap="round"
+											stroke-linejoin="round"
+											stroke-width="2"
+											d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z"
+										/><path
+											stroke-linecap="round"
+											stroke-linejoin="round"
+											stroke-width="2"
+											d="M15 11a3 3 0 11-6 0 3 3 0 016 0z"
+										/></svg
 									>
-									<input
-										required
-										id="latitude"
-										type="number"
-										step="any"
-										class="input-bordered input min-h-11 w-full"
-										bind:value={formData.latitude}
-									/>
+									Lokasi Saat Ini</button
+								>
+								<div class="mb-3 grid grid-cols-2 gap-2 sm:mb-4 sm:gap-4">
+									<div class="form-control">
+										<label class="label" for="latitude"
+											><span class="label-text font-medium"
+												>Latitude <span class="text-error">*</span></span
+											></label
+										>
+										<input
+											required
+											id="latitude"
+											type="number"
+											step="any"
+											class="input-bordered input min-h-11 w-full {validationErrors.latitude
+												? 'input-error'
+												: ''}"
+											bind:value={formData.latitude}
+											readonly
+										/>
+									</div>
+									<div class="form-control">
+										<label class="label" for="longitude"
+											><span class="label-text font-medium"
+												>Longitude <span class="text-error">*</span></span
+											></label
+										>
+										<input
+											required
+											id="longitude"
+											type="number"
+											step="any"
+											class="input-bordered input min-h-11 w-full {validationErrors.longitude
+												? 'input-error'
+												: ''}"
+											bind:value={formData.longitude}
+											readonly
+										/>
+									</div>
 								</div>
-								<div class="form-control">
-									<label class="label" for="longitude"
-										><span class="label-text font-medium"
-											>Longitude <span class="text-error">*</span></span
-										></label
+								{#if validationErrors.latitude || validationErrors.longitude}
+									<span class="mb-2 block text-xs text-error"
+										>Silakan tentukan titik lokasi pada peta</span
 									>
-									<input
-										required
-										id="longitude"
-										type="number"
-										step="any"
-										class="input-bordered input min-h-11 w-full"
-										bind:value={formData.longitude}
-									/>
-								</div>
+								{/if}
+								<div
+									use:mapAction={formData}
+									class="relative z-0 h-64 w-full overflow-hidden rounded-lg border border-base-300 sm:h-80"
+								></div>
+								<p class="mt-2 text-xs text-base-content/70">
+									Klik pada peta atau geser marker untuk mengubah lokasi
+								</p>
 							</div>
-							<div
-								use:mapAction={formData}
-								class="relative z-0 h-64 w-full overflow-hidden rounded-lg border border-base-300 sm:h-80"
-							></div>
-							<p class="mt-2 text-xs text-base-content/70">
-								Klik pada peta atau geser marker untuk mengubah lokasi
-							</p>
 						</div>
 					</div>
 				</div>
@@ -726,9 +982,15 @@
 									type="number"
 									min="0"
 									step="any"
-									class="input-bordered input min-h-11 w-full"
+									class="input-bordered input min-h-11 w-full {validationErrors.luas_tanah
+										? 'input-error'
+										: ''}"
 									bind:value={formData.luas_tanah}
+									oninput={() => (validationErrors.luas_tanah = null)}
 								/>
+								{#if validationErrors.luas_tanah}<span class="mt-1 text-xs text-error"
+										>{validationErrors.luas_tanah}</span
+									>{/if}
 							</div>
 							<div class="form-control">
 								<label class="label" for="luas_bangunan"
@@ -742,10 +1004,17 @@
 									type="number"
 									min="0"
 									step="any"
-									class="input-bordered input min-h-11 w-full"
+									class="input-bordered input min-h-11 w-full {validationErrors.luas_bangunan
+										? 'input-error'
+										: ''}"
 									bind:value={formData.luas_bangunan}
+									oninput={() => (validationErrors.luas_bangunan = null)}
 								/>
+								{#if validationErrors.luas_bangunan}<span class="mt-1 text-xs text-error"
+										>{validationErrors.luas_bangunan}</span
+									>{/if}
 							</div>
+
 							<div class="form-control">
 								<label class="label" for="status_tanah"
 									><span class="label-text font-medium"
@@ -753,19 +1022,25 @@
 									></label
 								>
 								<select
-									required
 									id="status_tanah"
-									class="select-bordered select min-h-11 w-full"
+									class="select-bordered select min-h-11 w-full {validationErrors.status_tanah
+										? 'select-error'
+										: ''}"
 									bind:value={formData.status_tanah}
+									onchange={() => (validationErrors.status_tanah = null)}
 								>
-									<option value="" disabled>Pilih status...</option>
+									<option value="">Pilih status...</option>
 									<option value="Wakaf">Wakaf</option>
 									<option value="Milik Sendiri">Milik Sendiri</option>
 									<option value="Sewa">Sewa</option>
 									<option value="Hibah">Hibah</option>
 									<option value="Lainnya">Lainnya</option>
 								</select>
+								{#if validationErrors.status_tanah}<span class="mt-1 text-xs text-error"
+										>{validationErrors.status_tanah}</span
+									>{/if}
 							</div>
+
 							<div class="form-control">
 								<label class="label" for="daya_tampung_max"
 									><span class="label-text font-medium"
@@ -773,14 +1048,20 @@
 									></label
 								>
 								<input
-									required
 									id="daya_tampung_max"
 									type="number"
 									min="0"
-									class="input-bordered input min-h-11 w-full"
+									class="input-bordered input min-h-11 w-full {validationErrors.daya_tampung_max
+										? 'input-error'
+										: ''}"
 									bind:value={formData.daya_tampung_max}
+									oninput={() => (validationErrors.daya_tampung_max = null)}
 								/>
+								{#if validationErrors.daya_tampung_max}<span class="mt-1 text-xs text-error"
+										>{validationErrors.daya_tampung_max}</span
+									>{/if}
 							</div>
+
 							<div class="form-control">
 								<label class="label" for="nomor_aiw"
 									><span class="label-text font-medium">Nomor AIW</span></label
@@ -808,16 +1089,16 @@
 				</div>
 
 				{#if isMasjid}
-					<DetailMasjidForm bind:detail={formData.detail} />
+					<DetailMasjidForm bind:detail={formData.detail} bind:errors={validationErrors} />
 				{/if}
 				{#if isPesantren}
-					<DetailPesantrenForm bind:detail={formData.detail} />
+					<DetailPesantrenForm bind:detail={formData.detail} bind:errors={validationErrors} />
 				{/if}
 				{#if isMusholla}
-					<DetailMusholaForm bind:detail={formData.detail} />
+					<DetailMusholaForm bind:detail={formData.detail} bind:errors={validationErrors} />
 				{/if}
 				{#if isMT}
-					<DetailMTForm bind:detail={formData.detail} />
+					<DetailMTForm bind:detail={formData.detail} bind:errors={validationErrors} />
 				{/if}
 
 				<div class="card border border-base-200 bg-base-100 shadow-lg">
@@ -887,8 +1168,7 @@
 							/>
 							{#if isConverting}
 								<div class="mt-2 flex items-center gap-2 text-sm text-base-content/70">
-									<span class="loading loading-sm loading-spinner"></span>
-									Mengkonversi gambar ke WebP...
+									<span class="loading loading-sm loading-spinner"></span> Mengkonversi gambar ke WebP...
 								</div>
 							{/if}
 						</div>
@@ -920,7 +1200,6 @@
 </div>
 
 <style>
-	/* Prevent Leaflet map from overlapping dropdowns/modals */
 	:global(.leaflet-container) {
 		z-index: 10;
 	}

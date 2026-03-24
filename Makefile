@@ -5,7 +5,7 @@ ifneq (,$(wildcard ./.env))
 endif
 
 # Path to the migrations directory
-MIGRATION_DIR=./internal/database/migrations
+MIGRATION_DIR=./migrations
 
 # Goose command
 GOOSE_CMD=goose -dir $(MIGRATION_DIR) postgres "$(DB_URI)"

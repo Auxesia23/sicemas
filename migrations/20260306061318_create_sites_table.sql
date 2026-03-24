@@ -15,6 +15,7 @@ CREATE TABLE situs_keagamaan (
 
     -- [DATA UMUM]
     nomor_telepon TEXT,
+    nomor_telpon_pengurus TEXT[] NOT NULL,
     email TEXT,
     website VARCHAR(255),
     nomor_badan_hukum TEXT,
@@ -36,9 +37,6 @@ CREATE TABLE situs_keagamaan (
     nomor_sertifikat_wakaf TEXT,
     daya_tampung_max INT,
 
-    -- =========================================================
-    -- [SEMUA SISA DATA FORM MENGUMPUL DI SINI]
-    -- =========================================================
     detail JSONB DEFAULT '{}'::jsonb,
 
     created_at TIMESTAMPTZ  DEFAULT NOW(),

@@ -8,6 +8,7 @@ import (
 
 	"github.com/google/uuid"
 	"github.com/jmoiron/sqlx"
+	"github.com/lib/pq"
 )
 
 type SitusKeagamaanRepository interface {
@@ -35,45 +36,46 @@ func NewSitusKeagamaanRepo(db *sqlx.DB) SitusKeagamaanRepository {
 
 func (r *situsKeagamaanRepositoryImpl) Create(ctx context.Context, in *dto.SitusKeagamaanRequest, author uuid.UUID) (uuid.UUID, error) {
 	query := `
-        INSERT INTO situs_keagamaan (
-            jenis_situs_id, pendata_id, nama, jenis_tipologi,
-            nomor_telepon, email, website, nomor_badan_hukum, tahun_berdiri,
-            provinsi, kabupaten_kota, kecamatan, desa, alamat_lengkap, koordinat,
-            luas_tanah, luas_bangunan, status_tanah, nomor_aiw, nomor_sertifikat_wakaf, daya_tampung_max,
-            detail
-        ) VALUES (
-            $1, $2, $3, $4,
-            $5, $6, $7, $8, $9,
-            $10, $11, $12, $13, $14, ST_SetSRID(ST_MakePoint($15, $16), 4326),
-            $17, $18, $19, $20, $21, $22,
-            $23
-        ) RETURNING id;`
+		INSERT INTO situs_keagamaan (
+			jenis_situs_id, pendata_id, nama, jenis_tipologi,
+			nomor_telepon, nomor_telpon_pengurus, email, website, nomor_badan_hukum, tahun_berdiri,
+			provinsi, kabupaten_kota, kecamatan, desa, alamat_lengkap, koordinat,
+			luas_tanah, luas_bangunan, status_tanah, nomor_aiw, nomor_sertifikat_wakaf, daya_tampung_max,
+			detail
+		) VALUES (
+			$1, $2, $3, $4,
+			$5, $6, $7, $8, $9, $10,
+			$11, $12, $13, $14, $15, ST_SetSRID(ST_MakePoint($16, $17), 4326),
+			$18, $19, $20, $21, $22, $23,
+			$24
+		) RETURNING id;`
 
 	var id uuid.UUID
 	err := r.DB.GetContext(ctx, &id, query,
-		in.JenisSitusID,         // $1
-		author,                  // $2
-		in.Nama,                 // $3
-		in.JenisTipologi,        // $4
-		in.NomorTelepon,         // $5
-		in.Email,                // $6
-		in.Website,              // $7
-		in.NomorBadanHukum,      // $8
-		in.TahunBerdiri,         // $9
-		in.Provinsi,             // $10
-		in.KabupatenKota,        // $11
-		in.Kecamatan,            // $12
-		in.Desa,                 // $13
-		in.AlamatLengkap,        // $14
-		in.Longitude,            // $15
-		in.Latitude,             // $16
-		in.LuasTanah,            // $17
-		in.LuasBangunan,         // $18
-		in.StatusTanah,          // $19
-		in.NomorAIW,             // $20
-		in.NomorSertifikatWakaf, // $21
-		in.DayaTampungMax,       // $22
-		in.Detail,               // $23
+		in.JenisSitusID,                  // $1
+		author,                           // $2
+		in.Nama,                          // $3
+		in.JenisTipologi,                 // $4
+		in.NomorTelepon,                  // $5
+		pq.Array(in.NomorTelponPengurus), // $6
+		in.Email,                         // $7
+		in.Website,                       // $8
+		in.NomorBadanHukum,               // $9
+		in.TahunBerdiri,                  // $10
+		in.Provinsi,                      // $11
+		in.KabupatenKota,                 // $12
+		in.Kecamatan,                     // $13
+		in.Desa,                          // $14
+		in.AlamatLengkap,                 // $15
+		in.Longitude,                     // $16
+		in.Latitude,                      // $17
+		in.LuasTanah,                     // $18
+		in.LuasBangunan,                  // $19
+		in.StatusTanah,                   // $20
+		in.NomorAIW,                      // $21
+		in.NomorSertifikatWakaf,          // $22
+		in.DayaTampungMax,                // $23
+		in.Detail,                        // $24
 	)
 
 	if err != nil {
@@ -147,6 +149,7 @@ func (r *situsKeagamaanRepositoryImpl) ReadDetail(ctx context.Context, id uuid.U
 				sk.nama,
 				sk.jenis_tipologi,
 				sk.nomor_telepon,
+				sk.nomor_telpon_pengurus,
 				sk.email,
 				sk.website,
 				sk.nomor_badan_hukum,
@@ -173,7 +176,6 @@ func (r *situsKeagamaanRepositoryImpl) ReadDetail(ctx context.Context, id uuid.U
 
 	var detail dto.SitusKeagamaanDetailResponse
 
-	// Gunakan GetContext karena kita hanya mengambil 1 baris spesifik berdasarkan ID
 	err := r.DB.GetContext(ctx, &detail, query, id)
 	if err != nil {
 		log.Println(err.Error())
@@ -190,49 +192,51 @@ func (r *situsKeagamaanRepositoryImpl) Update(ctx context.Context, id uuid.UUID,
 			nama = $1,
 			jenis_tipologi = $2,
 			nomor_telepon = $3,
-			email = $4,
-			website = $5,
-			nomor_badan_hukum = $6,
-			tahun_berdiri = $7,
-			provinsi = $8,
-			kabupaten_kota = $9,
-			kecamatan = $10,
-			desa = $11,
-			alamat_lengkap = $12,
-			koordinat = ST_SetSRID(ST_MakePoint($13, $14), 4326),
-			luas_tanah = $15,
-			luas_bangunan = $16,
-			status_tanah = $17,
-			nomor_aiw = $18,
-			nomor_sertifikat_wakaf = $19,
-			daya_tampung_max = $20,
-			detail = $21,
+			nomor_telpon_pengurus = $4,
+			email = $5,
+			website = $6,
+			nomor_badan_hukum = $7,
+			tahun_berdiri = $8,
+			provinsi = $9,
+			kabupaten_kota = $10,
+			kecamatan = $11,
+			desa = $12,
+			alamat_lengkap = $13,
+			koordinat = ST_SetSRID(ST_MakePoint($14, $15), 4326),
+			luas_tanah = $16,
+			luas_bangunan = $17,
+			status_tanah = $18,
+			nomor_aiw = $19,
+			nomor_sertifikat_wakaf = $20,
+			daya_tampung_max = $21,
+			detail = $22,
 			updated_at = CURRENT_TIMESTAMP
-		WHERE id = $22 AND status_verifikasi IN ('menunggu', 'ditolak')`
+		WHERE id = $23 AND status_verifikasi IN ('menunggu', 'ditolak')`
 
 	result, err := r.DB.ExecContext(ctx, query,
-		in.Nama,                 // $1
-		in.JenisTipologi,        // $2
-		in.NomorTelepon,         // $3
-		in.Email,                // $4
-		in.Website,              // $5
-		in.NomorBadanHukum,      // $6
-		in.TahunBerdiri,         // $7
-		in.Provinsi,             // $8
-		in.KabupatenKota,        // $9
-		in.Kecamatan,            // $10
-		in.Desa,                 // $11
-		in.AlamatLengkap,        // $12
-		in.Longitude,            // $13
-		in.Latitude,             // $14
-		in.LuasTanah,            // $15
-		in.LuasBangunan,         // $16
-		in.StatusTanah,          // $17
-		in.NomorAIW,             // $18
-		in.NomorSertifikatWakaf, // $19
-		in.DayaTampungMax,       // $20
-		in.Detail,               // $21
-		id,                      // $22
+		in.Nama,                          // $1
+		in.JenisTipologi,                 // $2
+		in.NomorTelepon,                  // $3
+		pq.Array(in.NomorTelponPengurus), // $4
+		in.Email,                         // $5
+		in.Website,                       // $6
+		in.NomorBadanHukum,               // $7
+		in.TahunBerdiri,                  // $8
+		in.Provinsi,                      // $9
+		in.KabupatenKota,                 // $10
+		in.Kecamatan,                     // $11
+		in.Desa,                          // $12
+		in.AlamatLengkap,                 // $13
+		in.Longitude,                     // $14
+		in.Latitude,                      // $15
+		in.LuasTanah,                     // $16
+		in.LuasBangunan,                  // $17
+		in.StatusTanah,                   // $18
+		in.NomorAIW,                      // $19
+		in.NomorSertifikatWakaf,          // $20
+		in.DayaTampungMax,                // $21
+		in.Detail,                        // $22
+		id,                               // $23
 	)
 
 	if err != nil {

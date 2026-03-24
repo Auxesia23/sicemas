@@ -22,7 +22,10 @@
 	<!-- Navigation -->
 	<nav class="navbar bg-base-100 px-4 sm:px-6 lg:px-8">
 		<div class="flex-1">
-			<a href="/" class="btn text-xl font-bold text-primary btn-ghost">SICEMAS</a>
+			<a href="/" class="btn text-xl font-bold text-primary btn-ghost">
+				<img src="/kemenag.webp" alt="SICEMAS" class="mr-2 h-8" />
+				SICEMAS</a
+			>
 		</div>
 		<div class="flex-none">
 			<a href="/login" class="btn btn-primary"

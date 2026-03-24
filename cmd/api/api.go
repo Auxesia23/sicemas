@@ -52,7 +52,6 @@ func (s *server) run() {
 
 	public := app.Group("/public")
 	{
-		app.Use(s.middlewares.Limiter.LimiterByDevice(rate.Every(time.Second), 10))
 		public.Get("/situs", s.handlers.SitusKeagamaan.GetAllSitusForPublic)
 		public.Get("/situs/:id", s.handlers.SitusKeagamaan.GetSitusDetailForPublic)
 		public.Get("/stats", s.handlers.SitusKeagamaan.GetLandingStats)
@@ -60,7 +59,6 @@ func (s *server) run() {
 
 	auth := app.Group("/auth")
 	{
-		auth.Use(s.middlewares.Limiter.LimiterByDevice(rate.Every(10*time.Second), 6))
 		auth.Post("/login", s.handlers.Auth.Login)
 		auth.Post("/verify-otp", s.middlewares.Auth.GetContext, s.handlers.Auth.VerifyOTP)
 		auth.Post("/refresh", s.middlewares.Auth.GetContext, s.handlers.Auth.Refresh)

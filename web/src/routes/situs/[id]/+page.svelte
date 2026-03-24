@@ -93,10 +93,16 @@
 	<!-- Navigation -->
 	<nav class="navbar bg-base-100/80 px-4 backdrop-blur-sm sm:px-6 lg:px-8">
 		<div class="flex-1">
-			<a href="/" class="btn text-xl font-bold text-primary btn-ghost">SICEMAS</a>
+			<a href="/" class="btn text-xl font-bold text-primary btn-ghost"
+				><img src="/kemenag.webp" alt="SICEMAS" class="mr-2 h-8" />SICEMAS</a
+			>
 		</div>
 		<div class="flex-none">
-			<a href="/login" class="btn btn-primary">Masuk</a>
+			{#if data.user}
+				<a href="/dashboard" class="btn btn-primary">Dashboard</a>
+			{:else}
+				<a href="/login" class="btn btn-primary">Masuk</a>
+			{/if}
 		</div>
 	</nav>
 
@@ -337,20 +343,7 @@
 	<footer class="footer-center mt-24 footer rounded bg-base-200 p-10 text-base-content">
 		<div>
 			<div class="mb-4 flex items-center gap-2">
-				<svg
-					xmlns="http://www.w3.org/2000/svg"
-					class="h-8 w-8 text-primary"
-					fill="none"
-					viewBox="0 0 24 24"
-					stroke="currentColor"
-				>
-					<path
-						stroke-linecap="round"
-						stroke-linejoin="round"
-						stroke-width="2"
-						d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4"
-					/>
-				</svg>
+				<img src="/kemenag.webp" alt="SICEMAS" class="mr-2 h-8" />
 				<span class="text-lg font-bold">SICEMAS</span>
 			</div>
 		</div>

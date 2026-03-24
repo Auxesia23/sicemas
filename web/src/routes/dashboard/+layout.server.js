@@ -3,6 +3,7 @@ import { hasAnyPermission } from '$lib/permissions';
 
 /** @type {import('./$types').PageServerLoad} */
 export async function load({ locals, url }) {
+	console.log(locals.user);
 	if (!locals.user) {
 		throw redirect(303, '/login');
 	}

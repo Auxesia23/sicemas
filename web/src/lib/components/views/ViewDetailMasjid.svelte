@@ -119,11 +119,19 @@
 					</div>
 					<div>
 						<p class="mb-1 block text-xs font-medium text-base-content/70">Sekretaris</p>
-						<p class="font-medium">{detail.pengurus_dkm.sekretaris || '-'}</p>
+						<div class="mt-2 flex flex-wrap gap-2">
+							{#each detail.pengurus_dkm.sekretaris as sekretaris (sekretaris)}
+								<span class="badge badge-outline">{sekretaris}</span>
+							{/each}
+						</div>
 					</div>
 					<div>
 						<p class="mb-1 block text-xs font-medium text-base-content/70">Bendahara</p>
-						<p class="font-medium">{detail.pengurus_dkm.bendahara || '-'}</p>
+						<div class="mt-2 flex flex-wrap gap-2">
+							{#each detail.pengurus_dkm.bendahara as bendahara (bendahara)}
+								<span class="badge badge-outline">{bendahara}</span>
+							{/each}
+						</div>
 					</div>
 				</div>
 

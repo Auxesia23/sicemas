@@ -10,11 +10,12 @@ export async function handle({ event, resolve }) {
 	const refreshToken = event.cookies.get('refresh_token');
 
 	const deviceId = event.cookies.get('device_id') || '';
+	const clientIP = event.request.headers.get('x-forwarded-for') || event.getClientAddress();
 
 	let contextHeaders = {
 		'User-Agent': event.request.headers.get('user-agent') || '',
-		'X-Forwarded-For': event.getClientAddress(),
-		'X-True-Client-IP': event.getClientAddress(),
+		'X-Forwarded-For': clientIP,
+		'X-True-Client-IP': clientIP,
 		Accept: 'application/json',
 		Cookie: event.request.headers.get('cookie') || '',
 		'X-Device-Id': deviceId
@@ -40,10 +41,12 @@ export async function handle({ event, resolve }) {
 
 				setCookieHeaders.forEach((cookieString) => {
 					const [nameValue] = cookieString.split(';');
-					const [name, value] = nameValue.split('=');
 
-					const cookieName = name.trim();
-					const cookieVal = value.trim();
+					const splitIndex = nameValue.indexOf('=');
+					if (splitIndex === -1) return;
+
+					const cookieName = nameValue.substring(0, splitIndex).trim();
+					const cookieVal = nameValue.substring(splitIndex + 1).trim();
 
 					event.cookies.set(cookieName, cookieVal, {
 						path: '/',
@@ -81,11 +84,8 @@ export async function handle({ event, resolve }) {
 			}
 
 			if (response.ok) {
-				// 3. HATI-HATI STRUKTUR JSON GO LU
 				const body = await response.json();
 
-				// Kalau API lu balikin: { "data": { "id": 1, "permissions": [...] } }
-				// Lu harus pake body.data. Kalau langsung body, nanti crash di dashboard.
 				event.locals.user = body.data || body;
 
 				return resolve(event);
@@ -102,7 +102,7 @@ export async function handle({ event, resolve }) {
 				const response = await fetchProfile();
 				if (response.ok) {
 					const body = await response.json();
-					event.locals.user = body.data || body;
+					event.locals.user = body;
 				}
 			} catch (err) {
 				console.log('Error after silent refresh:', err);

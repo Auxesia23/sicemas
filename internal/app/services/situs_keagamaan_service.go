@@ -85,6 +85,13 @@ func (s *situsKeagamaanServiceImpl) CreateSitusKeagamaan(ctx context.Context, in
 	if err != nil {
 		return uuid.Nil, err
 	}
+	for i, nomor := range in.NomorTelponPengurus {
+		encryptedNomor, err := utils.Encrypt(nomor)
+		if err != nil {
+			return uuid.Nil, err
+		}
+		in.NomorTelponPengurus[i] = encryptedNomor
+	}
 
 	id, err := s.situsRepo.Create(ctx, in, author)
 	if err != nil {
@@ -243,6 +250,13 @@ func (s *situsKeagamaanServiceImpl) GetDetailSitusKeagamaan(ctx context.Context,
 	if err != nil {
 		return nil, err
 	}
+	for i, nomor := range situs.NomorTelponPengurus {
+		decryptedNomor, err := utils.Decrypt(nomor)
+		if err != nil {
+			return nil, err
+		}
+		situs.NomorTelponPengurus[i] = decryptedNomor
+	}
 
 	fotoSitus, err := s.fotoSitusRepo.GetBySitusID(ctx, situsId)
 	if err != nil {
@@ -292,6 +306,13 @@ func (s *situsKeagamaanServiceImpl) UpdateSitus(ctx context.Context, id, userId 
 	in.Email, err = utils.Encrypt(in.Email)
 	if err != nil {
 		return err
+	}
+	for i, nomor := range in.NomorTelponPengurus {
+		encryptedNomor, err := utils.Encrypt(nomor)
+		if err != nil {
+			return err
+		}
+		in.NomorTelponPengurus[i] = encryptedNomor
 	}
 
 	err = s.situsRepo.Update(ctx, id, in)
