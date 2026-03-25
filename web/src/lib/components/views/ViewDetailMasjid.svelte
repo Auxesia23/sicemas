@@ -175,6 +175,8 @@
 								{/each}
 							</div>
 						</div>
+					{:else}
+						<p class="text-sm text-base-content/50">Tidak ada fasilitas umum.</p>
 					{/if}
 
 					{#if detail.fasilitas_raman_anak && detail.fasilitas_raman_anak.length > 0}
@@ -188,6 +190,8 @@
 								{/each}
 							</div>
 						</div>
+					{:else}
+						<p class="text-sm text-base-content/50">Tidak ada fasilitas raman anak.</p>
 					{/if}
 
 					{#if detail.fasilitas_disabilitas && detail.fasilitas_disabilitas.length > 0}
@@ -202,7 +206,7 @@
 							</div>
 						</div>
 					{:else}
-						<p class="text-sm text-base-content/50">Tidak ada fasilitas disabilitas</p>
+						<p class="text-sm text-base-content/50">Tidak ada fasilitas disabilitas.</p>
 					{/if}
 				</div>
 			</div>

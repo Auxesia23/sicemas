@@ -7,12 +7,12 @@ import (
 )
 
 type UserRequest struct {
-	NIP          string  `json:"nip" validate:"required,min=18"`
+	NIP          string  `json:"nip" validate:"required,min=16"`
 	NamaLengkap  string  `json:"nama_lengkap" validate:"required"`
 	Peran        string  `json:"peran" validate:"required"`
 	Jabatan      string  `json:"jabatan" validate:"required"`
 	UnitKerja    *string `json:"unit_kerja"`
-	Email        string  `json:"email" validate:"required,email"`
+	Email        string  `json:"email" validate:"omitempty,email"`
 	NomorTelepon string  `json:"nomor_telepon" validate:"required"`
 }
 

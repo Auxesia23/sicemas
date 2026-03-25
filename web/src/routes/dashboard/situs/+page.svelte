@@ -33,6 +33,11 @@
 	let toastMessage = $state('');
 	let toastType = $state('success');
 
+	// Export modal states
+	let showExportModal = $state(false);
+	let exportSelectedType = $state('');
+	let isExporting = $state(false);
+
 	onMount(async () => {
 		await fetchData();
 	});
@@ -181,6 +186,57 @@
 			isDeleting = false;
 		}
 	}
+	// Handle Export Excel - Open Modal
+	function openExportModal() {
+		// Pre-select the dropdown if the user has already filtered the table by a specific type
+		exportSelectedType = typeFilter !== 'all' ? typeFilter : '';
+		showExportModal = true;
+	}
+
+	// Execute Export after user selects type
+	async function executeExport() {
+		if (!exportSelectedType) return;
+
+		try {
+			isExporting = true;
+			toastMessage = 'Preparing Excel file...';
+			toastType = 'success';
+			showToast = true;
+
+			const queryParams = `?jenis_situs=${encodeURIComponent(exportSelectedType)}`;
+			const response = await apiService.get(`/situs/export${queryParams}`);
+
+			if (!response.ok) {
+				const errText = await response.text();
+				throw new Error(errText || 'Failed to export data');
+			}
+
+			// Handle binary file response
+			const blob = await response.blob();
+			const url = window.URL.createObjectURL(blob);
+			const a = document.createElement('a');
+			a.href = url;
+
+			a.download = `Data_Situs_${exportSelectedType}.xlsx`;
+			document.body.appendChild(a);
+			a.click();
+
+			// Cleanup
+			a.remove();
+			window.URL.revokeObjectURL(url);
+
+			showExportModal = false;
+			showToast = false;
+		} catch (err) {
+			console.error('Export error:', err);
+			toastMessage = 'Failed to download Excel: ' + err.message;
+			toastType = 'error';
+			showToast = true;
+			setTimeout(() => (showToast = false), 4000);
+		} finally {
+			isExporting = false;
+		}
+	}
 </script>
 
 <Toast
@@ -200,6 +256,60 @@
 	onConfirm={handleDelete}
 	onCancel={() => (showDeleteModal = false)}
 />
+
+{#if showExportModal}
+	<dialog class="modal" open>
+		<div class="modal-box">
+			<h3 class="mb-4 text-lg font-bold">Export Data ke Excel</h3>
+			<p class="mb-4 text-sm text-base-content/70">
+				Pilih jenis situs yang ingin diekspor. Data diekspor per jenis agar format kolom pada file
+				Excel (seperti detail fasilitas dan pengurus) tetap rapi dan terstruktur.
+			</p>
+
+			<div class="form-control w-full">
+				<label class="label" for="exportType">
+					<span class="label-text font-medium">Jenis Situs <span class="text-error">*</span></span>
+				</label>
+				<select
+					id="exportType"
+					class="select-bordered select w-full"
+					bind:value={exportSelectedType}
+				>
+					<option value="" disabled>Pilih Jenis Situs...</option>
+					{#each jenisSitusList as jenis (jenis.id)}
+						<option value={jenis.nama}>{jenis.nama}</option>
+					{/each}
+				</select>
+			</div>
+
+			<div class="modal-action mt-6">
+				<button
+					class="btn btn-ghost"
+					onclick={() => (showExportModal = false)}
+					disabled={isExporting}
+				>
+					Batal
+				</button>
+				<button
+					class="btn text-white btn-success"
+					onclick={executeExport}
+					disabled={!exportSelectedType || isExporting}
+				>
+					{#if isExporting}
+						<span class="loading loading-sm loading-spinner"></span> Menyiapkan...
+					{:else}
+						Download Excel
+					{/if}
+				</button>
+			</div>
+		</div>
+		<button
+			class="modal-backdrop bg-black/40 backdrop-blur-sm"
+			aria-label="Close"
+			onclick={() => (showExportModal = false)}
+		></button>
+	</dialog>
+{/if}
 
 <div class="mx-auto max-w-7xl">
 	<div class="mb-4 sm:mb-6">
@@ -278,6 +388,29 @@
 					</span>
 				</div>
 				<div class="flex w-full gap-2 sm:w-auto">
+					{#if hasAllPermissions(user.permissions, ['situs:export'])}
+						<button
+							onclick={openExportModal}
+							class="btn min-h-11 flex-1 text-white btn-success sm:flex-none"
+							title="Export data to Excel"
+						>
+							<svg
+								xmlns="http://www.w3.org/2000/svg"
+								class="mr-1 h-5 w-5"
+								fill="none"
+								viewBox="0 0 24 24"
+								stroke="currentColor"
+							>
+								<path
+									stroke-linecap="round"
+									stroke-linejoin="round"
+									stroke-width="2"
+									d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"
+								/>
+							</svg>
+							Export Excel
+						</button>
+					{/if}
 					{#if hasAllPermissions(user.permissions, ['situs:create'])}
 						<button
 							onclick={() => {

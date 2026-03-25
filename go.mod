@@ -16,7 +16,8 @@ require (
 	github.com/lib/pq v1.10.9
 	github.com/oschwald/maxminddb-golang/v2 v2.1.1
 	github.com/redis/go-redis/v9 v9.17.0
-	golang.org/x/sync v0.17.0
+	github.com/xuri/excelize/v2 v2.10.1
+	golang.org/x/sync v0.19.0
 	golang.org/x/time v0.0.0-20191024005414-555d28b269f0
 )
 
@@ -41,14 +42,20 @@ require (
 	github.com/mattn/go-runewidth v0.0.16 // indirect
 	github.com/modern-go/concurrent v0.0.0-20180306012644-bacd9c7ef1dd // indirect
 	github.com/modern-go/reflect2 v1.0.2 // indirect
+	github.com/richardlehane/mscfb v1.0.6 // indirect
+	github.com/richardlehane/msoleps v1.0.6 // indirect
 	github.com/rivo/uniseg v0.2.0 // indirect
 	github.com/syndtr/goleveldb v1.0.0 // indirect
+	github.com/tiendc/go-deepcopy v1.7.2 // indirect
 	github.com/valyala/bytebufferpool v1.0.0 // indirect
 	github.com/valyala/fasthttp v1.51.0 // indirect
 	github.com/valyala/tcplisten v1.0.0 // indirect
-	golang.org/x/crypto v0.42.0 // indirect
-	golang.org/x/sys v0.38.0 // indirect
-	golang.org/x/text v0.29.0 // indirect
+	github.com/xuri/efp v0.0.1 // indirect
+	github.com/xuri/nfp v0.0.2-0.20250530014748-2ddeb826f9a9 // indirect
+	golang.org/x/crypto v0.48.0 // indirect
+	golang.org/x/net v0.50.0 // indirect
+	golang.org/x/sys v0.41.0 // indirect
+	golang.org/x/text v0.34.0 // indirect
 	xorm.io/builder v0.3.11-0.20220531020008-1bd24a7dc978 // indirect
 	xorm.io/xorm v1.3.2 // indirect
 )

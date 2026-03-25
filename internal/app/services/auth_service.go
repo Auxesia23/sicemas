@@ -42,20 +42,24 @@ func (s *authServiceImpl) Login(ctx context.Context, in *dto.UserLogin) error {
 		if err == sql.ErrNoRows {
 			return apperror.NewNotFound("User dengan NIP ini tidak ditemukan.")
 		}
+		log.Println(err)
 		return apperror.NewInternal("Terjadi Kesalahan.")
 	}
 
 	otp := utils.GenerateOTP6()
 	err = s.cache.Set(ctx, fmt.Sprintf("otp:%v", user.ID), otp, 5*time.Minute)
 	if err != nil {
+		log.Println(err)
 		return apperror.NewInternal("Terjadi kesalahan.")
 	}
 	fmt.Println("OTP : ", otp)
 	phoneNum, err := utils.Decrypt(user.NomorTelepon)
 	if err != nil {
+		log.Println(err)
 		return apperror.NewInternal("Terjadi kesalahan.")
 	}
 	if err := utils.SendWhatsAppOTP(phoneNum, otp); err != nil {
+		log.Println(err)
 		return apperror.NewInternal("Terjadi kesalahan.")
 	}
 	return nil

@@ -1,6 +1,7 @@
 package handlers
 
 import (
+	"fmt"
 	"mime/multipart"
 	apperror "situs-keagamaan/internal/app/appError"
 	"situs-keagamaan/internal/app/services"
@@ -25,6 +26,8 @@ type SitusKeagamaanHandler interface {
 	GetAllSitusForPublic(c *fiber.Ctx) error
 	GetSitusDetailForPublic(c *fiber.Ctx) error
 	GetLandingStats(c *fiber.Ctx) error
+
+	ExportSitusToExcel(c *fiber.Ctx) error
 }
 
 type situsKeagamaanHandlerImpl struct {
@@ -269,4 +272,28 @@ func (h *situsKeagamaanHandlerImpl) GetLandingStats(c *fiber.Ctx) error {
 		return c.Status(e.Status).SendString(e.Message)
 	}
 	return c.JSON(stats)
+}
+
+func (h *situsKeagamaanHandlerImpl) ExportSitusToExcel(c *fiber.Ctx) error {
+	jenisSitus := c.Query("jenis_situs")
+	if jenisSitus == "" {
+		return c.Status(400).SendString("harus menyertakan jenis_situs")
+	}
+
+	excelFile, err := h.situsService.ExportSitusToExcel(c.Context(), jenisSitus)
+	if err != nil {
+		e := err.(*apperror.AppError)
+		return c.Status(e.Status).SendString(e.Message)
+	}
+
+	c.Set("Content-Type", "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")
+
+	fileName := fmt.Sprintf("situs_keagamaan_%s.xlsx", jenisSitus)
+	c.Set("Content-Disposition", fmt.Sprintf(`attachment; filename="%s"`, fileName))
+
+	if err := excelFile.Write(c.Response().BodyWriter()); err != nil {
+		return c.Status(500).SendString("Gagal mengirim file Excel")
+	}
+
+	return nil
 }

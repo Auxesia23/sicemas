@@ -6,6 +6,7 @@
 		formData = $bindable(),
 		roles = [],
 		modalError = '',
+		errors = {}, // Tambahan prop untuk menerima error per field
 		onSubmit,
 		onCancel
 	} = $props();
@@ -46,95 +47,135 @@
 				<div class="grid grid-cols-1 gap-x-6 gap-y-4 md:grid-cols-2">
 					<div class="form-control">
 						<label class="label pt-0" for="nip">
-							<span class="label-text font-semibold">NIP</span>
+							<span class="label-text font-semibold"
+								>NIP / NIK <span class="text-error">*</span></span
+							>
 						</label>
 						<input
 							id="nip"
 							type="text"
-							class="input-bordered input w-full"
+							class="input-bordered input w-full {errors.nip ? 'input-error' : ''}"
 							bind:value={formData.nip}
-							placeholder="18 digit angka"
+							placeholder="16 atau 18 digit angka"
 							maxlength="18"
+							oninput={() => (errors.nip = null)}
 						/>
+						{#if errors.nip}
+							<span class="mt-1 text-xs text-error">{errors.nip}</span>
+						{/if}
 					</div>
 
 					<div class="form-control">
 						<label class="label pt-0" for="nama">
-							<span class="label-text font-semibold">Nama Lengkap</span>
+							<span class="label-text font-semibold"
+								>Nama Lengkap <span class="text-error">*</span></span
+							>
 						</label>
 						<input
 							id="nama"
 							type="text"
-							class="input-bordered input w-full"
+							class="input-bordered input w-full {errors.nama_lengkap ? 'input-error' : ''}"
 							bind:value={formData.nama_lengkap}
-							placeholder="Nama sesuai SK"
+							oninput={() => (errors.nama_lengkap = null)}
 						/>
+						{#if errors.nama_lengkap}
+							<span class="mt-1 text-xs text-error">{errors.nama_lengkap}</span>
+						{/if}
 					</div>
 
 					<div class="form-control">
 						<label class="label pt-0" for="jabatan">
-							<span class="label-text font-semibold">Jabatan</span>
+							<span class="label-text font-semibold">Jabatan <span class="text-error">*</span></span
+							>
 						</label>
 						<input
 							id="jabatan"
 							type="text"
-							class="input-bordered input w-full"
+							class="input-bordered input w-full {errors.jabatan ? 'input-error' : ''}"
 							bind:value={formData.jabatan}
 							placeholder="Contoh: Penghulu"
+							oninput={() => (errors.jabatan = null)}
 						/>
+						{#if errors.jabatan}
+							<span class="mt-1 text-xs text-error">{errors.jabatan}</span>
+						{/if}
 					</div>
 
 					<div class="form-control">
 						<label class="label pt-0" for="unit_kerja">
-							<span class="label-text font-semibold"
-								>Unit Kerja <span class="text-xs font-normal opacity-50">(Opsional)</span></span
-							>
+							<span class="label-text font-semibold">
+								Unit Kerja <span class="text-xs font-normal opacity-50">(Opsional)</span>
+							</span>
 						</label>
 						<input
 							id="unit_kerja"
 							type="text"
-							class="input-bordered input w-full"
+							class="input-bordered input w-full {errors.unit_kerja ? 'input-error' : ''}"
 							bind:value={formData.unit_kerja}
 							placeholder="Default: KUA Ciemas"
+							oninput={() => (errors.unit_kerja = null)}
 						/>
+						{#if errors.unit_kerja}
+							<span class="mt-1 text-xs text-error">{errors.unit_kerja}</span>
+						{/if}
 					</div>
 
 					<div class="form-control">
 						<label class="label pt-0" for="peran">
-							<span class="label-text font-semibold">Peran</span>
+							<span class="label-text font-semibold">Peran <span class="text-error">*</span></span>
 						</label>
-						<select id="peran" class="input-bordered input w-full" bind:value={formData.peran}>
+						<select
+							id="peran"
+							class="select-bordered select w-full {errors.peran ? 'select-error' : ''}"
+							bind:value={formData.peran}
+							onchange={() => (errors.peran = null)}
+						>
 							<option value="" disabled>Pilih peran</option>
 							{#each roles as role (role.ID)}
 								<option value={role.name}>{role.name}</option>
 							{/each}
 						</select>
+						{#if errors.peran}
+							<span class="mt-1 text-xs text-error">{errors.peran}</span>
+						{/if}
 					</div>
 
 					<div class="form-control">
 						<label class="label pt-0" for="email">
-							<span class="label-text font-semibold">Email</span>
+							<span class="label-text font-semibold"
+								>Email <span class="text-xs font-normal opacity-50">(Opsional)</span></span
+							>
 						</label>
 						<input
 							id="email"
 							type="email"
-							class="input-bordered input w-full"
+							class="input-bordered input w-full {errors.email ? 'input-error' : ''}"
 							bind:value={formData.email}
 							placeholder="petugas@kemenag.go.id"
+							oninput={() => (errors.email = null)}
 						/>
+						{#if errors.email}
+							<span class="mt-1 text-xs text-error">{errors.email}</span>
+						{/if}
 					</div>
 
 					<div class="form-control">
 						<label class="label pt-0" for="telp">
-							<span class="label-text font-semibold">Nomor Telepon</span>
+							<span class="label-text font-semibold"
+								>Nomor Telepon <span class="text-error">*</span></span
+							>
 						</label>
 						<input
 							id="telp"
 							type="tel"
-							class="input-bordered input w-full"
+							class="input-bordered input w-full {errors.nomor_telepon ? 'input-error' : ''}"
 							bind:value={formData.nomor_telepon}
 							placeholder="08xxxxxxxxxx"
+							oninput={() => (errors.nomor_telepon = null)}
 						/>
+						{#if errors.nomor_telepon}
+							<span class="mt-1 text-xs text-error">{errors.nomor_telepon}</span>
+						{/if}
 					</div>
 				</div>
 

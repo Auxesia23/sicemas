@@ -18,6 +18,7 @@ import (
 	"github.com/cloudinary/cloudinary-go/v2/api/admin"
 	"github.com/cloudinary/cloudinary-go/v2/api/uploader"
 	"github.com/google/uuid"
+	"github.com/xuri/excelize/v2"
 	"golang.org/x/sync/errgroup"
 )
 
@@ -27,10 +28,10 @@ type SitusKeagamaanService interface {
 	DeleteFotoSitus(ctx context.Context, situsId uuid.UUID, foto *dto.DeleteFoto) error
 	GetAllSitusKeagamaan(ctx context.Context, userId uuid.UUID) ([]dto.SitusKeagamaanResponse, error)
 	GetDetailSitusKeagamaan(ctx context.Context, situsId, userId uuid.UUID) (*dto.SitusKeagamaanDetailResponse, error)
+	ExportSitusToExcel(ctx context.Context, jenisSitus string) (*excelize.File, error)
 	UpdateSitus(ctx context.Context, id, userId uuid.UUID, in *dto.SitusKeagamaanUpdate, actorId uuid.UUID) error
 	DeleteSitus(ctx context.Context, id uuid.UUID, actorId uuid.UUID) error
 	VerifySitus(ctx context.Context, situsId uuid.UUID, in *dto.VerifikasiSitusRequest, actorId uuid.UUID) error
-
 	GetAllSitusForPublic(ctx context.Context, filter dto.PublicListFilter) ([]dto.SitusPublicListResponse, error)
 	GetSitusDetailForPublic(ctx context.Context, id uuid.UUID) (*dto.SitusPublicDetailResponse, error)
 	GetLandingStats(ctx context.Context) (*dto.LandingStatsResponse, error)
@@ -269,6 +270,55 @@ func (s *situsKeagamaanServiceImpl) GetDetailSitusKeagamaan(ctx context.Context,
 	}
 
 	return situs, nil
+}
+
+func (srv *situsKeagamaanServiceImpl) ExportSitusToExcel(ctx context.Context, jenisSitus string) (*excelize.File, error) {
+	situsList, err := srv.situsRepo.ReadAllDetail(ctx, jenisSitus)
+	if err != nil {
+		return nil, apperror.NewInternal("Terjadi kesalahan saat mengambil data.")
+	}
+
+	for i := range situsList {
+		situsList[i].NomorTelepon, err = utils.Decrypt(situsList[i].NomorTelepon)
+		if err != nil {
+			return nil, err
+		}
+
+		situsList[i].Email, err = utils.Decrypt(situsList[i].Email)
+		if err != nil {
+			return nil, err
+		}
+
+		situsList[i].NomorBadanHukum, err = utils.Decrypt(situsList[i].NomorBadanHukum)
+		if err != nil {
+			return nil, err
+		}
+
+		situsList[i].NomorAIW, err = utils.Decrypt(situsList[i].NomorAIW)
+		if err != nil {
+			return nil, err
+		}
+
+		situsList[i].NomorSertifikatWakaf, err = utils.Decrypt(situsList[i].NomorSertifikatWakaf)
+		if err != nil {
+			return nil, err
+		}
+
+		for j, nomor := range situsList[i].NomorTelponPengurus {
+			decryptedNomor, err := utils.Decrypt(nomor)
+			if err != nil {
+				return nil, err
+			}
+			situsList[i].NomorTelponPengurus[j] = decryptedNomor
+		}
+	}
+
+	excelFile, err := utils.ExportSitusToExcel(situsList)
+	if err != nil {
+		return nil, apperror.NewInternal("Terjadi kesalahan saat men-generate Excel.")
+	}
+
+	return excelFile, nil
 }
 
 func (s *situsKeagamaanServiceImpl) UpdateSitus(ctx context.Context, id, userId uuid.UUID, in *dto.SitusKeagamaanUpdate, actorId uuid.UUID) error {

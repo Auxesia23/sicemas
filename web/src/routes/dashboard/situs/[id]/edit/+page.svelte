@@ -43,7 +43,7 @@
 	let validationErrors = $state({});
 
 	const detailPesantrenSchema = z.object({
-		nama_yayasan: z.string().min(1, 'Nama Yayasan wajib diisi'),
+		nama_yayasan: z.string().optional(),
 		pimpinan_pesantren: z.string().min(1, 'Nama Pimpinan wajib diisi'),
 		kepengurusan: z.object({
 			ketua: z.string().min(1, 'Ketua wajib diisi'),
@@ -70,7 +70,21 @@
 					materi: z.string().min(1)
 				})
 			)
-			.min(1, 'Minimal 1 penceramah wajib')
+			.min(1, 'Minimal 1 penceramah wajib'),
+		kehadiran_pria: z
+			.object({
+				jumlah_dewasa: z.number().min(0),
+				jumlah_remaja: z.number().min(0),
+				waktu_pengajian: z.string()
+			})
+			.optional(),
+		kehadiran_wanita: z
+			.object({
+				jumlah_dewasa: z.number().min(0),
+				jumlah_remaja: z.number().min(0),
+				waktu_pengajian: z.string()
+			})
+			.optional()
 	});
 
 	const detailMusholaSchema = z.object({

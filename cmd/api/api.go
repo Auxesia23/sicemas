@@ -182,6 +182,10 @@ func (s *server) run() {
 		situs.Use(s.middlewares.Limiter.LimiterByDevice(rate.Every(time.Second), 10))
 		situs.Use(s.middlewares.Limiter.LimiterByUser(rate.Every(time.Second), 10))
 
+		situs.Get("/export",
+			s.middlewares.Auth.CasbinAuthz().RequiresPermissions([]string{"situs:export"}, casbin.WithValidationRule(casbin.MatchAllRule)),
+			s.handlers.SitusKeagamaan.ExportSitusToExcel,
+		)
 		situs.Post("/",
 			s.middlewares.Auth.CasbinAuthz().RequiresPermissions([]string{"situs:create"}, casbin.WithValidationRule(casbin.MatchAllRule)),
 			s.handlers.SitusKeagamaan.CreateSitus,

@@ -21,6 +21,7 @@
 	// State untuk pesan error/sukses
 	let tableError = $state('');
 	let modalError = $state('');
+	let formErrors = $state({}); // State untuk menangkap error per field dari Zod
 
 	// Modal and toast states for ConfirmModal & Toast
 	let showDeleteModal = $state(false);
@@ -41,12 +42,21 @@
 		peran: ''
 	});
 
-	// Zod validation schema
+	// Zod validation schema (Hanya butuh SATU saja)
 	const userSchema = z.object({
-		nip: z.string().length(18, 'NIP harus berjumlah 18 digit'),
+		nip: z
+			.string()
+			.regex(/^(\d{16}|\d{18})$/, 'Harus berupa NIK (16 digit angka) atau NIP (18 digit angka)'),
 		nama_lengkap: z.string().min(1, 'Nama lengkap wajib diisi'),
-		email: z.string().email('Format email tidak valid'),
-		nomor_telepon: z.string().min(1, 'Nomor telepon wajib diisi'),
+		email: z
+			.string()
+			.email('Format email tidak valid')
+			.or(z.literal('')) // Mengizinkan string kosong jika user tidak mengisi
+			.optional(),
+		nomor_telepon: z
+			.string()
+			.min(1, 'Nomor telepon wajib diisi')
+			.regex(/^[0-9+\-\s]+$/, 'Format nomor telepon tidak valid (hanya angka, +, atau -)'),
 		jabatan: z.string().min(1, 'Jabatan wajib diisi'),
 		unit_kerja: z.string().optional(),
 		peran: z.string().min(1, 'Peran wajib dipilih')
@@ -91,6 +101,7 @@
 		isEditMode = false;
 		editingUserId = null;
 		modalError = '';
+		formErrors = {};
 		formData = {
 			nip: '',
 			nama_lengkap: '',
@@ -107,6 +118,7 @@
 		isEditMode = true;
 		editingUserId = user.id;
 		modalError = '';
+		formErrors = {};
 		formData = {
 			nip: user.nip || '',
 			nama_lengkap: user.nama_lengkap || '',
@@ -123,15 +135,22 @@
 		isEditMode = false;
 		editingUserId = null;
 		modalError = '';
+		formErrors = {};
 	};
 
 	const handleSubmit = async () => {
 		modalError = '';
+		formErrors = {}; // Reset error field sebelum validasi ulang
 
-		// 1. Validasi Client-side dengan Zod
+		// 1. Validasi Client-side dengan Zod (Hanya panggil SATU kali)
 		const validation = userSchema.safeParse(formData);
+
 		if (!validation.success) {
-			modalError = validation.error.issues[0].message;
+			// Mapping error Zod ke dalam object formErrors
+			validation.error.issues.forEach((issue) => {
+				formErrors[issue.path[0]] = issue.message;
+			});
+			// Stop eksekusi agar tidak memanggil API jika ada field yang salah
 			return;
 		}
 
@@ -147,7 +166,7 @@
 			}
 
 			if (!response.ok) {
-				// 2. Tangkap error plain text dari Backend (Zero Trust/Validation error)
+				// Tangkap error plain text dari Backend (Zero Trust/Validation error)
 				const textError = await response.text();
 				throw new Error(textError || 'Gagal menyimpan data petugas');
 			}
@@ -168,7 +187,7 @@
 				showToast = false;
 			}, 3000);
 		} catch (error) {
-			modalError = error.message; // Keep error inside modal
+			modalError = error.message; // Keep API error inside modal
 		} finally {
 			isLoading = false;
 		}
@@ -217,7 +236,6 @@
 </script>
 
 <div class="mx-auto max-w-7xl p-4">
-	<!-- Toast Notification -->
 	<Toast
 		show={showToast}
 		message={toastMessage}
@@ -225,7 +243,6 @@
 		onclose={() => (showToast = false)}
 	/>
 
-	<!-- Confirmation Modal -->
 	<ConfirmModal
 		show={showDeleteModal}
 		title="Hapus Petugas"
@@ -235,7 +252,6 @@
 		onCancel={() => (showDeleteModal = false)}
 	/>
 
-	<!-- Edit User Modal -->
 	<EditUserModal
 		show={isModalOpen}
 		{isEditMode}
@@ -243,6 +259,7 @@
 		bind:formData
 		{roles}
 		{modalError}
+		bind:errors={formErrors}
 		onSubmit={handleSubmit}
 		onCancel={closeModal}
 	/>
@@ -304,7 +321,7 @@
 					<thead>
 						<tr class="text-base">
 							<th>Nama</th>
-							<th>NIP</th>
+							<th>NIP / NIK</th>
 							<th>Jabatan</th>
 							<th>Peran</th>
 							<th>Unit Kerja</th>

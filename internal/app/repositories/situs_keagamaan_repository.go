@@ -16,11 +16,11 @@ type SitusKeagamaanRepository interface {
 	ReadAll(ctx context.Context) ([]dto.SitusKeagamaanResponse, error)
 	ReadOwn(ctx context.Context, userId uuid.UUID) ([]dto.SitusKeagamaanResponse, error)
 	ReadDetail(ctx context.Context, id uuid.UUID) (*dto.SitusKeagamaanDetailResponse, error)
+	ReadAllDetail(ctx context.Context, jenisSitus string) ([]dto.SitusKeagamaanDetailResponse, error)
 	Update(ctx context.Context, id uuid.UUID, in *dto.SitusKeagamaanUpdate) error
 	Delete(ctx context.Context, id uuid.UUID) error
 	Verify(ctx context.Context, id uuid.UUID, in *dto.VerifikasiSitusRequest) error
 	CheckOwnership(ctx context.Context, Id uuid.UUID, userId uuid.UUID) error
-
 	ReadForPublic(ctx context.Context, filter dto.PublicListFilter) ([]dto.SitusPublicListResponse, error)
 	ReadDetailForPublic(ctx context.Context, id uuid.UUID) (*dto.SitusPublicDetailResponse, error)
 	GetLandingStats(ctx context.Context) (*dto.LandingStatsResponse, error)
@@ -183,6 +183,52 @@ func (r *situsKeagamaanRepositoryImpl) ReadDetail(ctx context.Context, id uuid.U
 	}
 
 	return &detail, nil
+}
+
+func (r *situsKeagamaanRepositoryImpl) ReadAllDetail(ctx context.Context, jenisSitus string) ([]dto.SitusKeagamaanDetailResponse, error) {
+	query := `
+			SELECT
+				sk.id,
+				js.nama_jenis AS jenis_situs,
+				sk.status_verifikasi,
+				sk.situs_id,
+				sk.nama,
+				sk.jenis_tipologi,
+				sk.nomor_telepon,
+				sk.nomor_telpon_pengurus,
+				sk.email,
+				sk.website,
+				sk.nomor_badan_hukum,
+				sk.tahun_berdiri,
+				sk.provinsi,
+				sk.kabupaten_kota,
+				sk.kecamatan,
+				sk.desa,
+				sk.alamat_lengkap,
+				ST_Y(sk.koordinat::geometry) AS latitude,
+				ST_X(sk.koordinat::geometry) AS longitude,
+				sk.luas_tanah,
+				sk.luas_bangunan,
+				sk.status_tanah,
+				sk.nomor_aiw,
+				sk.nomor_sertifikat_wakaf,
+				sk.daya_tampung_max,
+				sk.detail,
+				sk.updated_at
+			FROM situs_keagamaan sk
+			LEFT JOIN jenis_situs js ON sk.jenis_situs_id = js.id
+			WHERE js.nama_jenis = $1
+		`
+
+	var detail []dto.SitusKeagamaanDetailResponse
+
+	err := r.DB.SelectContext(ctx, &detail, query, jenisSitus)
+	if err != nil {
+		log.Println(err.Error())
+		return nil, err
+	}
+
+	return detail, nil
 }
 
 func (r *situsKeagamaanRepositoryImpl) Update(ctx context.Context, id uuid.UUID, in *dto.SitusKeagamaanUpdate) error {

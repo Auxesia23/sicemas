@@ -16,7 +16,7 @@
 		{ name: 'user', actions: ['create', 'read', 'update', 'delete'] },
 		{
 			name: 'situs',
-			actions: ['create', 'read_all', 'read_own', 'update', 'delete', 'verify']
+			actions: ['create', 'read_all', 'read_own', 'update', 'delete', 'verify', 'export']
 		},
 		{
 			name: 'jenis-situs',
@@ -37,7 +37,8 @@
 			update_all: 'Update All',
 			update_own: 'Update Own',
 			delete: 'Delete',
-			verify: 'Verify'
+			verify: 'Verify',
+			export: 'Export'
 		};
 		return labels[action] || action;
 	}

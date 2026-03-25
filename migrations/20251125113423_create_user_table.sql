@@ -7,7 +7,7 @@ CREATE TABLE users (
     nip             VARCHAR(255) NOT NULL,
     jabatan         VARCHAR(255) NOT NULL,
     unit_kerja      VARCHAR(255) NOT NULL,
-    email           VARCHAR(255) NOT NULL,
+    email           VARCHAR(255),
     nomor_telepon   VARCHAR(255) NOT NULL,
     created_at      TIMESTAMPTZ  DEFAULT NOW(),
     updated_at      TIMESTAMPTZ  DEFAULT NOW()

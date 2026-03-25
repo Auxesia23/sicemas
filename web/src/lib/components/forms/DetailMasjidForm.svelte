@@ -517,6 +517,49 @@
 			</div>
 		</div>
 
+		<div class="mb-4">
+			<label class="label" for="fd_in"
+				><span class="label-text font-medium">Fasilitas Disabilitas</span></label
+			>
+			<div class="mb-2 flex gap-2">
+				<input
+					id="fd_in"
+					type="text"
+					class="input-bordered input flex-1"
+					placeholder="Contoh: Jalur Kursi Roda"
+					bind:value={newFasilitasDisabilitas}
+					onkeydown={(e) =>
+						handleEnterKey(
+							e,
+							() =>
+								(newFasilitasDisabilitas = addToArray(
+									detail.fasilitas_disabilitas,
+									newFasilitasDisabilitas
+								))
+						)}
+				/>
+				<button
+					type="button"
+					class="btn btn-secondary"
+					onclick={() =>
+						(newFasilitasDisabilitas = addToArray(
+							detail.fasilitas_disabilitas,
+							newFasilitasDisabilitas
+						))}>Tambah</button
+				>
+			</div>
+			<div class="flex flex-wrap gap-2">
+				{#each detail.fasilitas_disabilitas as f, i}
+					<div class="badge h-8 gap-2 text-white badge-info">
+						{f}<button
+							type="button"
+							onclick={() => removeFromArray(detail.fasilitas_disabilitas, i)}>✕</button
+						>
+					</div>
+				{/each}
+			</div>
+		</div>
+
 		<div>
 			<label class="label" for="keg_in"
 				><span class="label-text font-medium">Kegiatan Rutin</span></label

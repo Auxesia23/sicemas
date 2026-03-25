@@ -76,12 +76,10 @@
 				<input
 					id="nama_yayasan"
 					type="text"
-					class="input-bordered input min-h-11 w-full {errors?.nama_yayasan ? 'input-error' : ''}"
+					class="input-bordered input min-h-11 w-full"
 					bind:value={detail.nama_yayasan}
 					oninput={() => clearError('nama_yayasan')}
 				/>
-				{#if errors?.nama_yayasan}<span class="mt-1 text-xs text-error">{errors.nama_yayasan}</span
-					>{/if}
 			</div>
 			<div class="form-control">
 				<label class="label" for="pimpinan_pesantren">
