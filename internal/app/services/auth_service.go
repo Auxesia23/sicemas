@@ -209,7 +209,7 @@ func (s *authServiceImpl) Logout(ctx context.Context, refreshToken string, acces
 	}
 
 	if accessToken != nil && *accessToken != "" {
-		err := s.cache.Set(ctx, fmt.Sprintf("blocked:%v", *accessToken), true, time.Minute*5)
+		err := s.cache.Set(ctx, fmt.Sprintf("blocked:%v", *accessToken), true, time.Minute*15)
 		if err != nil {
 			return apperror.NewInternal("Terjadi Kesalahan saat blokir akses token")
 		}

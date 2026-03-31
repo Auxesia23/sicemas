@@ -7,6 +7,7 @@ import (
 	"situs-keagamaan/internal/dto"
 	"situs-keagamaan/internal/geoip"
 	"situs-keagamaan/internal/utils"
+	"time"
 
 	"github.com/casbin/casbin/v2"
 	fcasbin "github.com/gofiber/contrib/casbin"
@@ -55,6 +56,7 @@ func (m *authMiddlewareImpl) JWTAuthenticator(c *fiber.Ctx) error {
 }
 
 func (m *authMiddlewareImpl) ZeroTrustValidator(c *fiber.Ctx) error {
+	token := c.Cookies("access_token")
 	jwtClaim := c.Locals("claim").(*dto.AccessToken)
 
 	var ipStr string
@@ -82,7 +84,8 @@ func (m *authMiddlewareImpl) ZeroTrustValidator(c *fiber.Ctx) error {
 		DeviceID:    deviceId,
 	}
 	var curentSession dto.SessionValue
-	err = m.cache.Get(c.Context(), fmt.Sprintf("rt:%v:%v", jwtClaim.Subject, jwtClaim.SID), &curentSession)
+	sessionKey := fmt.Sprintf("rt:%v:%v", jwtClaim.Subject, jwtClaim.SID)
+	err = m.cache.Get(c.Context(), sessionKey, &curentSession)
 	if err != nil {
 		if err == redis.Nil {
 			return c.SendStatus(fiber.StatusUnauthorized)
@@ -92,7 +95,22 @@ func (m *authMiddlewareImpl) ZeroTrustValidator(c *fiber.Ctx) error {
 
 	trustScore := utils.CalculateTrustScore(requestContect, &curentSession)
 	if trustScore <= 70 {
-		return c.Status(fiber.StatusForbidden).SendString("Terjadi perbuhan konteks dalam sesi!")
+		_ = m.cache.Delete(c.Context(), sessionKey)
+		_ = m.cache.Set(c.Context(), fmt.Sprintf("blocked:%v", token), true, time.Minute*15)
+		c.Cookie(&fiber.Cookie{
+			Name:     "access_token",
+			Value:    "",
+			Expires:  time.Now().Add(-time.Hour),
+			HTTPOnly: true,
+		})
+
+		c.Cookie(&fiber.Cookie{
+			Name:     "refresh_token",
+			Value:    "",
+			Expires:  time.Now().Add(-time.Hour),
+			HTTPOnly: true,
+		})
+		return c.Status(fiber.StatusUnauthorized).SendString("Terjadi perbuhan konteks dalam sesi!")
 	}
 
 	return c.Next()

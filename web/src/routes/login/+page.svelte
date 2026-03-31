@@ -1,7 +1,6 @@
-<script>
-	import { onMount } from 'svelte';
-	import { goto } from '$app/navigation';
+<script lang="ts">
 	import apiService from '$lib/api';
+	import { z } from 'zod';
 
 	let nip = $state('');
 	let otp = $state('');
@@ -10,10 +9,23 @@
 	let errorMessage = $state('');
 	let successMessage = $state('');
 
+	const nipSchema = z.string().regex(/^(\d{16}|\d{18})$/, {
+		message: 'NIP/NIK harus berupa 16 atau 18 digit angka'
+	});
+
+	// Harus angka semua dan jumlahnya tepat 6
+	const otpSchema = z.string().regex(/^\d{6}$/, {
+		message: 'OTP harus berupa 6 digit angka'
+	});
+
 	// Function to send OTP
-	const sendOTP = async () => {
-		if (!nip || nip.length !== 18) {
-			errorMessage = 'NIP harus berupa 18 digit angka';
+	const sendOTP = async (e?: Event) => {
+		if (e) e.preventDefault();
+
+		// Validasi Zod untuk NIP/NIK
+		const nipValidation = nipSchema.safeParse(nip);
+		if (!nipValidation.success) {
+			errorMessage = nipValidation.error.errors[0].message;
 			return;
 		}
 
@@ -43,9 +55,13 @@
 	};
 
 	// Function to handle login
-	const handleLogin = async () => {
-		if (!otp || otp.length !== 6) {
-			errorMessage = 'OTP harus berupa 6 digit angka';
+	const handleLogin = async (e?: Event) => {
+		if (e) e.preventDefault();
+
+		// Validasi Zod untuk OTP
+		const otpValidation = otpSchema.safeParse(otp);
+		if (!otpValidation.success) {
+			errorMessage = otpValidation.error.errors[0].message;
 			return;
 		}
 
@@ -67,7 +83,7 @@
 
 		isLoading = false;
 
-		// Here you would typically redirect to another page
+		// Redirect ke dashboard (pakai goto dari SvelteKit buat client-side navigation)
 		window.location.href = '/dashboard';
 	};
 
@@ -99,7 +115,6 @@
 	<div class="relative z-10 w-full max-w-4xl">
 		<div class="card overflow-hidden rounded-2xl border border-base-200 shadow-xl">
 			<div class="flex flex-col md:flex-row">
-				<!-- Abstract Graphic Section -->
 				<div class="hidden w-full bg-linear-to-br from-primary to-secondary p-8 md:block md:w-2/5">
 					<div
 						class="relative flex h-full flex-col items-center justify-center overflow-hidden text-center"
@@ -140,38 +155,22 @@
 					</div>
 				</div>
 
-				<!-- Login Form Section -->
 				<div class="w-full bg-base-100 md:w-3/5">
 					<div class="card-body flex h-full flex-col p-8">
-						<!-- Header -->
 						<div class="mb-8 text-center">
 							<div
 								class="mb-4 inline-block rounded-full bg-linear-to-r from-primary to-secondary p-3"
 							>
-								<svg
-									xmlns="http://www.w3.org/2000/svg"
-									class="h-10 w-10 text-primary-content"
-									fill="none"
-									viewBox="0 0 24 24"
-									stroke="currentColor"
-								>
-									<path
-										stroke-linecap="round"
-										stroke-linejoin="round"
-										stroke-width="2"
-										d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"
-									/>
-								</svg>
+								<img src="/kemenag.webp" alt="Sicemas KUA Ciemas" class="h-10 w-10" />
 							</div>
 							<h1
 								class="bg-linear-to-r from-primary to-secondary bg-clip-text text-3xl font-bold text-transparent"
 							>
-								Selamat Datang
+								Selamat Datang di Sicemas KUA Ciemas
 							</h1>
 							<p class="mt-2 text-base-content/70">Masuk dengan NIP Anda</p>
 						</div>
 
-						<!-- Error Message -->
 						{#if errorMessage}
 							<div class="mb-4 alert alert-error">
 								<svg
@@ -191,7 +190,6 @@
 							</div>
 						{/if}
 
-						<!-- Success Message -->
 						{#if successMessage}
 							<div class="mb-4 alert alert-success">
 								<svg
@@ -211,36 +209,32 @@
 							</div>
 						{/if}
 
-						<!-- Login Form -->
-						<form class="grow">
-							<!-- NIP Input -->
+						<form class="grow" onsubmit={isOtpSent ? handleLogin : sendOTP}>
 							{#if !isOtpSent}
 								<div class="mb-6">
 									<label class="label" for="nip">
 										<span class="label-text font-medium text-base-content"
-											>Nomor Induk Pegawai (NIP)</span
+											>Nomor Induk Pegawai (NIP/NIK)</span
 										>
 									</label>
 									<input
 										id="nip"
 										type="text"
-										placeholder="Masukkan NIP Anda (18 digit)"
+										placeholder="Masukkan NIP/NIK Anda"
 										class="input-bordered input w-full"
 										bind:value={nip}
 										maxlength="18"
 										disabled={isLoading}
-										oninput={(e) => (nip = e.target.value.replace(/\D/g, ''))}
+										oninput={(e) => (nip = e.currentTarget.value.replace(/\D/g, ''))}
 									/>
 								</div>
 							{/if}
 
-							<!-- Send OTP Button -->
 							{#if !isOtpSent}
 								<button
-									type="button"
+									type="submit"
 									class="btn mb-6 w-full btn-primary"
-									onclick={sendOTP}
-									disabled={isLoading || !nip || nip.length !== 18}
+									disabled={isLoading || (nip.length !== 16 && nip.length !== 18)}
 								>
 									{#if isLoading}
 										<span class="loading loading-spinner"></span>
@@ -262,7 +256,6 @@
 								</button>
 							{/if}
 
-							<!-- OTP Input -->
 							{#if isOtpSent}
 								<div class="mb-6">
 									<label class="label" for="otp">
@@ -276,7 +269,7 @@
 										bind:value={otp}
 										maxlength="6"
 										disabled={isLoading}
-										oninput={(e) => (otp = e.target.value.replace(/\D/g, ''))}
+										oninput={(e) => (otp = e.currentTarget.value.replace(/\D/g, ''))}
 									/>
 									<div class="label">
 										<span class="label-text-alt text-base-content/60"
@@ -286,13 +279,11 @@
 								</div>
 							{/if}
 
-							<!-- Login Button -->
 							{#if isOtpSent}
 								<button
 									type="submit"
 									class="btn mb-4 w-full btn-primary"
-									disabled={isLoading || !otp || otp.length !== 6}
-									onclick={handleLogin}
+									disabled={isLoading || otp.length !== 6}
 								>
 									{#if isLoading}
 										<span class="loading loading-spinner"></span>
@@ -315,7 +306,6 @@
 								</button>
 							{/if}
 
-							<!-- Resend OTP Option -->
 							{#if isOtpSent}
 								<div class="flex items-center justify-between">
 									<button

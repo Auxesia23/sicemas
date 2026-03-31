@@ -129,6 +129,7 @@ class ApiService {
 					// Refresh gagal total, tolak semua request di antrean
 					this.isRefreshing = false;
 					this.processQueue(new Error('Refresh token failed'));
+					window.location.href = '/login';
 				}
 			}
 

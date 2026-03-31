@@ -48,11 +48,7 @@
 			.string()
 			.regex(/^(\d{16}|\d{18})$/, 'Harus berupa NIK (16 digit angka) atau NIP (18 digit angka)'),
 		nama_lengkap: z.string().min(1, 'Nama lengkap wajib diisi'),
-		email: z
-			.string()
-			.email('Format email tidak valid')
-			.or(z.literal('')) // Mengizinkan string kosong jika user tidak mengisi
-			.optional(),
+		email: z.string().email('Format email tidak valid').or(z.literal('')).optional(),
 		nomor_telepon: z
 			.string()
 			.min(1, 'Nomor telepon wajib diisi')
