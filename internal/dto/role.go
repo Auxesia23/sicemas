@@ -7,7 +7,7 @@ type RoleRequest struct {
 }
 
 type RoleResponse struct {
-	ID        string    `josn:"id"`
+	ID        string    `json:"id"`
 	Name      string    `json:"name"`
 	CreatedAt time.Time `json:"created_at"`
 }

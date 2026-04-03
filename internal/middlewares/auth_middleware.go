@@ -2,6 +2,7 @@ package middlewares
 
 import (
 	"fmt"
+	"log/slog"
 	"net/netip"
 	"situs-keagamaan/internal/cache"
 	"situs-keagamaan/internal/dto"
@@ -12,6 +13,7 @@ import (
 	"github.com/casbin/casbin/v2"
 	fcasbin "github.com/gofiber/contrib/casbin"
 	"github.com/gofiber/fiber/v2"
+	"github.com/google/uuid"
 	"github.com/redis/go-redis/v9"
 )
 
@@ -20,19 +22,27 @@ type AuthMiddleware interface {
 	ZeroTrustValidator(c *fiber.Ctx) error
 	CasbinAuthz() *fcasbin.Middleware
 	GetContext(c *fiber.Ctx) error
+	CSRFDoubleSubmit() fiber.Handler
 }
 
 type authMiddlewareImpl struct {
 	enforcer *casbin.Enforcer
 	locator  geoip.Locator
 	cache    cache.Cache
+	logger   *slog.Logger
 }
 
-func NewAuthMiddleware(enforcer *casbin.Enforcer, locator geoip.Locator, cache cache.Cache) AuthMiddleware {
+func NewAuthMiddleware(
+	enforcer *casbin.Enforcer,
+	locator geoip.Locator,
+	cache cache.Cache,
+	logger *slog.Logger,
+) AuthMiddleware {
 	return &authMiddlewareImpl{
-		enforcer,
-		locator,
-		cache,
+		enforcer: enforcer,
+		locator:  locator,
+		cache:    cache,
+		logger:   logger,
 	}
 }
 
@@ -41,13 +51,17 @@ func (m *authMiddlewareImpl) JWTAuthenticator(c *fiber.Ctx) error {
 	if token == "" {
 		return c.SendStatus(fiber.StatusUnauthorized)
 	}
+
 	var blocked bool
 	m.cache.Get(c.Context(), fmt.Sprintf("blocked:%v", token), &blocked)
 	if blocked {
+		m.logger.Warn("blocked access token detected, request rejected")
 		return c.SendStatus(fiber.StatusUnauthorized)
 	}
+
 	claim, err := utils.ParseAccessToken(token)
 	if err != nil {
+		m.logger.Warn("invalid or expired access token", "error", err)
 		return c.SendStatus(fiber.StatusUnauthorized)
 	}
 
@@ -66,11 +80,13 @@ func (m *authMiddlewareImpl) ZeroTrustValidator(c *fiber.Ctx) error {
 	}
 	ip, err := netip.ParseAddr(ipStr)
 	if err != nil {
+		m.logger.Error("failed to parse IP address", "error", err)
 		return c.Status(500).SendString("Terjadi kesalahan!")
 	}
 
 	location, err := m.locator.Lookup(ip)
 	if err != nil {
+		m.logger.Error("failed to lookup GeoIP location", "error", err)
 		return c.Status(500).SendString("Terjadi kesalahan!")
 	}
 
@@ -90,11 +106,19 @@ func (m *authMiddlewareImpl) ZeroTrustValidator(c *fiber.Ctx) error {
 		if err == redis.Nil {
 			return c.SendStatus(fiber.StatusUnauthorized)
 		}
+		m.logger.Error("failed to retrieve session from cache", "user_id", jwtClaim.Subject, "error", err)
 		return c.Status(500).SendString("Terjadi kesalahan!")
 	}
 
 	trustScore := utils.CalculateTrustScore(requestContect, &curentSession)
 	if trustScore <= 70 {
+		m.logger.Warn("low trust score detected, session invalidated",
+			"user_id", jwtClaim.Subject,
+			"trust_score", trustScore,
+			"ip_address", ipStr,
+			"device_id", deviceId,
+		)
+
 		_ = m.cache.Delete(c.Context(), sessionKey)
 		_ = m.cache.Set(c.Context(), fmt.Sprintf("blocked:%v", token), true, time.Minute*15)
 		c.Cookie(&fiber.Cookie{
@@ -123,6 +147,9 @@ func (m *authMiddlewareImpl) CasbinAuthz() *fcasbin.Middleware {
 			jwtClaim := c.Locals("claim").(*dto.AccessToken)
 			return jwtClaim.Subject
 		},
+		Forbidden: func(c *fiber.Ctx) error {
+			return c.Status(fiber.StatusForbidden).SendString("Anda tidak memiliki izin untuk melakukan aksi ini!")
+		},
 	})
 
 	return authz
@@ -142,6 +169,7 @@ func (m *authMiddlewareImpl) GetContext(c *fiber.Ctx) error {
 	}
 	ip, err := netip.ParseAddr(ipStr)
 	if err != nil {
+		m.logger.Error("failed to parse IP address in GetContext", "error", err)
 		return c.Status(500).SendString("Terjadi kesalahan!")
 	}
 
@@ -157,6 +185,41 @@ func (m *authMiddlewareImpl) GetContext(c *fiber.Ctx) error {
 	}
 
 	c.Locals("context", loginContext)
-	fmt.Printf("IP Addr : %v\nLocation : %v\nUser Agent : %v\nDevice ID : %v\n", ipStr, locationn.City, userAgent, deviceId)
 	return c.Next()
+}
+
+func (m *authMiddlewareImpl) CSRFDoubleSubmit() fiber.Handler {
+	return func(c *fiber.Ctx) error {
+		method := c.Method()
+		if method == "GET" || method == "HEAD" || method == "OPTIONS" {
+			return c.Next()
+		}
+
+		claim := c.Locals("claim").(*dto.AccessToken)
+		userId, err := uuid.Parse(claim.Subject)
+		if err != nil {
+			return c.Status(fiber.StatusInternalServerError).SendString("Terjadi kesalahan!")
+		}
+
+		cookieToken := c.Cookies("csrf_token")
+		headerToken := c.Get("X-CSRF-Token")
+
+		if cookieToken == "" || headerToken == "" {
+			m.logger.Warn("CSRF token mismatch detected", "user_id", userId, "reason", "missing_token")
+			return c.Status(fiber.StatusForbidden).SendString("Akses ditolak. CSRF token tidak ditemukan")
+		}
+
+		if cookieToken != headerToken {
+			m.logger.Warn("CSRF token mismatch detected", "user_id", userId, "reason", "token_mismatch")
+			return c.Status(fiber.StatusForbidden).SendString("Akses ditolak. CSRF token tidak valid (Mismatch)")
+		}
+
+		isValid := utils.VerifyCSRFToken(cookieToken, userId)
+		if !isValid {
+			m.logger.Warn("CSRF token mismatch detected", "user_id", userId, "reason", "invalid_token")
+			return c.Status(fiber.StatusForbidden).SendString("Akses ditolak. CSRF token tidak valid")
+		}
+
+		return c.Next()
+	}
 }

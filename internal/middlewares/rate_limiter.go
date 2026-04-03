@@ -1,6 +1,7 @@
 package middlewares
 
 import (
+	"log/slog"
 	"situs-keagamaan/internal/dto"
 	"sync"
 	"time"
@@ -20,6 +21,7 @@ type RateLimiter interface {
 }
 
 type rateLimiterImpl struct {
+	logger *slog.Logger
 }
 
 type limiterState struct {
@@ -30,8 +32,8 @@ type limiterState struct {
 	burt int
 }
 
-func NewRateLimiter() RateLimiter {
-	return &rateLimiterImpl{}
+func NewRateLimiter(logger *slog.Logger) RateLimiter {
+	return &rateLimiterImpl{logger: logger}
 }
 
 func newLimiterState(rate rate.Limit, burst int) *limiterState {
@@ -84,11 +86,11 @@ func (rl *rateLimiterImpl) LimiterByDevice(r rate.Limit, burst int) fiber.Handle
 		}
 		limiter := state.getLimiter(deviceID)
 		if !limiter.Allow() {
+			rl.logger.Warn("rate limit exceeded", "device_id", deviceID, "ip_address", c.IP())
 			return c.Status(fiber.StatusTooManyRequests).SendString("Terlalu banyak permintaan. Silakan tunggu beberapa saat.")
 		}
 		return c.Next()
 	}
-
 }
 
 // Rate limiter by user, make sure to use this middleware after JWTAuth middleware
@@ -101,6 +103,7 @@ func (rl *rateLimiterImpl) LimiterByUser(r rate.Limit, burst int) fiber.Handler 
 		}
 		limiter := state.getLimiter(claim.Subject)
 		if !limiter.Allow() {
+			rl.logger.Warn("rate limit exceeded", "user_id", claim.Subject, "device_id", c.Get("X-Device-Id"))
 			return c.Status(fiber.StatusTooManyRequests).SendString("Terlalu banyak permintaan. Silakan tunggu beberapa saat.")
 		}
 		return c.Next()

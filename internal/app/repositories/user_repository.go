@@ -57,7 +57,8 @@ func (r *userRepiImpl) Create(ctx context.Context, in *dto.UserRequest, index []
 func (r *userRepiImpl) ReadAll(ctx context.Context) ([]entity.User, error) {
 	query := `
 		SELECT *
-		FROM users;
+		FROM users
+		WHERE deleted_at IS NULL;
 	`
 	var dest []entity.User
 	if err := r.DB.SelectContext(ctx, &dest, query); err != nil {
@@ -71,7 +72,7 @@ func (r *userRepiImpl) ReadOne(ctx context.Context, index []byte) (*entity.User,
 	query := `
 		SELECT *
 		FROM users
-		WHERE nip_index = $1
+		WHERE nip_index = $1 AND deleted_at IS NULL
 		LIMIT 1;
 	`
 
@@ -86,10 +87,10 @@ func (r *userRepiImpl) ReadOne(ctx context.Context, index []byte) (*entity.User,
 
 func (r *userRepiImpl) ReadById(ctx context.Context, id string) (*entity.User, error) {
 	query := `
-		SELECT *
-		FROM users
-		WHERE id = $1
-		LIMIT 1;
+	SELECT *
+    FROM users
+    WHERE id = $1 AND deleted_at IS NULL
+    LIMIT 1;
 	`
 
 	var dest entity.User
@@ -139,8 +140,9 @@ func (r *userRepiImpl) Update(ctx context.Context, id uuid.UUID, in *dto.UserReq
 
 func (r *userRepiImpl) Delete(ctx context.Context, id uuid.UUID) error {
 	query := `
-		DELETE FROM users
-		WHERE id=$1;
+		UPDATE users
+        SET deleted_at = NOW()
+        WHERE id=$1 AND deleted_at IS NULL;
 	`
 	result, err := r.DB.ExecContext(ctx, query, id)
 	if err != nil {

@@ -8,6 +8,7 @@ import (
 type Token struct {
 	AccessToken  string
 	RefreshToken string
+	CSRFToken    string
 }
 
 type AccessToken struct {
