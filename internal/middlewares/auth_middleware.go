@@ -73,11 +73,7 @@ func (m *authMiddlewareImpl) ZeroTrustValidator(c *fiber.Ctx) error {
 	token := c.Cookies("access_token")
 	jwtClaim := c.Locals("claim").(*dto.AccessToken)
 
-	var ipStr string
-	ipStr = c.Get("X-Forwarded-For")
-	if ipStr == "" {
-		ipStr = c.IP()
-	}
+	ipStr := c.IP()
 	ip, err := netip.ParseAddr(ipStr)
 	if err != nil {
 		m.logger.Error("failed to parse IP address", "error", err)
@@ -156,14 +152,7 @@ func (m *authMiddlewareImpl) CasbinAuthz() *fcasbin.Middleware {
 }
 
 func (m *authMiddlewareImpl) GetContext(c *fiber.Ctx) error {
-	var ipStr string
-	ipStr = c.Get("X-True-Client-IP")
-	if ipStr == "" {
-		ipStr = c.Get("X-Forwarded-For")
-	}
-	if ipStr == "" {
-		ipStr = c.IP()
-	}
+	ipStr := c.IP()
 	if ipStr == "::1" || ipStr == "0:0:0:0:0:0:0:1" {
 		ipStr = "127.0.0.1"
 	}
