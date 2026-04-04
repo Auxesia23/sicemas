@@ -7,9 +7,9 @@ import (
 	"log/slog"
 	"net/http"
 	"runtime/debug"
-	"situs-keagamaan/internal/app/handlers"
-	"situs-keagamaan/internal/middlewares"
-	"situs-keagamaan/ui"
+	"sicemas/internal/app/handlers"
+	"sicemas/internal/middlewares"
+	"sicemas/ui"
 	"time"
 
 	"github.com/gofiber/contrib/casbin"
@@ -57,7 +57,7 @@ func (s *server) run() {
 		ReadTimeout:  s.cfg.ReadTimeout,
 		WriteTimeout: s.cfg.WriteTimeout,
 		IdleTimeout:  s.cfg.IdleTimeout,
-		// ProxyHeader:  "X-Forwarded-For",
+		ProxyHeader:  "X-Forwarded-For",
 		ErrorHandler: func(c *fiber.Ctx, err error) error {
 			code := fiber.StatusInternalServerError
 			if e, ok := err.(*fiber.Error); ok {

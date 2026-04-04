@@ -3,10 +3,10 @@ package services
 import (
 	"context"
 	"log/slog"
-	apperror "situs-keagamaan/internal/app/appError"
-	"situs-keagamaan/internal/app/repositories"
-	"situs-keagamaan/internal/dto"
-	"situs-keagamaan/internal/entity"
+	apperror "sicemas/internal/app/appError"
+	"sicemas/internal/app/repositories"
+	"sicemas/internal/dto"
+	"sicemas/internal/entity"
 
 	"github.com/casbin/casbin/v2"
 	"github.com/google/uuid"

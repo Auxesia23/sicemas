@@ -1,4 +1,4 @@
-module situs-keagamaan
+module sicemas
 
 go 1.25.4
 

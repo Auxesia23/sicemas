@@ -4,9 +4,9 @@ import (
 	"fmt"
 	"log"
 	"mime/multipart"
-	apperror "situs-keagamaan/internal/app/appError"
-	"situs-keagamaan/internal/app/services"
-	"situs-keagamaan/internal/dto"
+	apperror "sicemas/internal/app/appError"
+	"sicemas/internal/app/services"
+	"sicemas/internal/dto"
 	"strconv"
 
 	"github.com/go-playground/validator/v10"

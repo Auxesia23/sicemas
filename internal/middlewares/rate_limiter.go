@@ -2,7 +2,7 @@ package middlewares
 
 import (
 	"log/slog"
-	"situs-keagamaan/internal/dto"
+	"sicemas/internal/dto"
 	"sync"
 	"time"
 

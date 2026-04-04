@@ -3,7 +3,7 @@ package utils
 import (
 	"encoding/json"
 	"fmt"
-	"situs-keagamaan/internal/dto"
+	"sicemas/internal/dto"
 	"sort"
 	"strings"
 

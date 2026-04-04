@@ -3,8 +3,8 @@ package repositories
 import (
 	"context"
 	"log"
-	"situs-keagamaan/internal/dto"
-	"situs-keagamaan/internal/entity"
+	"sicemas/internal/dto"
+	"sicemas/internal/entity"
 
 	"github.com/jmoiron/sqlx"
 )

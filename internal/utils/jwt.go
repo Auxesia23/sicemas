@@ -4,8 +4,8 @@ import (
 	"errors"
 	"fmt"
 	"os"
-	"situs-keagamaan/internal/dto"
-	"situs-keagamaan/internal/entity"
+	"sicemas/internal/dto"
+	"sicemas/internal/entity"
 	"time"
 
 	"github.com/golang-jwt/jwt/v5"

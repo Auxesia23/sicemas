@@ -3,9 +3,9 @@ package services
 import (
 	"context"
 	"log/slog"
-	apperror "situs-keagamaan/internal/app/appError"
-	"situs-keagamaan/internal/app/repositories"
-	"situs-keagamaan/internal/dto"
+	apperror "sicemas/internal/app/appError"
+	"sicemas/internal/app/repositories"
+	"sicemas/internal/dto"
 )
 
 type DashboardService interface {

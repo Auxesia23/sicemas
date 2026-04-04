@@ -2,7 +2,7 @@ package utils
 
 import (
 	"net"
-	"situs-keagamaan/internal/dto"
+	"sicemas/internal/dto"
 	"strings"
 )
 
