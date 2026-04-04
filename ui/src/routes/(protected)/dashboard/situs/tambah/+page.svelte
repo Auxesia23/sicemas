@@ -965,7 +965,6 @@
                                         >
                                     </label>
                                     <input
-                                        required
                                         id="latitude"
                                         type="number"
                                         step="any"
@@ -986,7 +985,6 @@
                                         >
                                     </label>
                                     <input
-                                        required
                                         id="longitude"
                                         type="number"
                                         step="any"

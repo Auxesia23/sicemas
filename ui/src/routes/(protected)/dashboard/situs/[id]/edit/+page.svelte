@@ -335,7 +335,6 @@
         if (detailResult && !detailResult.success) {
             hasError = true;
             mapFlatErrors(v.flatten(detailResult.issues), errors);
-            console.log(errors);
         }
 
         if (hasError) {
@@ -754,7 +753,6 @@
                                             class="select select-bordered w-full rounded-xl bg-base-200/30 focus:bg-base-100 transition-colors min-h-12 {validationErrors.jenis_tipologi
                                                 ? 'select-error'
                                                 : ''}"
-                                            required
                                             bind:value={formData.jenis_tipologi}
                                             onchange={() =>
                                                 (validationErrors.jenis_tipologi =
@@ -871,7 +869,6 @@
                                         >
                                     </label>
                                     <input
-                                        required
                                         id="tahun_berdiri"
                                         type="number"
                                         min="0"
@@ -996,7 +993,6 @@
                                         >
                                     </label>
                                     <input
-                                        required
                                         id="desa"
                                         type="text"
                                         class="input input-bordered w-full rounded-xl bg-base-200/30 focus:bg-base-100 transition-colors min-h-12 {validationErrors.desa
@@ -1025,7 +1021,6 @@
                                     >
                                 </label>
                                 <textarea
-                                    required
                                     id="alamat_lengkap"
                                     class="textarea textarea-bordered w-full rounded-xl bg-base-200/30 focus:bg-base-100 transition-colors min-h-24 py-3 {validationErrors.alamat_lengkap
                                         ? 'textarea-error'
@@ -1089,7 +1084,6 @@
                                             >
                                         </label>
                                         <input
-                                            required
                                             id="latitude"
                                             type="number"
                                             step="any"
@@ -1113,7 +1107,6 @@
                                             >
                                         </label>
                                         <input
-                                            required
                                             id="longitude"
                                             type="number"
                                             step="any"
@@ -1186,7 +1179,6 @@
                                     >
                                 </label>
                                 <input
-                                    required
                                     id="luas_tanah"
                                     type="number"
                                     min="0"
@@ -1218,7 +1210,6 @@
                                     >
                                 </label>
                                 <input
-                                    required
                                     id="luas_bangunan"
                                     type="number"
                                     min="0"

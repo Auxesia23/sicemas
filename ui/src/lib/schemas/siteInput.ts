@@ -2,15 +2,18 @@ import * as v from "valibot";
 
 export const DetailMasjidSchema = v.object({
   sdm_masjid: v.object({
-    jumlah_pengurus: v.pipe(v.number(), v.minValue(1, "Wajib diisi")),
-    jumlah_imam: v.pipe(v.number(), v.minValue(1, "Wajib diisi")),
-    jumlah_khotib: v.pipe(v.number(), v.minValue(1, "Wajib diisi")),
-    jumlah_muadzin: v.pipe(v.number(), v.minValue(1, "Wajib diisi")),
-    jumlah_remaja: v.pipe(v.number(), v.minValue(1, "Wajib diisi")),
-    jumlah_jemaah: v.pipe(v.number(), v.minValue(1, "Wajib diisi")),
+    jumlah_pengurus: v.pipe(v.number("Wajib diisi"), v.minValue(0)),
+    jumlah_imam: v.pipe(v.number("Wajib diisi"), v.minValue(0)),
+    jumlah_khotib: v.pipe(v.number("Wajib diisi"), v.minValue(0)),
+    jumlah_muadzin: v.pipe(v.number("Wajib diisi"), v.minValue(0)),
+    jumlah_remaja: v.pipe(v.number("Wajib diisi"), v.minValue(0)),
+    jumlah_jemaah: v.pipe(v.number("Wajib diisi"), v.minValue(0)),
   }),
   pengurus_dkm: v.object({
-    ketua: v.pipe(v.string(), v.minLength(1, "Ketua DKM wajib diisi")),
+    ketua: v.pipe(
+      v.string("Ketua DKM wajib diisi"),
+      v.minLength(1, "Ketua DKM wajib diisi"),
+    ),
     sekretaris: v.pipe(
       v.array(v.string()),
       v.minLength(1, "Minimal 1 sekretaris"),
@@ -29,25 +32,25 @@ export const DetailMasjidSchema = v.object({
 
 export const DEFAULT_DETAIL_MASJID = {
   perpustakaan: {
-    luas_m2: 0,
-    jumlah_pengurus: 0,
-    kondisi: "",
+    luas_m2: null,
+    jumlah_pengurus: null,
+    kondisi: null,
     jenis_buku: [],
   },
   kalibrasi_arah_kiblat: {
-    azimut: "",
-    tanggal_kalibrasi: "",
+    azimut: null,
+    tanggal_kalibrasi: null,
   },
   sdm_masjid: {
-    jumlah_pengurus: 0,
-    jumlah_imam: 0,
-    jumlah_khotib: 0,
-    jumlah_muadzin: 0,
-    jumlah_remaja: 0,
-    jumlah_jemaah: 0,
+    jumlah_pengurus: null,
+    jumlah_imam: null,
+    jumlah_khotib: null,
+    jumlah_muadzin: null,
+    jumlah_remaja: null,
+    jumlah_jemaah: null,
   },
   pengurus_dkm: {
-    ketua: "",
+    ketua: null,
     sekretaris: [],
     bendahara: [],
     nama_imam: [],
@@ -61,9 +64,9 @@ export const DEFAULT_DETAIL_MASJID = {
 
 export const DetailMusholaSchema = v.object({
   sdm_masjid: v.object({
-    jumlah_imam: v.pipe(v.number(), v.minValue(1, "Wajib diisi")),
-    jumlah_muadzin: v.pipe(v.number(), v.minValue(1, "Wajib diisi")),
-    jumlah_jemaah: v.pipe(v.number(), v.minValue(1, "Wajib diisi")),
+    jumlah_imam: v.pipe(v.number("Wajib diisi"), v.minValue(0)),
+    jumlah_muadzin: v.pipe(v.number("Wajib diisi"), v.minValue(0)),
+    jumlah_jemaah: v.pipe(v.number("Wajib diisi"), v.minValue(0)),
   }),
   nama_imam: v.pipe(v.array(v.string()), v.minLength(1, "Minimal 1 imam")),
   nama_muadzin: v.pipe(
@@ -74,13 +77,13 @@ export const DetailMusholaSchema = v.object({
 
 export const DEFAULT_DETAIL_MUSHOLA = {
   kalibrasi_arah_kiblat: {
-    azimut: "",
-    tanggal_kalibrasi: "",
+    azimut: null,
+    tanggal_kalibrasi: null,
   },
   sdm_masjid: {
-    jumlah_imam: 0,
-    jumlah_muadzin: 0,
-    jumlah_jemaah: 0,
+    jumlah_imam: null,
+    jumlah_muadzin: null,
+    jumlah_jemaah: null,
   },
   fasilitas_umum: [],
   nama_imam: [],
@@ -90,7 +93,10 @@ export const DEFAULT_DETAIL_MUSHOLA = {
 
 export const DetailMTSchema = v.object({
   pengurus: v.object({
-    ketua: v.pipe(v.string(), v.minLength(1, "Ketua wajib diisi")),
+    ketua: v.pipe(
+      v.string("Ketua wajib diisi"),
+      v.minLength(1, "Ketua wajib diisi"),
+    ),
     sekretaris: v.pipe(
       v.array(v.string()),
       v.minLength(1, "Minimal 1 sekretaris"),
@@ -111,47 +117,50 @@ export const DetailMTSchema = v.object({
   ),
   kehadiran_pria: v.optional(
     v.object({
-      jumlah_dewasa: v.pipe(v.number(), v.minValue(0)),
-      jumlah_remaja: v.pipe(v.number(), v.minValue(0)),
-      waktu_pengajian: v.string(),
+      jumlah_dewasa: v.nullable(v.number()),
+      jumlah_remaja: v.nullable(v.number()),
+      waktu_pengajian: v.nullable(v.string()),
     }),
   ),
   kehadiran_wanita: v.optional(
     v.object({
-      jumlah_dewasa: v.pipe(v.number(), v.minValue(0)),
-      jumlah_remaja: v.pipe(v.number(), v.minValue(0)),
-      waktu_pengajian: v.string(),
+      jumlah_dewasa: v.nullable(v.number()),
+      jumlah_remaja: v.nullable(v.number()),
+      waktu_pengajian: v.nullable(v.string()),
     }),
   ),
 });
 
 export const DEFAULT_DETAIL_MT = {
   pengurus: {
-    ketua: "",
+    ketua: null,
     sekretaris: [],
     bendahara: [],
   },
   kehadiran_pria: {
-    jumlah_dewasa: 0,
-    jumlah_remaja: 0,
-    waktu_pengajian: "",
+    jumlah_dewasa: null,
+    jumlah_remaja: null,
+    waktu_pengajian: null,
   },
   kehadiran_wanita: {
-    jumlah_dewasa: 0,
-    jumlah_remaja: 0,
+    jumlah_dewasa: null,
+    jumlah_remaja: null,
     waktu_pengajian: "",
   },
   penceramah: [],
 };
 
 export const DetailPesantrenSchema = v.object({
-  nama_yayasan: v.optional(v.string()),
+  nama_yayasan: v.nullable(v.string()),
   pimpinan_pesantren: v.pipe(
-    v.string(),
+    v.string("Nama Pimpinan wajib diisi"),
     v.minLength(1, "Nama Pimpinan wajib diisi"),
   ),
   kepengurusan: v.object({
-    ketua: v.pipe(v.string(), v.minLength(1, "Ketua wajib diisi")),
+    ketua: v.pipe(
+      v.string("Ketua wajib diisi"),
+      v.minLength(1, "Ketua wajib diisi"),
+    ),
     sekretaris: v.pipe(
       v.array(v.string()),
       v.minLength(1, "Minimal 1 sekretaris"),
@@ -163,43 +172,46 @@ export const DetailPesantrenSchema = v.object({
   }),
   santri: v.object({
     mondok: v.object({
-      pria: v.pipe(v.number(), v.minValue(0)),
-      wanita: v.pipe(v.number(), v.minValue(0)),
+      pria: v.pipe(v.number("Wajib diisi"), v.minValue(0)),
+      wanita: v.pipe(v.number("Wajib diisi"), v.minValue(0)),
     }),
     tidak_mondok: v.object({
-      pria: v.pipe(v.number(), v.minValue(0)),
-      wanita: v.pipe(v.number(), v.minValue(0)),
+      pria: v.pipe(v.number("Wajib diisi"), v.minValue(0)),
+      wanita: v.pipe(v.number("Wajib diisi"), v.minValue(0)),
     }),
     total: v.object({
-      pria: v.pipe(v.number(), v.minValue(0)),
-      wanita: v.pipe(v.number(), v.minValue(0)),
+      pria: v.pipe(v.number("Wajib diisi"), v.minValue(0)),
+      wanita: v.pipe(v.number("Wajib diisi"), v.minValue(0)),
     }),
   }),
 });
 
 export const DEFAULT_DETAIL_PESANTREN = {
-  nama_yayasan: "",
-  pimpinan_pesantren: "",
+  nama_yayasan: null,
+  pimpinan_pesantren: null,
   kepengurusan: {
-    ketua: "",
+    ketua: null,
     sekretaris: [],
     bendahara: [],
   },
   santri: {
-    mondok: { pria: 0, wanita: 0 },
-    tidak_mondok: { pria: 0, wanita: 0 },
-    total: { pria: 0, wanita: 0 },
+    mondok: { pria: null, wanita: null },
+    tidak_mondok: { pria: null, wanita: null },
+    total: { pria: null, wanita: null },
   },
   fasilitas_pondok: [],
 };
 
 export const SitusInputSchema = v.object({
   jenis_situs_id: v.pipe(
-    v.string(),
+    v.string("Jenis situs wajib dipilih"),
     v.minLength(1, "Jenis situs wajib dipilih"),
   ),
-  nama: v.pipe(v.string(), v.minLength(1, "Nama situs wajib diisi")),
-  nomor_telepon: v.optional(v.string()),
+  nama: v.pipe(
+    v.string("Nama situs wajib diisi"),
+    v.minLength(1, "Nama situs wajib diisi"),
+  ),
+  nomor_telepon: v.pipe(v.string(), v.minLength(0)),
   email: v.union([
     v.literal(""),
     v.pipe(v.string(), v.email("Format email tidak valid")),
@@ -213,9 +225,13 @@ export const SitusInputSchema = v.object({
       ),
     ),
   ]),
-  nomor_badan_hukum: v.optional(v.string()),
+  nomor_badan_hukum: v.pipe(v.string(), v.minLength(0)),
   jenis_tipologi: v.pipe(v.string(), v.minLength(1, "Tipologi wajib dipilih")),
-  tahun_berdiri: v.pipe(v.number(), v.minValue(1000, "Tahun tidak valid")),
+  tahun_berdiri: v.pipe(
+    v.number("Wajib diisi"),
+    v.minValue(1000, "Tahun tidak valid"),
+  ),
+
   provinsi: v.pipe(v.string(), v.minLength(1)),
   kabupaten_kota: v.pipe(v.string(), v.minLength(1)),
   kecamatan: v.pipe(v.string(), v.minLength(1)),
@@ -223,8 +239,14 @@ export const SitusInputSchema = v.object({
   alamat_lengkap: v.pipe(v.string(), v.minLength(5, "Alamat kurang lengkap")),
   latitude: v.pipe(v.number("Tentukan lokasi di peta")),
   longitude: v.pipe(v.number("Tentukan lokasi di peta")),
-  luas_tanah: v.pipe(v.number(), v.minValue(1, "Luas tanah wajib diisi")),
-  luas_bangunan: v.pipe(v.number(), v.minValue(1, "Luas bangunan wajib diisi")),
+  luas_tanah: v.pipe(
+    v.number("Luas tanah wajib diisi"),
+    v.minValue(1, "Luas tanah wajib diisi"),
+  ),
+  luas_bangunan: v.pipe(
+    v.number("Luas bangunan wajib diisi"),
+    v.minValue(1, "Luas bangunan wajib diisi"),
+  ),
   nomor_telpon_pengurus: v.pipe(
     v.array(v.string()),
     v.minLength(1, "Minimal 1 nomor pengurus"),
@@ -234,11 +256,11 @@ export const SitusInputSchema = v.object({
     v.minLength(1, "Status tanah wajib dipilih"),
   ),
   daya_tampung_max: v.pipe(
-    v.number(),
+    v.number("Daya tampung wajib diisi"),
     v.minValue(1, "Daya tampung wajib diisi"),
   ),
-  nomor_aiw: v.optional(v.string()),
-  nomor_sertifikat_wakaf: v.optional(v.string()),
+  nomor_aiw: v.pipe(v.string(), v.minLength(0)),
+  nomor_sertifikat_wakaf: v.pipe(v.string(), v.minLength(0)),
   detail: v.optional(v.any()),
 });
 
@@ -251,7 +273,7 @@ export const DEFAULT_SITUS_FORM_DATA = {
   email: "",
   website: "",
   nomor_badan_hukum: "",
-  tahun_berdiri: 2024,
+  tahun_berdiri: null,
   provinsi: "Jawa Barat",
   kabupaten_kota: "Kab. Sukabumi",
   kecamatan: "Ciemas",
@@ -259,18 +281,18 @@ export const DEFAULT_SITUS_FORM_DATA = {
   alamat_lengkap: "",
   latitude: null as number | null,
   longitude: null as number | null,
-  luas_tanah: 0,
-  luas_bangunan: 0,
+  luas_tanah: null as number | null,
+  luas_bangunan: null as number | null,
   status_tanah: "",
   nomor_aiw: "",
   nomor_sertifikat_wakaf: "",
-  daya_tampung_max: 0,
+  daya_tampung_max: null as number | null,
   detail: {},
 };
 
 export const SitusEditSchema = v.object({
   nama: v.pipe(v.string(), v.minLength(1, "Nama situs wajib diisi")),
-  nomor_telepon: v.optional(v.string()),
+  nomor_telepon: v.pipe(v.string(), v.minLength(0)),
   email: v.union([
     v.literal(""),
     v.pipe(v.string(), v.email("Format email tidak valid")),
@@ -284,9 +306,12 @@ export const SitusEditSchema = v.object({
       ),
     ),
   ]),
-  nomor_badan_hukum: v.optional(v.string()),
+  nomor_badan_hukum: v.pipe(v.string(), v.minLength(0)),
   jenis_tipologi: v.pipe(v.string(), v.minLength(1, "Tipologi wajib dipilih")),
-  tahun_berdiri: v.pipe(v.number(), v.minValue(1000, "Tahun tidak valid")),
+  tahun_berdiri: v.pipe(
+    v.number("Wajib diisi"),
+    v.minValue(1000, "Tahun tidak valid"),
+  ),
   provinsi: v.pipe(v.string(), v.minLength(1)),
   kabupaten_kota: v.pipe(v.string(), v.minLength(1)),
   kecamatan: v.pipe(v.string(), v.minLength(1)),
@@ -294,8 +319,14 @@ export const SitusEditSchema = v.object({
   alamat_lengkap: v.pipe(v.string(), v.minLength(5, "Alamat kurang lengkap")),
   latitude: v.pipe(v.number("Tentukan lokasi di peta")),
   longitude: v.pipe(v.number("Tentukan lokasi di peta")),
-  luas_tanah: v.pipe(v.number(), v.minValue(1, "Luas tanah wajib diisi")),
-  luas_bangunan: v.pipe(v.number(), v.minValue(1, "Luas bangunan wajib diisi")),
+  luas_tanah: v.pipe(
+    v.number("Luas tanah wajib diisi"),
+    v.minValue(1, "Luas tanah wajib diisi"),
+  ),
+  luas_bangunan: v.pipe(
+    v.number("Luas tanah wajib diisi"),
+    v.minValue(1, "Luas bangunan wajib diisi"),
+  ),
   nomor_telpon_pengurus: v.pipe(
     v.array(v.string()),
     v.minLength(1, "Minimal 1 nomor pengurus"),
@@ -305,10 +336,10 @@ export const SitusEditSchema = v.object({
     v.minLength(1, "Status tanah wajib dipilih"),
   ),
   daya_tampung_max: v.pipe(
-    v.number(),
+    v.number("Daya tampung wajib diisi"),
     v.minValue(1, "Daya tampung wajib diisi"),
   ),
-  nomor_aiw: v.optional(v.string()),
-  nomor_sertifikat_wakaf: v.optional(v.string()),
+  nomor_aiw: v.pipe(v.string(), v.minLength(0)),
+  nomor_sertifikat_wakaf: v.pipe(v.string(), v.minLength(0)),
   detail: v.optional(v.any()),
 });
