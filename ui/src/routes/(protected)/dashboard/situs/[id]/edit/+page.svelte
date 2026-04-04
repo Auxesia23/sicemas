@@ -790,7 +790,6 @@
                                     </label>
                                     <input
                                         id="email"
-                                        type="email"
                                         class="input input-bordered w-full rounded-xl bg-base-200/30 focus:bg-base-100 transition-colors min-h-12 {validationErrors.email
                                             ? 'input-error'
                                             : ''}"
@@ -817,7 +816,6 @@
                                     </label>
                                     <input
                                         id="website"
-                                        type="url"
                                         class="input input-bordered w-full rounded-xl bg-base-200/30 focus:bg-base-100 transition-colors min-h-12 {validationErrors.website
                                             ? 'input-error'
                                             : ''}"
