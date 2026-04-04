@@ -33,7 +33,7 @@ func NewDashboardService(
 func (s *dashboardServiceImpl) GetDashboardData(ctx context.Context) (*dto.DashboardResponse, error) {
 	s.logger.Info("fetching dashboard data")
 
-	activities, err := s.activityRepo.GetActivities(ctx)
+	recentActivities, err := s.dashboardRepo.GetRecentActivities(ctx)
 	if err != nil {
 		s.logger.Error("failed to get activities for dashboard", "error", err)
 		return nil, apperror.NewInternal("Terjadi kesalahan.")
@@ -58,7 +58,7 @@ func (s *dashboardServiceImpl) GetDashboardData(ctx context.Context) (*dto.Dashb
 	response := &dto.DashboardResponse{
 		Stats:            stats,
 		StatistikJenis:   statistikJenis,
-		RecentActivities: activities,
+		RecentActivities: recentActivities,
 		RecentSites:      recentSites,
 	}
 
