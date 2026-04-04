@@ -3,7 +3,7 @@ package repositories
 import (
 	"context"
 	"log"
-	"situs-keagamaan/internal/dto"
+	"sicemas/internal/dto"
 
 	"github.com/jmoiron/sqlx"
 )
@@ -12,6 +12,7 @@ type DashboardRepository interface {
 	GetDashboardStats(ctx context.Context) (*dto.Stats, error)
 	GetRecentSites(ctx context.Context) ([]dto.SitusKeagamaanResponse, error)
 	GetStatistikJenis(ctx context.Context) ([]dto.StatistikJenis, error)
+	GetRecentActivities(ctx context.Context) ([]dto.ActivityResponse, error)
 }
 
 type dashboardRepositoryImpl struct {
@@ -25,10 +26,10 @@ func NewDashboardRepo(db *sqlx.DB) DashboardRepository {
 func (r *dashboardRepositoryImpl) GetDashboardStats(ctx context.Context) (*dto.Stats, error) {
 	query := `
 		SELECT
-			(SELECT COUNT(id) FROM situs_keagamaan) AS total_situs,
+			(SELECT COUNT(id) FROM situs_keagamaan WHERE deleted_at IS NULL) AS total_situs,
 			(SELECT COUNT(id) FROM jenis_situs) AS total_jenis,
-			(SELECT COUNT(id) FROM users) AS petugas_aktif,
-			(SELECT COUNT(id) FROM situs_keagamaan WHERE status_verifikasi = 'menunggu') AS menunggu_verifikasi
+			(SELECT COUNT(id) FROM users WHERE deleted_at IS NULL) AS petugas_aktif,
+			(SELECT COUNT(id) FROM situs_keagamaan WHERE status_verifikasi = 'menunggu' AND deleted_at IS NULL) AS menunggu_verifikasi
 	`
 
 	var stats dto.Stats
@@ -55,6 +56,7 @@ func (r *dashboardRepositoryImpl) GetRecentSites(ctx context.Context) ([]dto.Sit
 		FROM situs_keagamaan s
 		LEFT JOIN jenis_situs j ON s.jenis_situs_id = j.id
 		LEFT JOIN users u ON s.pendata_id = u.id
+		WHERE s.deleted_at IS NULL
 		ORDER BY s.updated_at DESC
 		LIMIT 5
 	`
@@ -66,7 +68,6 @@ func (r *dashboardRepositoryImpl) GetRecentSites(ctx context.Context) ([]dto.Sit
 		return nil, err
 	}
 
-	// Kembalikan array kosong jika belum ada data situs sama sekali
 	if sites == nil {
 		return []dto.SitusKeagamaanResponse{}, nil
 	}
@@ -97,4 +98,28 @@ func (r *dashboardRepositoryImpl) GetStatistikJenis(ctx context.Context) ([]dto.
 	}
 
 	return chartData, nil
+}
+
+func (r *dashboardRepositoryImpl) GetRecentActivities(ctx context.Context) ([]dto.ActivityResponse, error) {
+	q := `
+	SELECT
+		a.id,
+		u.nama_lengkap AS actor_name,
+		a.action_type,
+		a.target_name,
+		a.entity_type,
+		a.created_at
+	FROM
+		activities a
+	JOIN
+		users u ON a.user_id = u.id
+	ORDER BY a.created_at DESC
+	LIMIT 5;
+	`
+	var activities []dto.ActivityResponse
+	if err := r.DB.SelectContext(ctx, &activities, q); err != nil {
+		log.Println(err)
+		return nil, err
+	}
+	return activities, nil
 }

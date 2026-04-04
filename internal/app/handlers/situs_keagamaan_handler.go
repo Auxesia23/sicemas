@@ -2,10 +2,11 @@ package handlers
 
 import (
 	"fmt"
+	"log"
 	"mime/multipart"
-	apperror "situs-keagamaan/internal/app/appError"
-	"situs-keagamaan/internal/app/services"
-	"situs-keagamaan/internal/dto"
+	apperror "sicemas/internal/app/appError"
+	"sicemas/internal/app/services"
+	"sicemas/internal/dto"
 	"strconv"
 
 	"github.com/go-playground/validator/v10"
@@ -255,6 +256,7 @@ func (h *situsKeagamaanHandlerImpl) GetAllSitusForPublic(c *fiber.Ctx) error {
 func (h *situsKeagamaanHandlerImpl) GetSitusDetailForPublic(c *fiber.Ctx) error {
 	situsId, err := uuid.Parse(c.Params("id"))
 	if err != nil {
+		log.Print(err.Error())
 		return c.Status(400).SendString(err.Error())
 	}
 	situs, err := h.situsService.GetSitusDetailForPublic(c.Context(), situsId)

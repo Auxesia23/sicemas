@@ -4,8 +4,8 @@ import (
 	"errors"
 	"fmt"
 	"os"
-	"situs-keagamaan/internal/dto"
-	"situs-keagamaan/internal/entity"
+	"sicemas/internal/dto"
+	"sicemas/internal/entity"
 	"time"
 
 	"github.com/golang-jwt/jwt/v5"
@@ -22,7 +22,7 @@ func GenerateAccessToken(user *entity.User, jti uuid.UUID, sid uuid.UUID) (strin
 		RegisteredClaims: jwt.RegisteredClaims{
 			Subject:   user.ID.String(),
 			IssuedAt:  jwt.NewNumericDate(time.Now()),
-			ExpiresAt: jwt.NewNumericDate(time.Now().Add(time.Minute * 60)),
+			ExpiresAt: jwt.NewNumericDate(time.Now().Add(time.Minute * 15)),
 			Issuer:    "KUA Ciemas",
 			ID:        jti.String(),
 		},
@@ -68,7 +68,7 @@ func GenerateRefreshToken(user *entity.User, jti uuid.UUID) (string, error) {
 	claims := jwt.RegisteredClaims{
 		Subject:   user.ID.String(),
 		IssuedAt:  jwt.NewNumericDate(time.Now()),
-		ExpiresAt: jwt.NewNumericDate(time.Now().Add(time.Hour * 7 * 24)),
+		ExpiresAt: jwt.NewNumericDate(time.Now().Add(time.Hour * 24 * 7)),
 		Issuer:    "KUA Ciemas",
 		ID:        jti.String(),
 	}

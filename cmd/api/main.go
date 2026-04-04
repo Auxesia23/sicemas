@@ -3,14 +3,16 @@ package main
 import (
 	"context"
 	"log"
-	"situs-keagamaan/internal/app/handlers"
-	"situs-keagamaan/internal/app/repositories"
-	"situs-keagamaan/internal/app/services"
-	"situs-keagamaan/internal/auth"
-	"situs-keagamaan/internal/cache"
-	"situs-keagamaan/internal/database"
-	"situs-keagamaan/internal/geoip"
-	"situs-keagamaan/internal/middlewares"
+	"log/slog"
+	"sicemas/internal/app/handlers"
+	"sicemas/internal/app/repositories"
+	"sicemas/internal/app/services"
+	"sicemas/internal/auth"
+	"sicemas/internal/cache"
+	"sicemas/internal/database"
+	"sicemas/internal/geoip"
+	"sicemas/internal/logger"
+	"sicemas/internal/middlewares"
 	"time"
 
 	"github.com/go-playground/validator/v10"
@@ -21,6 +23,9 @@ func main() {
 	if err := godotenv.Load(); err != nil {
 		log.Println("Failed to load .env")
 	}
+
+	appLog, writer := logger.NewLogger("./logs/app.log")
+	slog.SetDefault(appLog)
 
 	db, err := database.InitDB()
 	if err != nil {
@@ -72,13 +77,13 @@ func main() {
 	dashboardRepo := repositories.NewDashboardRepo(db)
 
 	// Initiate service layer
-	userService := services.NewUserService(userRepo, activityRepo, enforcer, cache)
-	authService := services.NewAuthService(userRepo, cache)
-	roleService := services.NewRoleService(roleRepo, activityRepo)
-	policyService := services.NewPolicyService(enforcer, activityRepo)
-	jenisSitusService := services.NewJenisSitusService(jenisSitusRepo, activityRepo)
-	situsKeagamaanService := services.NewSitusKeagamaanService(situsKeagamaanRepo, fotoSitusRepo, activityRepo, cld, enforcer)
-	dashboardService := services.NewDashboardService(activityRepo, dashboardRepo)
+	userService := services.NewUserService(userRepo, activityRepo, enforcer, cache, appLog)
+	authService := services.NewAuthService(userRepo, cache, appLog)
+	roleService := services.NewRoleService(roleRepo, activityRepo, appLog)
+	policyService := services.NewPolicyService(enforcer, activityRepo, appLog)
+	jenisSitusService := services.NewJenisSitusService(jenisSitusRepo, activityRepo, appLog)
+	situsKeagamaanService := services.NewSitusKeagamaanService(situsKeagamaanRepo, fotoSitusRepo, activityRepo, cld, enforcer, appLog)
+	dashboardService := services.NewDashboardService(activityRepo, dashboardRepo, appLog)
 
 	// Initiate handler layer
 	userHandler := handlers.NewUserHandler(userService, validate)
@@ -92,8 +97,8 @@ func main() {
 	handlers := handlers.NewHandlers(userHandler, authHandler, roleHandler, policyHandler, jenisSitusHandler, situsKeagamaanHandler, dashboardHandler)
 
 	// Initiate middleware
-	authMiddleware := middlewares.NewAuthMiddleware(enforcer, locator, cache)
-	rateLimiter := middlewares.NewRateLimiter()
+	authMiddleware := middlewares.NewAuthMiddleware(enforcer, locator, cache, appLog)
+	rateLimiter := middlewares.NewRateLimiter(appLog)
 	// middlewares compositor
 	middlewares := middlewares.NewMiddlewares(authMiddleware, &rateLimiter)
 
@@ -104,7 +109,7 @@ func main() {
 		IdleTimeout:  20 * time.Second,
 	}
 
-	server := newServer(cfg, middlewares, *handlers)
+	server := newServer(cfg, middlewares, *handlers, writer, appLog)
 
 	server.run()
 }

@@ -44,4 +44,4 @@ run:
 .PHONY: build
 build:
 	@echo "Building server"
-	@go build -o ./bin/app cmd/api/*.go
+	@go build -trimpath -o ./bin/app cmd/api/*.go

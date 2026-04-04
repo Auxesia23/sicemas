@@ -1,9 +1,9 @@
 package handlers
 
 import (
-	apperror "situs-keagamaan/internal/app/appError"
-	"situs-keagamaan/internal/app/services"
-	"situs-keagamaan/internal/dto"
+	apperror "sicemas/internal/app/appError"
+	"sicemas/internal/app/services"
+	"sicemas/internal/dto"
 	"time"
 
 	"github.com/go-playground/validator/v10"
@@ -71,7 +71,7 @@ func (h *authHandlerImpl) VerifyOTP(c *fiber.Ctx) error {
 		Expires:  time.Now().Add(time.Hour * 24 * 7),
 		HTTPOnly: true,
 		Secure:   true,
-		SameSite: "Lax",
+		SameSite: "Strict",
 	})
 	c.Cookie(&fiber.Cookie{
 		Name:     "access_token",
@@ -80,7 +80,16 @@ func (h *authHandlerImpl) VerifyOTP(c *fiber.Ctx) error {
 		Expires:  time.Now().Add(time.Minute * 15),
 		HTTPOnly: true,
 		Secure:   true,
-		SameSite: "Lax",
+		SameSite: "Strict",
+	})
+	c.Cookie(&fiber.Cookie{
+		Name:     "csrf_token",
+		Value:    token.CSRFToken,
+		Path:     "/",
+		Expires:  time.Now().Add(time.Minute * 15),
+		HTTPOnly: false,
+		Secure:   true,
+		SameSite: "Strict",
 	})
 	return c.SendStatus(200)
 }
@@ -94,6 +103,33 @@ func (h *authHandlerImpl) Refresh(c *fiber.Ctx) error {
 	token, err := h.authService.RefreshToken(c.Context(), refreshToken, requestContext)
 	if err != nil {
 		e := err.(*apperror.AppError)
+		c.Cookie(&fiber.Cookie{
+			Name:     "refresh_token",
+			Value:    "",
+			Path:     "/",
+			Expires:  time.Now().Add(-time.Hour),
+			HTTPOnly: true,
+			Secure:   true,
+			SameSite: "Strict",
+		})
+		c.Cookie(&fiber.Cookie{
+			Name:     "access_token",
+			Value:    "",
+			Path:     "/",
+			Expires:  time.Now().Add(-time.Hour),
+			HTTPOnly: true,
+			Secure:   true,
+			SameSite: "Strict",
+		})
+		c.Cookie(&fiber.Cookie{
+			Name:     "csrf_token",
+			Value:    "",
+			Path:     "/",
+			Expires:  time.Now().Add(-time.Hour),
+			HTTPOnly: false,
+			Secure:   true,
+			SameSite: "Strict",
+		})
 		return c.Status(e.Status).SendString(e.Error())
 	}
 
@@ -104,7 +140,7 @@ func (h *authHandlerImpl) Refresh(c *fiber.Ctx) error {
 		Expires:  time.Now().Add(time.Hour * 24 * 7),
 		HTTPOnly: true,
 		Secure:   true,
-		SameSite: "Lax",
+		SameSite: "Strict",
 	})
 	c.Cookie(&fiber.Cookie{
 		Name:     "access_token",
@@ -113,7 +149,16 @@ func (h *authHandlerImpl) Refresh(c *fiber.Ctx) error {
 		Expires:  time.Now().Add(time.Minute * 15),
 		HTTPOnly: true,
 		Secure:   true,
-		SameSite: "Lax",
+		SameSite: "Strict",
+	})
+	c.Cookie(&fiber.Cookie{
+		Name:     "csrf_token",
+		Value:    token.CSRFToken,
+		Path:     "/",
+		Expires:  time.Now().Add(time.Minute * 15),
+		HTTPOnly: false,
+		Secure:   true,
+		SameSite: "Strict",
 	})
 	return c.SendStatus(200)
 }
@@ -143,7 +188,7 @@ func (h *authHandlerImpl) Logout(c *fiber.Ctx) error {
 		Expires:  time.Now().Add(-time.Hour),
 		HTTPOnly: true,
 		Secure:   true,
-		SameSite: "Lax",
+		SameSite: "Strict",
 	})
 	c.Cookie(&fiber.Cookie{
 		Name:     "access_token",
@@ -152,7 +197,16 @@ func (h *authHandlerImpl) Logout(c *fiber.Ctx) error {
 		Expires:  time.Now().Add(-time.Hour),
 		HTTPOnly: true,
 		Secure:   true,
-		SameSite: "Lax",
+		SameSite: "Strict",
+	})
+	c.Cookie(&fiber.Cookie{
+		Name:     "csrf_token",
+		Value:    "",
+		Path:     "/",
+		Expires:  time.Now().Add(-time.Hour),
+		HTTPOnly: false,
+		Secure:   true,
+		SameSite: "Strict",
 	})
 	return c.SendStatus(200)
 }

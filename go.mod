@@ -1,4 +1,4 @@
-module situs-keagamaan
+module sicemas
 
 go 1.25.4
 
@@ -19,6 +19,7 @@ require (
 	github.com/xuri/excelize/v2 v2.10.1
 	golang.org/x/sync v0.19.0
 	golang.org/x/time v0.0.0-20191024005414-555d28b269f0
+	gopkg.in/natefinch/lumberjack.v2 v2.2.1
 )
 
 require (

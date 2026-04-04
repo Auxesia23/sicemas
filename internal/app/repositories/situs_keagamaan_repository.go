@@ -4,7 +4,7 @@ import (
 	"context"
 	"database/sql"
 	"log"
-	"situs-keagamaan/internal/dto"
+	"sicemas/internal/dto"
 
 	"github.com/google/uuid"
 	"github.com/jmoiron/sqlx"
@@ -99,13 +99,15 @@ func (r *situsKeagamaanRepositoryImpl) ReadAll(ctx context.Context) ([]dto.Situs
             s.updated_at
         FROM situs_keagamaan s
         LEFT JOIN jenis_situs j ON s.jenis_situs_id = j.id
-        LEFT JOIN users u ON s.pendata_id = u.id;
+        LEFT JOIN users u ON s.pendata_id = u.id
+        WHERE s.deleted_at IS NULL
+        ORDER BY s.updated_at DESC;
     `
 
 	var situs []dto.SitusKeagamaanResponse
 	err := r.DB.SelectContext(ctx, &situs, query)
 	if err != nil {
-		log.Println("Error read all situs keagamaan:", err.Error())
+		log.Println(err.Error())
 		return nil, err
 	}
 
@@ -126,13 +128,14 @@ func (r *situsKeagamaanRepositoryImpl) ReadOwn(ctx context.Context, userID uuid.
 		FROM situs_keagamaan s
 		JOIN jenis_situs j ON s.jenis_situs_id = j.id
 		JOIN users u ON s.pendata_id = u.id
-		WHERE s.pendata_id = $1;
+		WHERE s.pendata_id = $1 AND s.deleted_at IS NULL
+		ORDER BY s.updated_at DESC;
 	`
 
 	var situs []dto.SitusKeagamaanResponse
 	err := r.DB.SelectContext(ctx, &situs, query, userID)
 	if err != nil {
-		log.Println("Error read own situs keagamaan:", err.Error())
+		log.Println(err.Error())
 		return nil, err
 	}
 
@@ -171,7 +174,7 @@ func (r *situsKeagamaanRepositoryImpl) ReadDetail(ctx context.Context, id uuid.U
 				sk.updated_at
 			FROM situs_keagamaan sk
 			LEFT JOIN jenis_situs js ON sk.jenis_situs_id = js.id
-			WHERE sk.id = $1
+			WHERE sk.id = $1 AND sk.deleted_at IS NULL;
 		`
 
 	var detail dto.SitusKeagamaanDetailResponse
@@ -217,7 +220,7 @@ func (r *situsKeagamaanRepositoryImpl) ReadAllDetail(ctx context.Context, jenisS
 				sk.updated_at
 			FROM situs_keagamaan sk
 			LEFT JOIN jenis_situs js ON sk.jenis_situs_id = js.id
-			WHERE js.nama_jenis = $1
+			WHERE js.nama_jenis = $1 AND sk.deleted_at IS NULL AND sk.status_verifikasi = 'terverifikasi';
 		`
 
 	var detail []dto.SitusKeagamaanDetailResponse
@@ -235,6 +238,7 @@ func (r *situsKeagamaanRepositoryImpl) Update(ctx context.Context, id uuid.UUID,
 	query := `
 		UPDATE situs_keagamaan
 		SET
+			status_verifikasi = 'menunggu',
 			nama = $1,
 			jenis_tipologi = $2,
 			nomor_telepon = $3,
@@ -257,7 +261,7 @@ func (r *situsKeagamaanRepositoryImpl) Update(ctx context.Context, id uuid.UUID,
 			daya_tampung_max = $21,
 			detail = $22,
 			updated_at = CURRENT_TIMESTAMP
-		WHERE id = $23 AND status_verifikasi IN ('menunggu', 'ditolak')`
+		WHERE id = $23 AND status_verifikasi IN ('menunggu', 'ditolak') AND deleted_at IS NULL;`
 
 	result, err := r.DB.ExecContext(ctx, query,
 		in.Nama,                          // $1
@@ -305,7 +309,7 @@ func (r *situsKeagamaanRepositoryImpl) CheckOwnership(ctx context.Context, situs
 	query := `
 		SELECT id
 		FROM situs_keagamaan
-		WHERE id = $1 AND pendata_id = $2
+		WHERE id = $1 AND pendata_id = $2 AND deleted_at IS NULL;
 	`
 	var result uuid.UUID
 	err := r.DB.GetContext(ctx, &result, query, situsID, userID)
@@ -323,7 +327,7 @@ func (r *situsKeagamaanRepositoryImpl) Verify(ctx context.Context, id uuid.UUID,
 				status_verifikasi = $1,
 				situs_id = NULLIF($2, ''),
 				updated_at = CURRENT_TIMESTAMP
-			WHERE id = $3
+			WHERE id = $3 AND deleted_at IS NULL;
 	`
 	_, err := r.DB.ExecContext(ctx, query, in.StatusVerifikasi, in.SitusID, id)
 	if err != nil {
@@ -335,7 +339,9 @@ func (r *situsKeagamaanRepositoryImpl) Verify(ctx context.Context, id uuid.UUID,
 
 func (r *situsKeagamaanRepositoryImpl) Delete(ctx context.Context, id uuid.UUID) error {
 	query := `
-		DELETE FROM situs_keagamaan WHERE id = $1
+		UPDATE situs_keagamaan
+        SET deleted_at = NOW()
+        WHERE id = $1 AND deleted_at IS NULL;
 	`
 	result, err := r.DB.ExecContext(ctx, query, id)
 	if err != nil {
@@ -375,7 +381,7 @@ func (r *situsKeagamaanRepositoryImpl) ReadForPublic(ctx context.Context, filter
 
 			FROM situs_keagamaan s
 			LEFT JOIN jenis_situs j ON s.jenis_situs_id = j.id
-			WHERE s.status_verifikasi = 'terverifikasi'
+			WHERE s.status_verifikasi = 'terverifikasi' AND s.deleted_at IS NULL
 			ORDER BY jarak_meter ASC;
 		`
 		args = append(args, *filter.UserLng, *filter.UserLat)
@@ -396,8 +402,8 @@ func (r *situsKeagamaanRepositoryImpl) ReadForPublic(ctx context.Context, filter
 
 			FROM situs_keagamaan s
 			LEFT JOIN jenis_situs j ON s.jenis_situs_id = j.id
-			WHERE s.status_verifikasi = 'terverifikasi'
-			ORDER BY s.nama ASC; -- Urut abjad aja
+			WHERE s.status_verifikasi = 'terverifikasi' AND s.deleted_at IS NULL
+			ORDER BY s.nama ASC;
 		`
 	}
 
@@ -427,7 +433,6 @@ func (r *situsKeagamaanRepositoryImpl) ReadDetailForPublic(ctx context.Context, 
 			COALESCE(sk.luas_tanah, 0) AS luas_tanah,
 			COALESCE(sk.daya_tampung_max, 0) AS daya_tampung,
 
-			-- FIX: Tambahin COALESCE biar kalau MT (ga ada fasilitas), DB balikin '{}' bukan NULL
 			COALESCE(
 				(
 					SELECT jsonb_object_agg(key, value)
@@ -438,13 +443,13 @@ func (r *situsKeagamaanRepositoryImpl) ReadDetailForPublic(ctx context.Context, 
 			) AS fasilitas,
 
 			COALESCE(
-				(SELECT json_agg(fs.image_url) FROM foto_situs fs WHERE fs.situs_id = sk.id),
+				(SELECT json_agg(fs.image_url) FROM foto_situs fs WHERE fs.situs_id = sk.id LIMIT 5),
 				'[]'::json
 			) AS galeri
 
 		FROM situs_keagamaan sk
 		JOIN jenis_situs js ON sk.jenis_situs_id = js.id
-		WHERE sk.id = $1 AND sk.status_verifikasi = 'terverifikasi';
+		WHERE sk.id = $1 AND sk.status_verifikasi = 'terverifikasi' AND sk.deleted_at IS NULL;
 	`
 
 	var result dto.SitusPublicDetailResponse
@@ -465,7 +470,7 @@ func (r *situsKeagamaanRepositoryImpl) GetLandingStats(ctx context.Context) (*dt
 		    COUNT(DISTINCT jenis_situs_id) AS total_kategori,
 		    COALESCE(SUM(daya_tampung_max), 0) AS total_kapasitas
 		FROM situs_keagamaan
-		WHERE status_verifikasi = 'terverifikasi';
+		WHERE status_verifikasi = 'terverifikasi' AND deleted_at IS NULL;
 	`
 
 	var result dto.LandingStatsResponse

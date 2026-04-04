@@ -3,8 +3,8 @@ package repositories
 import (
 	"context"
 	"database/sql"
-	"situs-keagamaan/internal/dto"
-	"situs-keagamaan/internal/entity"
+	"sicemas/internal/dto"
+	"sicemas/internal/entity"
 
 	"github.com/google/uuid"
 	"github.com/jmoiron/sqlx"
@@ -42,7 +42,7 @@ func (r *jenisSitusRepositoryImpl) ReadAll(ctx context.Context) ([]dto.JenisSitu
             js.id,
             js.nama_jenis,
             js.deskripsi,
-            COUNT(s.id) AS jumlah_situs
+            COUNT(s.id) FILTER (WHERE s.deleted_at IS NULL) AS jumlah_situs
         FROM jenis_situs js
         LEFT JOIN situs_keagamaan s ON js.id = s.jenis_situs_id
         GROUP BY js.id, js.nama_jenis, js.deskripsi

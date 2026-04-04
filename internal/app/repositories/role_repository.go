@@ -4,7 +4,7 @@ import (
 	"context"
 	"database/sql"
 	"log"
-	"situs-keagamaan/internal/entity"
+	"sicemas/internal/entity"
 
 	"github.com/jmoiron/sqlx"
 )

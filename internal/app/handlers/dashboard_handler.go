@@ -1,8 +1,8 @@
 package handlers
 
 import (
-	apperror "situs-keagamaan/internal/app/appError"
-	"situs-keagamaan/internal/app/services"
+	apperror "sicemas/internal/app/appError"
+	"sicemas/internal/app/services"
 
 	"github.com/gofiber/fiber/v2"
 )

@@ -131,7 +131,7 @@ type SitusPublicListResponse struct {
 	Desa       *string   `json:"desa" db:"desa"`
 	Latitude   *float64  `json:"latitude" db:"latitude"`
 	Longitude  *float64  `json:"longitude" db:"longitude"`
-	FotoUtama  *string   `json:"foto_utama" db:"foto_utama"` // 1 Foto aja
+	FotoUtama  *string   `json:"foto_utama" db:"foto_utama"`
 	JarakMeter *float64  `json:"jarak_meter,omitempty" db:"jarak_meter"`
 }
 
@@ -142,8 +142,8 @@ type SitusPublicDetailResponse struct {
 	AlamatLengkap string `json:"alamat_lengkap" db:"alamat_lengkap"`
 	Desa          string `json:"desa" db:"desa"`
 
-	Latitude  *float64 `json:"latitude" db:"latitude"`
-	Longitude *float64 `json:"longitude" db:"longitude"`
+	Latitude  float64 `json:"latitude" db:"latitude"`
+	Longitude float64 `json:"longitude" db:"longitude"`
 
 	LuasTanah   float64 `json:"luas_tanah" db:"luas_tanah"`
 	DayaTampung int     `json:"daya_tampung" db:"daya_tampung"`

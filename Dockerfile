@@ -1,4 +1,13 @@
-FROM golang:1.25-alpine AS builder
+FROM oven/bun:alpine AS frontend-builder
+WORKDIR /app/ui
+
+COPY ui/package.json ui/bun.lock ./
+RUN bun install --frozen-lockfile
+
+COPY ui/ .
+RUN bun --bun run build
+
+FROM golang:1.25-alpine AS backend-builder
 
 WORKDIR /app
 
@@ -7,19 +16,18 @@ RUN go mod download
 
 COPY . .
 
-RUN CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -ldflags="-w -s" -o app cmd/api/*.go
+COPY --from=frontend-builder /app/ui/build ./ui/build
 
+RUN CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -trimpath -ldflags="-w -s" -o app cmd/api/*.go
 FROM alpine:latest
 
 RUN apk --no-cache add ca-certificates tzdata
-
 ENV TZ=Asia/Jakarta
 
 WORKDIR /app
 
-COPY --from=builder /app/app .
+COPY --from=backend-builder /app/app .
 
-RUN mkdir -p /app/data
-
+RUN mkdir -p /app/logs
 
 ENTRYPOINT ["./app"]
