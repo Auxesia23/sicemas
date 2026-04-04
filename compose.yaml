@@ -1,0 +1,90 @@
+services:
+  sicemas:
+    image:
+      build:
+        context: .
+        dockerfile: Dockerfile
+    container_name: sicemas
+    restart: always
+    ports:
+      - "8080:8080"
+    volumes:
+      - ./logs:/app/logs
+      - ./GeoLite2-City.mmdb:/app/GeoLite2-City.mmdb:ro
+    environment:
+      DB_URI: ${DB_URI}
+      REDIS_ADDR: redis:6379
+      AES_256_KEY: ${AES_256_KEY}
+      PEPPER: ${PEPPER}
+      CSRF_SECRET: ${CSRF_SECRET}
+      CLOUDINARY_URL: ${CLOUDINARY_URL}
+      GOWA_URL: ${GOWA_URL}
+      APP_BASIC_AUTH: ${APP_BASIC_AUTH}
+      GOWA_USERNAME: ${GOWA_USERNAME}
+      GOWA_PASSWORD: ${GOWA_PASSWORD}
+      GOWA_DEVICE_ID: ${GOWA_DEVICE_ID}
+    depends_on:
+      postgres:
+        condition: service_healthy
+      migration-runner:
+        condition: service_completed_successfully
+      redis:
+        condition: service_started
+
+  whatsapp:
+    image: aldinokemal2104/go-whatsapp-web-multidevice
+    container_name: whatsapp
+    restart: always
+    ports:
+      - "3000:3000"
+    volumes:
+      - whatsapp:/app/storages
+    environment:
+      - APP_BASIC_AUTH=${APP_BASIC_AUTH}
+      - APP_PORT=3000
+      - APP_DEBUG=true
+      - APP_OS=Chrome
+      - APP_ACCOUNT_VALIDATION=false
+
+  postgres:
+    image: postgis/postgis:18-3.6-alpine
+    container_name: postgres
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      POSTGRES_DB: ${POSTGRES_DB}
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER} -d ${POSTGRES_DB}"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+    expose:
+      - "5432"
+    volumes:
+      - postgres:/var/lib/postgresql
+
+  redis:
+    image: redis:8-alpine
+    container_name: redis
+    expose:
+      - "6379"
+
+  migration-runner:
+    image: gomicro/goose
+    container_name: migration-runner
+    volumes:
+      - ./migrations:/migrations
+    command:
+      [
+        "goose",
+        "postgres",
+        "postgres://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB}?sslmode=disable",
+        "up",
+      ]
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+volumes:
+  whatsapp:
+  postgres:
