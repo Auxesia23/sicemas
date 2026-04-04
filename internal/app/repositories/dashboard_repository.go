@@ -79,7 +79,7 @@ func (r *dashboardRepositoryImpl) GetStatistikJenis(ctx context.Context) ([]dto.
 	query := `
 		SELECT
 			j.nama_jenis AS nama,
-			COUNT(s.id) AS jumlah_situs
+			COUNT(s.id) FILTER (WHERE s.deleted_at IS NULL) AS jumlah_situs
 		FROM jenis_situs j
 		LEFT JOIN situs_keagamaan s ON j.id = s.jenis_situs_id
 		GROUP BY j.id, j.nama_jenis
