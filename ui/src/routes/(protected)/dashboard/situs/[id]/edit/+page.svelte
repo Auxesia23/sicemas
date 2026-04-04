@@ -22,22 +22,23 @@
         DetailMTSchema,
         DetailPesantrenSchema,
     } from "$lib/schemas/siteInput";
-    import {
-        addToArray,
-        removeFromArray,
-        handleEnterKey,
-    } from "$lib/utils/formHelpers";
+    import { mapFlatErrors, handleEnterKey } from "$lib/utils/formHelpers";
     import { convertToWebP } from "$lib/utils/imageHelpers";
 
     import type { PageData } from "./$types";
     let { data }: { data: PageData } = $props();
 
-    let formData = $derived<SitusDetailResponse>(data.situs);
+    let formData = $state<SitusDetailResponse>(
+        untrack(() => structuredClone(data.situs)),
+    );
+
     let validationErrors = $state<Record<string, any>>({});
     let currentPhoneInput = $state("");
 
-    let jenisSitusName = $derived(data.situs.jenis_situs);
-    let existingPhotos = $derived<Foto[]>(data.situs.foto || []);
+    let jenisSitusName = $derived(formData.jenis_situs);
+
+    let existingPhotos = $derived<Foto[]>(formData.foto || []);
+
     let photosToDelete = $state<string[]>([]);
     let newPhotos = $state<{ file: File; preview: string; webpBlob: Blob }[]>(
         [],
@@ -279,7 +280,8 @@
                 if (!file.type.startsWith("image/")) continue;
                 const preview = URL.createObjectURL(file);
                 const webpBlob = await convertToWebP(file);
-                newPhotos.push({ file, preview, webpBlob });
+
+                newPhotos = [...newPhotos, { file, preview, webpBlob }];
             }
         } catch (error) {
             toastMessage = "Gagal mengkonversi gambar";
@@ -294,26 +296,19 @@
     function removeNewPhoto(index: number) {
         if (newPhotos[index]?.preview)
             URL.revokeObjectURL(newPhotos[index].preview);
-        newPhotos.splice(index, 1);
+        newPhotos = newPhotos.filter((_, i) => i !== index);
     }
 
     function markPhotoForDeletion(photoId: string) {
-        photosToDelete.push(photoId);
+        const id = photoId.trim();
+        if (!id) return;
 
-        const index = formData.foto?.findIndex((p) => p.id === photoId);
-        if (index !== undefined && index > -1) {
-            formData.foto?.splice(index, 1);
+        if (!photosToDelete.includes(id)) {
+            photosToDelete = [...photosToDelete, id];
         }
-    }
 
-    function mapFlatErrors(
-        flatIssues: v.FlatErrors<any>,
-        targetErrorObj: Record<string, any>,
-    ) {
-        if (flatIssues.nested) {
-            Object.entries(flatIssues.nested).forEach(([key, messages]) => {
-                targetErrorObj[key] = messages?.[0];
-            });
+        if (formData.foto) {
+            formData.foto = formData.foto.filter((p) => p.id !== id);
         }
     }
 
@@ -340,6 +335,7 @@
         if (detailResult && !detailResult.success) {
             hasError = true;
             mapFlatErrors(v.flatten(detailResult.issues), errors);
+            console.log(errors);
         }
 
         if (hasError) {

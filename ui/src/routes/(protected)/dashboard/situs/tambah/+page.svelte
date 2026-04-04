@@ -20,6 +20,7 @@
         DEFAULT_SITUS_FORM_DATA,
     } from "$lib/schemas/siteInput";
     import { convertToWebP } from "$lib/utils/imageHelpers";
+    import { mapFlatErrors, handleEnterKey } from "$lib/utils/formHelpers";
 
     import type { PageData } from "./$types";
     let { data }: { data: PageData } = $props();
@@ -299,17 +300,6 @@
         });
     }
 
-    function mapFlatErrors(
-        flatIssues: v.FlatErrors<any>,
-        targetErrorObj: Record<string, any>,
-    ) {
-        if (flatIssues.nested) {
-            Object.entries(flatIssues.nested).forEach(([key, messages]) => {
-                targetErrorObj[key] = messages?.[0];
-            });
-        }
-    }
-
     async function handleSubmit() {
         let errors: Record<string, any> = {};
         let hasError = false;
@@ -558,10 +548,7 @@
                                     value={currentPhoneInput}
                                     oninput={handlePhoneInput}
                                     onkeydown={(e) => {
-                                        if (e.key === "Enter") {
-                                            e.preventDefault();
-                                            addPhone();
-                                        }
+                                        handleEnterKey(e, addPhone);
                                     }}
                                 />
                                 <button
