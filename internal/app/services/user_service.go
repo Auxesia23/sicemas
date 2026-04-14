@@ -184,6 +184,10 @@ func (s *userServiceImpl) UpdateUser(ctx context.Context, id, actorId uuid.UUID,
 	}
 
 	if err := s.userRepo.Update(ctx, id, in, index); err != nil {
+		if e, ok := err.(*pq.Error); ok && e.Code == "23505" {
+			s.logger.Warn("user with this NIP already exists", "user_index", index)
+			return apperror.NewBadRequest("User dengan NIP ini sudah ada.")
+		}
 		if err == sql.ErrNoRows {
 			s.logger.Warn("user not found for update", "user_id", id)
 			return apperror.NewNotFound("User tidak ditemukan")
