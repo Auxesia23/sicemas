@@ -277,12 +277,15 @@ func (h *situsKeagamaanHandlerImpl) GetLandingStats(c *fiber.Ctx) error {
 }
 
 func (h *situsKeagamaanHandlerImpl) ExportSitusToExcel(c *fiber.Ctx) error {
+	claim := c.Locals("claim").(*dto.AccessToken)
+	actorId, err := uuid.Parse(claim.Subject)
+
 	jenisSitus := c.Query("jenis_situs")
 	if jenisSitus == "" {
 		return c.Status(400).SendString("harus menyertakan jenis_situs")
 	}
 
-	excelFile, err := h.situsService.ExportSitusToExcel(c.Context(), jenisSitus)
+	excelFile, err := h.situsService.ExportSitusToExcel(c.Context(), jenisSitus, actorId)
 	if err != nil {
 		e := err.(*apperror.AppError)
 		return c.Status(e.Status).SendString(e.Message)

@@ -5,13 +5,14 @@ import (
 	"log"
 	"sicemas/internal/dto"
 	"sicemas/internal/entity"
+	"time"
 
 	"github.com/jmoiron/sqlx"
 )
 
 type ActivityRepository interface {
 	InsertActivity(ctx context.Context, activity *entity.Activity) error
-	GetActivities(ctx context.Context) ([]dto.ActivityResponse, error)
+	GetActivities(ctx context.Context, startDate, endDate time.Time) ([]dto.ActivityResponse, error)
 }
 
 type ActivityRepositoryImpl struct {
@@ -34,7 +35,7 @@ func (r *ActivityRepositoryImpl) InsertActivity(ctx context.Context, activity *e
 	return nil
 }
 
-func (r *ActivityRepositoryImpl) GetActivities(ctx context.Context) ([]dto.ActivityResponse, error) {
+func (r *ActivityRepositoryImpl) GetActivities(ctx context.Context, startDate, endDate time.Time) ([]dto.ActivityResponse, error) {
 	q := `
 	SELECT
 		a.id,
@@ -47,11 +48,11 @@ func (r *ActivityRepositoryImpl) GetActivities(ctx context.Context) ([]dto.Activ
 		activities a
 	JOIN
 		users u ON a.user_id = u.id
-	ORDER BY a.created_at DESC
-	LIMIT 5;
+	WHERE a.created_at >= $1 AND a.created_at < $2
+	ORDER BY a.created_at DESC;
 	`
 	var activities []dto.ActivityResponse
-	if err := r.DB.SelectContext(ctx, &activities, q); err != nil {
+	if err := r.DB.SelectContext(ctx, &activities, q, startDate, endDate); err != nil {
 		log.Println(err)
 		return nil, err
 	}

@@ -17,6 +17,7 @@
     let isAdding = $state(false);
 
     const resources = [
+        { name: "dashboard", actions: ["read"] },
         { name: "user", actions: ["create", "read", "update", "delete"] },
         {
             name: "situs",
@@ -36,6 +37,7 @@
         },
         { name: "role", actions: ["create", "read", "delete"] },
         { name: "policy", actions: ["create", "read", "update", "delete"] },
+        { name: "activity", actions: ["read"] },
     ];
 
     function getActionLabel(action: string): string {

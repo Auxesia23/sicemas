@@ -1,9 +1,6 @@
 services:
   sicemas:
-    image:
-      build:
-        context: .
-        dockerfile: Dockerfile
+    image: docker.io/fajargst/sicemas
     container_name: sicemas
     restart: always
     ports:

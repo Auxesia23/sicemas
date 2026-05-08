@@ -29,7 +29,7 @@ type SitusKeagamaanService interface {
 	DeleteFotoSitus(ctx context.Context, situsId uuid.UUID, foto *dto.DeleteFoto) error
 	GetAllSitusKeagamaan(ctx context.Context, userId uuid.UUID) ([]dto.SitusKeagamaanResponse, error)
 	GetDetailSitusKeagamaan(ctx context.Context, situsId, userId uuid.UUID) (*dto.SitusKeagamaanDetailResponse, error)
-	ExportSitusToExcel(ctx context.Context, jenisSitus string) (*excelize.File, error)
+	ExportSitusToExcel(ctx context.Context, jenisSitus string, actorId uuid.UUID) (*excelize.File, error)
 	UpdateSitus(ctx context.Context, id, userId uuid.UUID, in *dto.SitusKeagamaanUpdate, actorId uuid.UUID) error
 	DeleteSitus(ctx context.Context, id uuid.UUID, actorId uuid.UUID) error
 	VerifySitus(ctx context.Context, situsId uuid.UUID, in *dto.VerifikasiSitusRequest, actorId uuid.UUID) error
@@ -327,50 +327,50 @@ func (s *situsKeagamaanServiceImpl) GetDetailSitusKeagamaan(ctx context.Context,
 	return situs, nil
 }
 
-func (srv *situsKeagamaanServiceImpl) ExportSitusToExcel(ctx context.Context, jenisSitus string) (*excelize.File, error) {
-	srv.logger.Info("exporting situs to Excel", "jenis_situs", jenisSitus)
+func (s *situsKeagamaanServiceImpl) ExportSitusToExcel(ctx context.Context, jenisSitus string, actorId uuid.UUID) (*excelize.File, error) {
+	s.logger.Info("exporting situs to Excel", "jenis_situs", jenisSitus, "user_id", actorId)
 
-	situsList, err := srv.situsRepo.ReadAllDetail(ctx, jenisSitus)
+	situsList, err := s.situsRepo.ReadAllDetail(ctx, jenisSitus)
 	if err != nil {
-		srv.logger.Error("failed to fetch situs data for export", "error", err)
+		s.logger.Error("failed to fetch situs data for export", "error", err)
 		return nil, apperror.NewInternal("Terjadi kesalahan saat mengambil data.")
 	}
 
 	for i := range situsList {
 		situsList[i].NomorTelepon, err = utils.Decrypt(situsList[i].NomorTelepon)
 		if err != nil {
-			srv.logger.Error("failed to decrypt phone number", "situs_id", situsList[i].ID, "error", err)
+			s.logger.Error("failed to decrypt phone number", "situs_id", situsList[i].ID, "error", err)
 			return nil, err
 		}
 
 		situsList[i].Email, err = utils.Decrypt(situsList[i].Email)
 		if err != nil {
-			srv.logger.Error("failed to decrypt email", "situs_id", situsList[i].ID, "error", err)
+			s.logger.Error("failed to decrypt email", "situs_id", situsList[i].ID, "error", err)
 			return nil, err
 		}
 
 		situsList[i].NomorBadanHukum, err = utils.Decrypt(situsList[i].NomorBadanHukum)
 		if err != nil {
-			srv.logger.Error("failed to decrypt NomorBadanHukum", "situs_id", situsList[i].ID, "error", err)
+			s.logger.Error("failed to decrypt NomorBadanHukum", "situs_id", situsList[i].ID, "error", err)
 			return nil, err
 		}
 
 		situsList[i].NomorAIW, err = utils.Decrypt(situsList[i].NomorAIW)
 		if err != nil {
-			srv.logger.Error("failed to decrypt NomorAIW", "situs_id", situsList[i].ID, "error", err)
+			s.logger.Error("failed to decrypt NomorAIW", "situs_id", situsList[i].ID, "error", err)
 			return nil, err
 		}
 
 		situsList[i].NomorSertifikatWakaf, err = utils.Decrypt(situsList[i].NomorSertifikatWakaf)
 		if err != nil {
-			srv.logger.Error("failed to decrypt NomorSertifikatWakaf", "situs_id", situsList[i].ID, "error", err)
+			s.logger.Error("failed to decrypt NomorSertifikatWakaf", "situs_id", situsList[i].ID, "error", err)
 			return nil, err
 		}
 
 		for j, nomor := range situsList[i].NomorTelponPengurus {
 			decryptedNomor, err := utils.Decrypt(nomor)
 			if err != nil {
-				srv.logger.Error("failed to decrypt manager phone number", "situs_id", situsList[i].ID, "index", j, "error", err)
+				s.logger.Error("failed to decrypt manager phone number", "situs_id", situsList[i].ID, "index", j, "error", err)
 				return nil, err
 			}
 			situsList[i].NomorTelponPengurus[j] = decryptedNomor
@@ -379,11 +379,19 @@ func (srv *situsKeagamaanServiceImpl) ExportSitusToExcel(ctx context.Context, je
 
 	excelFile, err := utils.ExportSitusToExcel(situsList)
 	if err != nil {
-		srv.logger.Error("failed to generate Excel file", "error", err)
+		s.logger.Error("failed to generate Excel file", "error", err)
 		return nil, apperror.NewInternal("Terjadi kesalahan saat men-generate Excel.")
 	}
 
-	srv.logger.Info("situs Excel file generated successfully", "row_count", len(situsList))
+	_ = s.activityRepo.InsertActivity(ctx, &entity.Activity{
+		UserID:     actorId,
+		ActionType: "Mengekspor data situs",
+		EntityType: "SITUS",
+		EntityID:   uuid.Nil.String(),
+		TargetName: jenisSitus,
+	})
+
+	s.logger.Info("situs Excel file generated successfully", "row_count", len(situsList))
 	return excelFile, nil
 }
 

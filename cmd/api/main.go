@@ -84,6 +84,7 @@ func main() {
 	jenisSitusService := services.NewJenisSitusService(jenisSitusRepo, activityRepo, appLog)
 	situsKeagamaanService := services.NewSitusKeagamaanService(situsKeagamaanRepo, fotoSitusRepo, activityRepo, cld, enforcer, appLog)
 	dashboardService := services.NewDashboardService(activityRepo, dashboardRepo, appLog)
+	activityService := services.NewActivityService(activityRepo, appLog)
 
 	// Initiate handler layer
 	userHandler := handlers.NewUserHandler(userService, validate)
@@ -93,8 +94,9 @@ func main() {
 	jenisSitusHandler := handlers.NewJenisSitusHandler(jenisSitusService, validate)
 	situsKeagamaanHandler := handlers.NewSitusKeagamaanHandler(situsKeagamaanService, validate)
 	dashboardHandler := handlers.NewDashboardHandler(dashboardService)
+	activityHandler := handlers.NewActivityHandler(activityService)
 	// handler compositor
-	handlers := handlers.NewHandlers(userHandler, authHandler, roleHandler, policyHandler, jenisSitusHandler, situsKeagamaanHandler, dashboardHandler)
+	handlers := handlers.NewHandlers(userHandler, authHandler, roleHandler, policyHandler, jenisSitusHandler, situsKeagamaanHandler, dashboardHandler, activityHandler)
 
 	// Initiate middleware
 	authMiddleware := middlewares.NewAuthMiddleware(enforcer, locator, cache, appLog)

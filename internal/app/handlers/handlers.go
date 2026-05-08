@@ -8,6 +8,7 @@ type Handlers struct {
 	JenisSitus       JenisSitusHandler
 	SitusKeagamaan   SitusKeagamaanHandler
 	DashboardHandler DashboardHandler
+	ActivityHandler  ActivityHandler
 }
 
 func NewHandlers(user UserHandler,
@@ -16,7 +17,8 @@ func NewHandlers(user UserHandler,
 	policy PolicyHandler,
 	jenisSitus JenisSitusHandler,
 	situsKeagamaan SitusKeagamaanHandler,
-	dashboardHandler DashboardHandler) *Handlers {
+	dashboardHandler DashboardHandler,
+	activityHandler ActivityHandler) *Handlers {
 	return &Handlers{
 		User:             user,
 		Auth:             auth,
@@ -25,5 +27,6 @@ func NewHandlers(user UserHandler,
 		JenisSitus:       jenisSitus,
 		SitusKeagamaan:   situsKeagamaan,
 		DashboardHandler: dashboardHandler,
+		ActivityHandler:  activityHandler,
 	}
 }

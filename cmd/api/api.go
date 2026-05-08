@@ -285,6 +285,19 @@ func (s *server) run() {
 		)
 	}
 
+	aktivitas := api.Group("/activities")
+	{
+		aktivitas.Use(s.middlewares.Auth.JWTAuthenticator)
+		aktivitas.Use(s.middlewares.Auth.ZeroTrustValidator)
+
+		aktivitas.Use(s.middlewares.Limiter.LimiterByDevice(rate.Limit(5), 20))
+		aktivitas.Use(s.middlewares.Limiter.LimiterByUser(rate.Limit(5), 20))
+
+		aktivitas.Get("/", s.middlewares.Auth.CasbinAuthz().RequiresPermissions([]string{"activity:read"}, casbin.WithValidationRule(casbin.MatchAllRule)),
+			s.handlers.ActivityHandler.GetActivityByDate,
+		)
+	}
+
 	api.Use(func(c *fiber.Ctx) error {
 		return c.Status(404).SendString("API endpoint not found")
 	})

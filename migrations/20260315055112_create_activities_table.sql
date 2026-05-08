@@ -10,7 +10,6 @@ CREATE TABLE activities (
     created_at TIMESTAMPTZ DEFAULT NOW()
 );
 
--- Bikin index di kolom created_at karena dashboard akan selalu nge-query data terbaru (ORDER BY created_at DESC LIMIT 5)
 CREATE INDEX idx_activities_created_at ON activities(created_at DESC);
 -- +goose StatementEnd
 

@@ -3,6 +3,8 @@ import { error } from "@sveltejs/kit";
 import { auth } from "$lib/states/auth.svelte";
 import { createPageLoadFetch } from "$lib/api";
 import { DashboardResponseSchema } from "$lib/schemas/dashboard";
+import { goto } from "$app/navigation";
+
 import * as v from "valibot";
 
 export const load: PageLoad = async ({ parent, depends, fetch }) => {
@@ -12,8 +14,8 @@ export const load: PageLoad = async ({ parent, depends, fetch }) => {
   if (!auth.user) {
     throw error(401, "Sesi tidak valid atau belum login");
   }
-  if (!auth.hasAllPermissions(["situs:verify", "user:create"])) {
-    throw error(403, "Anda tidak memiliki izin ke halaman ini");
+  if (!auth.hasAllPermissions(["dashboard:read"])) {
+    goto("/dashboard/situs");
   }
 
   const PageFetch = createPageLoadFetch(fetch);
