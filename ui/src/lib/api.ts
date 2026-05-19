@@ -1,4 +1,5 @@
 import { auth } from "$lib/states/auth.svelte";
+import { goto } from "$app/navigation";
 
 interface FetchOptions extends RequestInit {
   customFetch?: typeof fetch;
@@ -83,21 +84,31 @@ export async function apiFetch(
 
   let response = await customFetch(endpoint, config);
 
-  if (response.status !== 401) {
-    return response;
+  if (response.status === 401 && endpoint !== "/api/auth/refresh") {
+    const refreshed = await refreshManager.refresh(customFetch);
+    if (refreshed) {
+      response = await customFetch(
+        endpoint,
+        buildRequestConfig(options, auth.device_id),
+      );
+    }
   }
 
-  if (endpoint === "/api/auth/refresh") {
-    return response;
+  if (
+    response.status === 403 &&
+    response.headers.get("X-Action-Required") === "STEP_UP" &&
+    endpoint !== "/api/auth/verify-stepup"
+  ) {
+    auth.isStepUpRequired = true;
+
+    const currentPath = window.location.pathname;
+
+    if (currentPath !== "/verify-stepup") {
+      goto(`/verify-stepup?next=${encodeURIComponent(currentPath)}`);
+    }
   }
 
-  const refreshed = await refreshManager.refresh(customFetch);
-
-  if (!refreshed) {
-    return response;
-  }
-
-  return customFetch(endpoint, config);
+  return response;
 }
 
 export function createPageLoadFetch(eventFetch: typeof fetch): typeof fetch {

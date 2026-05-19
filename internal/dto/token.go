@@ -18,12 +18,13 @@ type AccessToken struct {
 }
 
 type SessionValue struct {
-	UserID      uuid.UUID `json:"user_id"`
-	SID         uuid.UUID `json:"sid"`
-	UserAgent   string    `json:"user_agent"`
-	IPAddress   string    `json:"ip_address"`
-	GeoLocation string    `json:"geo_location"`
-	DeviceID    string    `json:"device_id"`
+	UserID        uuid.UUID `json:"user_id"`
+	SID           uuid.UUID `json:"sid"`
+	UserAgent     string    `json:"user_agent"`
+	IPAddress     string    `json:"ip_address"`
+	GeoLocation   string    `json:"geo_location"`
+	DeviceID      string    `json:"device_id"`
+	IsMFAVerified bool      `json:"is_mfa_verified"`
 }
 
 type SessionRequest struct {

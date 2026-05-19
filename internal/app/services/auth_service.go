@@ -3,6 +3,7 @@ package services
 import (
 	"context"
 	"database/sql"
+	"errors"
 	"fmt"
 	"log/slog"
 	apperror "sicemas/internal/app/appError"
@@ -21,6 +22,8 @@ type AuthService interface {
 	VerifyOTP(ctx context.Context, in *dto.UserVerifyOTP, loginContext *dto.SessionRequest) (*dto.Token, error)
 	RefreshToken(ctx context.Context, refreshToken string, requestContext *dto.SessionRequest) (*dto.Token, error)
 	Logout(ctx context.Context, refreshToken string, accessToken *string) error
+	TriggerStepUpOTP(ctx context.Context, userId string) error
+	VerifyStepUpOTP(ctx context.Context, userId string, sid uuid.UUID, userOtp string, loginContext *dto.SessionRequest) error
 }
 
 type authServiceImpl struct {
@@ -129,12 +132,13 @@ func (s *authServiceImpl) VerifyOTP(ctx context.Context, in *dto.UserVerifyOTP, 
 
 	sessionKey := fmt.Sprintf("rt:%v:%v", user.ID, refreshTokenId)
 	sessionValue := &dto.SessionValue{
-		UserID:      user.ID,
-		SID:         refreshTokenId,
-		UserAgent:   loginContext.UserAgent,
-		IPAddress:   loginContext.IPAddress,
-		GeoLocation: loginContext.GeoLocation,
-		DeviceID:    loginContext.DeviceID,
+		UserID:        user.ID,
+		SID:           refreshTokenId,
+		UserAgent:     loginContext.UserAgent,
+		IPAddress:     loginContext.IPAddress,
+		GeoLocation:   loginContext.GeoLocation,
+		DeviceID:      loginContext.DeviceID,
+		IsMFAVerified: true,
 	}
 
 	err = s.cache.Set(ctx, sessionKey, sessionValue, 7*24*time.Hour)
@@ -221,12 +225,13 @@ func (s *authServiceImpl) RefreshToken(ctx context.Context, refreshToken string,
 
 	newSessionKey := fmt.Sprintf("rt:%v:%v", claim.Subject, newRefreshJti)
 	newSession := &dto.SessionValue{
-		UserID:      user.ID,
-		SID:         newRefreshJti,
-		UserAgent:   requestContext.UserAgent,
-		IPAddress:   requestContext.IPAddress,
-		GeoLocation: requestContext.GeoLocation,
-		DeviceID:    requestContext.DeviceID,
+		UserID:        user.ID,
+		SID:           newRefreshJti,
+		UserAgent:     requestContext.UserAgent,
+		IPAddress:     requestContext.IPAddress,
+		GeoLocation:   requestContext.GeoLocation,
+		DeviceID:      requestContext.DeviceID,
+		IsMFAVerified: true,
 	}
 
 	err = s.cache.Set(ctx, newSessionKey, newSession, 7*24*time.Hour)
@@ -269,5 +274,82 @@ func (s *authServiceImpl) Logout(ctx context.Context, refreshToken string, acces
 	}
 
 	s.logger.Info("user logged out successfully, session terminated", "user_id", claim.Subject, "jti", claim.ID)
+	return nil
+}
+
+func (s *authServiceImpl) TriggerStepUpOTP(ctx context.Context, userId string) error {
+	s.logger.Info("initiating StepUp verification", "user_id", userId)
+	user, err := s.userRepo.ReadById(ctx, userId)
+	if err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			s.logger.Warn("user not found for verification", "user_id", userId)
+			return apperror.NewNotFound("User tidak ditemukan")
+		}
+		s.logger.Error("failed to read user for verification", "error", err)
+		return apperror.NewInternal("Terjadi kesalahan saat mencari data user")
+	}
+
+	otp := utils.GenerateOTP6()
+	err = s.cache.Set(ctx, fmt.Sprintf("stepup_otp:%v", user.ID), otp, 5*time.Minute)
+	if err != nil {
+		s.logger.Error("failed to store OTP in cache", "user_id", user.ID, "error", err)
+		return apperror.NewInternal("Terjadi kesalahan.")
+	}
+	fmt.Println("OTP : ", otp)
+	phoneNum, err := utils.Decrypt(user.NomorTelepon)
+	if err != nil {
+		s.logger.Error("failed to decrypt phone number", "user_id", user.ID, "error", err)
+		return apperror.NewInternal("Terjadi kesalahan.")
+	}
+	if err := utils.SendWhatsAppOTP(phoneNum, otp); err != nil {
+		s.logger.Error("failed to send WhatsApp OTP", "user_id", user.ID, "error", err)
+		return apperror.NewInternal("Terjadi kesalahan.")
+	}
+	return nil
+}
+
+func (s *authServiceImpl) VerifyStepUpOTP(ctx context.Context, userId string, sid uuid.UUID, userOtp string, loginContext *dto.SessionRequest) error {
+	s.logger.Info("verifying StepUp OTP", "user_id", userId)
+
+	otpKey := fmt.Sprintf("stepup_otp:%v", userId)
+	var otp string
+
+	if err := s.cache.Get(ctx, otpKey, &otp); err != nil {
+		if err == redis.Nil {
+			s.logger.Warn("no StepUp OTP found for user or expired", "user_id", userId)
+			return apperror.NewUnauthorized("OTP tidak ditemukan atau sudah kadaluarsa. Silakan minta ulang.")
+		}
+		s.logger.Error("failed to get OTP from cache", "user_id", userId, "error", err)
+		return apperror.NewInternal("Terjadi Kesalahan sistem.")
+	}
+
+	if otp != userOtp {
+		s.logger.Warn("incorrect StepUp OTP provided", "user_id", userId, "ip_address", loginContext.IPAddress)
+		return apperror.NewBadRequest("Kode OTP salah.")
+	}
+
+	sessionKey := fmt.Sprintf("rt:%v:%v", userId, sid)
+	var currentSession dto.SessionValue
+
+	if err := s.cache.Get(ctx, sessionKey, &currentSession); err != nil {
+		s.logger.Error("failed to get session from cache during step up", "user_id", userId, "error", err)
+		return apperror.NewUnauthorized("Sesi tidak valid atau sudah kadaluarsa.")
+	}
+
+	currentSession.IsMFAVerified = true
+	currentSession.IPAddress = loginContext.IPAddress
+	currentSession.UserAgent = loginContext.UserAgent
+	currentSession.GeoLocation = loginContext.GeoLocation
+	currentSession.DeviceID = loginContext.DeviceID
+
+	if err := s.cache.Set(ctx, sessionKey, currentSession, 7*24*time.Hour); err != nil {
+		s.logger.Error("failed to update session in cache", "user_id", userId, "error", err)
+		return apperror.NewInternal("Terjadi Kesalahan saat memperbarui sesi.")
+	}
+
+	s.cache.Delete(ctx, otpKey)
+
+	s.logger.Info("StepUp OTP verified successfully, session context updated", "user_id", userId, "new_ip", loginContext.IPAddress)
+
 	return nil
 }

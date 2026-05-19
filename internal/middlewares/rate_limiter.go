@@ -17,6 +17,7 @@ type Client struct {
 
 type RateLimiter interface {
 	LimiterByDevice(r rate.Limit, burst int) fiber.Handler
+	LimiterByIP(r rate.Limit, burst int) fiber.Handler
 	LimiterByUser(r rate.Limit, burst int) fiber.Handler
 }
 
@@ -87,6 +88,22 @@ func (rl *rateLimiterImpl) LimiterByDevice(r rate.Limit, burst int) fiber.Handle
 		limiter := state.getLimiter(deviceID)
 		if !limiter.Allow() {
 			rl.logger.Warn("rate limit exceeded", "device_id", deviceID, "ip_address", c.IP())
+			return c.Status(fiber.StatusTooManyRequests).SendString("Terlalu banyak permintaan. Silakan tunggu beberapa saat.")
+		}
+		return c.Next()
+	}
+}
+
+func (rl *rateLimiterImpl) LimiterByIP(r rate.Limit, burst int) fiber.Handler {
+	state := newLimiterState(r, burst)
+	return func(c *fiber.Ctx) error {
+		ip := c.IP()
+		if ip == "" {
+			return fiber.ErrBadRequest
+		}
+		limiter := state.getLimiter(ip)
+		if !limiter.Allow() {
+			rl.logger.Warn("rate limit exceeded", "ip_address", c.IP())
 			return c.Status(fiber.StatusTooManyRequests).SendString("Terlalu banyak permintaan. Silakan tunggu beberapa saat.")
 		}
 		return c.Next()

@@ -99,7 +99,7 @@ func main() {
 	handlers := handlers.NewHandlers(userHandler, authHandler, roleHandler, policyHandler, jenisSitusHandler, situsKeagamaanHandler, dashboardHandler, activityHandler)
 
 	// Initiate middleware
-	authMiddleware := middlewares.NewAuthMiddleware(enforcer, locator, cache, appLog)
+	authMiddleware := middlewares.NewAuthMiddleware(authService, enforcer, locator, cache, appLog)
 	rateLimiter := middlewares.NewRateLimiter(appLog)
 	// middlewares compositor
 	middlewares := middlewares.NewMiddlewares(authMiddleware, &rateLimiter)

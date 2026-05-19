@@ -9,6 +9,9 @@ class AuthState {
   user = $state<User | null>(null);
   device_id = $state<string | null>(null);
   loading = $state(true);
+  isStepUpRequired = $state(false);
+
+  resolveStepUp: ((success: boolean) => void) | null = null;
 
   async initDevice() {
     if (this.device_id) return;
@@ -82,6 +85,7 @@ class AuthState {
       const res = await apiFetch("/api/users/me", { customFetch });
 
       if (!res.ok) {
+        console.log(await res.text());
         this.user = null;
         return false;
       }

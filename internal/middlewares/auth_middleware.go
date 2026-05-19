@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"log/slog"
 	"net/netip"
+	"sicemas/internal/app/services"
 	"sicemas/internal/cache"
 	"sicemas/internal/dto"
 	"sicemas/internal/geoip"
@@ -26,23 +27,26 @@ type AuthMiddleware interface {
 }
 
 type authMiddlewareImpl struct {
-	enforcer *casbin.Enforcer
-	locator  geoip.Locator
-	cache    cache.Cache
-	logger   *slog.Logger
+	authService services.AuthService
+	enforcer    *casbin.Enforcer
+	locator     geoip.Locator
+	cache       cache.Cache
+	logger      *slog.Logger
 }
 
 func NewAuthMiddleware(
+	authService services.AuthService,
 	enforcer *casbin.Enforcer,
 	locator geoip.Locator,
 	cache cache.Cache,
 	logger *slog.Logger,
 ) AuthMiddleware {
 	return &authMiddlewareImpl{
-		enforcer: enforcer,
-		locator:  locator,
-		cache:    cache,
-		logger:   logger,
+		authService: authService,
+		enforcer:    enforcer,
+		locator:     locator,
+		cache:       cache,
+		logger:      logger,
 	}
 }
 
@@ -106,8 +110,26 @@ func (m *authMiddlewareImpl) ZeroTrustValidator(c *fiber.Ctx) error {
 		return c.Status(500).SendString("Terjadi kesalahan!")
 	}
 
+	if !curentSession.IsMFAVerified {
+		c.Set("X-Action-Required", "STEP_UP")
+		return c.Status(fiber.StatusForbidden).SendString("Autentikasi OTP diperlukan.")
+	}
+
 	trustScore := utils.CalculateTrustScore(requestContect, &curentSession)
-	if trustScore <= 70 {
+	if trustScore < 85 && trustScore > 60 {
+		m.logger.Warn("medium trust score detected, session need to be verified",
+			"user_id", jwtClaim.Subject,
+			"trust_score", trustScore,
+			"ip_address", ipStr,
+			"device_id", deviceId,
+		)
+
+		curentSession.IsMFAVerified = false
+		m.cache.Set(c.Context(), sessionKey, curentSession, 7*24*time.Hour)
+		m.authService.TriggerStepUpOTP(c.Context(), jwtClaim.Subject)
+		c.Set("X-Action-Required", "STEP_UP")
+		return c.Status(fiber.StatusForbidden).SendString("Autentikasi OTP diperlukan.")
+	} else if trustScore <= 60 {
 		m.logger.Warn("low trust score detected, session invalidated",
 			"user_id", jwtClaim.Subject,
 			"trust_score", trustScore,
@@ -132,7 +154,11 @@ func (m *authMiddlewareImpl) ZeroTrustValidator(c *fiber.Ctx) error {
 		})
 		return c.Status(fiber.StatusUnauthorized).SendString("Terjadi perbuhan konteks dalam sesi!")
 	}
-
+	m.logger.Info("zero trust context verified",
+		"user_id", jwtClaim.Subject,
+		"trust_score", trustScore,
+		"action", "allow_access",
+	)
 	return c.Next()
 }
 

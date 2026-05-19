@@ -8,6 +8,7 @@ import (
 
 	"github.com/go-playground/validator/v10"
 	"github.com/gofiber/fiber/v2"
+	"github.com/google/uuid"
 )
 
 type AuthHandler interface {
@@ -15,6 +16,8 @@ type AuthHandler interface {
 	VerifyOTP(c *fiber.Ctx) error
 	Refresh(c *fiber.Ctx) error
 	Logout(c *fiber.Ctx) error
+	VerifyStepUpOTP(c *fiber.Ctx) error
+	ResendStepUpOTP(c *fiber.Ctx) error
 }
 
 type authHandlerImpl struct {
@@ -208,5 +211,39 @@ func (h *authHandlerImpl) Logout(c *fiber.Ctx) error {
 		Secure:   true,
 		SameSite: "Strict",
 	})
+	return c.SendStatus(200)
+}
+
+func (h *authHandlerImpl) VerifyStepUpOTP(c *fiber.Ctx) error {
+	requestContext := c.Locals("context").(*dto.SessionRequest)
+
+	var body dto.UserStepUpOTP
+	if err := c.BodyParser(&body); err != nil {
+		return c.Status(400).SendString(err.Error())
+	}
+	if err := h.validate.Struct(&body); err != nil {
+		return c.Status(400).SendString(err.Error())
+	}
+
+	user := c.Locals("claim").(*dto.AccessToken)
+	SID, err := uuid.Parse(user.SID)
+	if err != nil {
+		return c.Status(500).SendString(err.Error())
+	}
+
+	if err := h.authService.VerifyStepUpOTP(c.Context(), user.Subject, SID, body.OTP, requestContext); err != nil {
+		e := err.(*apperror.AppError)
+		return c.Status(e.Status).SendString(e.Error())
+	}
+
+	return c.SendStatus(200)
+}
+
+func (h *authHandlerImpl) ResendStepUpOTP(c *fiber.Ctx) error {
+	user := c.Locals("claim").(*dto.AccessToken)
+	if err := h.authService.TriggerStepUpOTP(c.Context(), user.Subject); err != nil {
+		e := err.(*apperror.AppError)
+		return c.Status(e.Status).SendString(e.Error())
+	}
 	return c.SendStatus(200)
 }

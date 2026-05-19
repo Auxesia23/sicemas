@@ -176,7 +176,9 @@
                         </div>
 
                         {#if errorMessage}
-                            <div class="mb-4 alert alert-error">
+                            <div
+                                class="mb-4 alert alert-error rounded-xl text-sm"
+                            >
                                 <svg
                                     xmlns="http://www.w3.org/2000/svg"
                                     class="h-6 w-6 shrink-0 stroke-current"
@@ -195,7 +197,9 @@
                         {/if}
 
                         {#if successMessage}
-                            <div class="mb-4 alert alert-success">
+                            <div
+                                class="mb-4 alert alert-success rounded-xl text-sm"
+                            >
                                 <svg
                                     xmlns="http://www.w3.org/2000/svg"
                                     class="h-6 w-6 shrink-0 stroke-current"
@@ -219,9 +223,9 @@
                         >
                             {#if !isOtpSent}
                                 <div class="mb-6">
-                                    <label class="label" for="nip">
+                                    <label class="label pb-1.5" for="nip">
                                         <span
-                                            class="label-text font-medium text-base-content"
+                                            class="label-text text-xs font-bold uppercase tracking-wider text-base-content/80"
                                             >Nomor Induk Pegawai (NIP/NIK)</span
                                         >
                                     </label>
@@ -229,7 +233,7 @@
                                         id="nip"
                                         type="text"
                                         placeholder="Masukkan NIP/NIK Anda"
-                                        class="input-bordered input w-full"
+                                        class="input input-bordered w-full rounded-xl bg-base-200/30 transition-colors focus:bg-base-100"
                                         bind:value={nip}
                                         maxlength="18"
                                         disabled={isLoading}
@@ -240,7 +244,7 @@
                             {#if !isOtpSent}
                                 <button
                                     type="submit"
-                                    class="btn mb-6 w-full btn-primary"
+                                    class="btn btn-primary mb-6 w-full rounded-xl shadow-lg shadow-primary/20 transition-transform hover:-translate-y-0.5"
                                     disabled={isLoading ||
                                         (nip.length !== 16 &&
                                             nip.length !== 18)}
@@ -270,22 +274,26 @@
 
                             {#if isOtpSent}
                                 <div class="mb-6">
-                                    <label class="label" for="otp">
+                                    <label class="label pb-1.5" for="otp">
                                         <span
-                                            class="label-text font-medium text-base-content"
+                                            class="label-text text-xs font-bold uppercase tracking-wider text-base-content/80"
                                             >Kode OTP</span
                                         >
                                     </label>
                                     <input
                                         id="otp"
                                         type="text"
-                                        placeholder="Masukkan kode OTP (6 digit)"
-                                        class="input-bordered input w-full"
                                         bind:value={otp}
                                         maxlength="6"
+                                        placeholder="• • • • • •"
+                                        class="input input-bordered w-full rounded-xl bg-base-200/30 text-center text-2xl tracking-[0.5em] transition-colors focus:bg-base-100"
                                         disabled={isLoading}
+                                        onkeydown={(e) =>
+                                            e.key === "Enter" &&
+                                            otp.length === 6 &&
+                                            handleLogin()}
                                     />
-                                    <div class="label">
+                                    <div class="label pt-2">
                                         <span
                                             class="label-text-alt text-base-content/60"
                                             >Kode telah dikirim ke nomor
@@ -298,7 +306,7 @@
                             {#if isOtpSent}
                                 <button
                                     type="submit"
-                                    class="btn mb-4 w-full btn-primary"
+                                    class="btn btn-primary mb-4 w-full rounded-xl shadow-lg shadow-primary/20 transition-transform hover:-translate-y-0.5"
                                     disabled={isLoading || otp.length !== 6}
                                 >
                                     {#if isLoading}
@@ -324,10 +332,12 @@
                             {/if}
 
                             {#if isOtpSent}
-                                <div class="flex items-center justify-between">
+                                <div
+                                    class="flex items-center justify-between px-1"
+                                >
                                     <button
                                         type="button"
-                                        class="text-sm text-primary hover:underline"
+                                        class="text-sm font-medium text-base-content/60 hover:text-primary transition-colors"
                                         onclick={resetForm}
                                         disabled={isLoading}
                                     >
@@ -335,7 +345,7 @@
                                     </button>
                                     <button
                                         type="button"
-                                        class="text-sm text-primary hover:underline"
+                                        class="text-sm font-medium text-base-content/60 hover:text-primary transition-colors"
                                         onclick={sendOTP}
                                         disabled={isLoading}
                                     >
@@ -366,15 +376,12 @@
             transform: translate(0px, 0px) scale(1);
         }
     }
-
     .animate-blob {
         animation: blob 7s infinite;
     }
-
     .animation-delay-2000 {
         animation-delay: 2s;
     }
-
     .animation-delay-4000 {
         animation-delay: 4s;
     }

@@ -97,10 +97,16 @@ func (s *server) run() {
 	auth := api.Group("/auth")
 	{
 		auth.Use(s.middlewares.Limiter.LimiterByDevice(rate.Limit(1), 3))
+		auth.Use(s.middlewares.Limiter.LimiterByIP(rate.Limit(1), 3))
 		auth.Post("/login", s.handlers.Auth.Login)
 		auth.Post("/verify-otp", s.middlewares.Auth.GetContext, s.handlers.Auth.VerifyOTP)
 		auth.Post("/refresh", s.middlewares.Auth.GetContext, s.handlers.Auth.Refresh)
 		auth.Post("/logout", s.handlers.Auth.Logout)
+		auth.Post("/resend-stepup", s.middlewares.Auth.JWTAuthenticator,
+			s.handlers.Auth.ResendStepUpOTP)
+		auth.Post("/verify-stepup",
+			s.middlewares.Auth.GetContext, s.middlewares.Auth.JWTAuthenticator,
+			s.handlers.Auth.VerifyStepUpOTP)
 	}
 
 	dashboard := api.Group("/dashboard")
@@ -110,7 +116,7 @@ func (s *server) run() {
 		dashboard.Use(s.middlewares.Limiter.LimiterByDevice(rate.Limit(5), 20))
 		dashboard.Use(s.middlewares.Limiter.LimiterByUser(rate.Limit(5), 20))
 		dashboard.Get("/",
-			s.middlewares.Auth.CasbinAuthz().RequiresPermissions([]string{"situs:verify", "user:read"}, casbin.WithValidationRule(casbin.AtLeastOneRule)),
+			s.middlewares.Auth.CasbinAuthz().RequiresPermissions([]string{"dashboard:read"}, casbin.WithValidationRule(casbin.AtLeastOneRule)),
 			s.handlers.DashboardHandler.GetDashboardData)
 	}
 
