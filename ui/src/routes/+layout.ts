@@ -8,9 +8,7 @@ export const load: LayoutLoad = async ({ fetch, url }) => {
     return {};
   }
   await auth.initDevice();
-  console.log("Fetch User  dari load");
   await auth.fetchUser(fetch);
-  console.log("fetch user dari load selesai");
 
   return {};
 };

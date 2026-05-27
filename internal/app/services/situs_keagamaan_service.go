@@ -3,7 +3,6 @@ package services
 import (
 	"context"
 	"database/sql"
-	"encoding/json"
 	"errors"
 	"log/slog"
 	"mime/multipart"
@@ -33,9 +32,6 @@ type SitusKeagamaanService interface {
 	UpdateSitus(ctx context.Context, id, userId uuid.UUID, in *dto.SitusKeagamaanUpdate, actorId uuid.UUID) error
 	DeleteSitus(ctx context.Context, id uuid.UUID, actorId uuid.UUID) error
 	VerifySitus(ctx context.Context, situsId uuid.UUID, in *dto.VerifikasiSitusRequest, actorId uuid.UUID) error
-	GetAllSitusForPublic(ctx context.Context, filter dto.PublicListFilter) ([]dto.SitusPublicListResponse, error)
-	GetSitusDetailForPublic(ctx context.Context, id uuid.UUID) (*dto.SitusPublicDetailResponse, error)
-	GetLandingStats(ctx context.Context) (*dto.LandingStatsResponse, error)
 }
 
 type situsKeagamaanServiceImpl struct {
@@ -534,62 +530,4 @@ func (s *situsKeagamaanServiceImpl) VerifySitus(ctx context.Context, id uuid.UUI
 
 	s.logger.Info("situs verified successfully", "situs_id", id)
 	return nil
-}
-
-func (s *situsKeagamaanServiceImpl) GetAllSitusForPublic(ctx context.Context, filter dto.PublicListFilter) ([]dto.SitusPublicListResponse, error) {
-	s.logger.Info("fetching all situs for public", "filter", filter)
-
-	situs, err := s.situsRepo.ReadForPublic(ctx, filter)
-	if err != nil {
-		s.logger.Error("failed to fetch public situs", "error", err)
-		return nil, apperror.NewInternal("Terjadi kesalahan.")
-	}
-
-	if len(situs) == 0 {
-		s.logger.Info("no public situs found")
-		return []dto.SitusPublicListResponse{}, nil
-	}
-
-	s.logger.Info("fetched public situs successfully", "count", len(situs))
-	return situs, nil
-}
-
-func (s *situsKeagamaanServiceImpl) GetSitusDetailForPublic(ctx context.Context, id uuid.UUID) (*dto.SitusPublicDetailResponse, error) {
-	s.logger.Info("fetching situs detail for public", "situs_id", id)
-
-	situs, err := s.situsRepo.ReadDetailForPublic(ctx, id)
-	if err != nil {
-		if errors.Is(err, sql.ErrNoRows) {
-			s.logger.Warn("situs not found for public detail", "situs_id", id)
-			return nil, apperror.NewNotFound("Situs tidak ditemukan")
-		}
-		s.logger.Error("failed to fetch situs detail for public", "error", err)
-		return nil, apperror.NewInternal("Terjadi kesalahan.")
-	}
-
-	situs.Fasilitas = make(map[string]any)
-	if len(situs.FasilitasJSON) > 0 {
-		_ = json.Unmarshal(situs.FasilitasJSON, &situs.Fasilitas)
-	}
-
-	situs.Galeri = []string{}
-	if len(situs.GaleriJSON) > 0 {
-		_ = json.Unmarshal(situs.GaleriJSON, &situs.Galeri)
-	}
-
-	s.logger.Info("situs detail for public fetched successfully", "situs_id", id)
-	return situs, nil
-}
-
-func (s *situsKeagamaanServiceImpl) GetLandingStats(ctx context.Context) (*dto.LandingStatsResponse, error) {
-	s.logger.Info("fetching landing stats")
-
-	stats, err := s.situsRepo.GetLandingStats(ctx)
-	if err != nil {
-		s.logger.Error("failed to fetch landing stats", "error", err)
-		return nil, apperror.NewInternal("Terjadi kesalahan.")
-	}
-
-	s.logger.Info("landing stats fetched successfully")
-	return stats, nil
 }

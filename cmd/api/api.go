@@ -86,14 +86,6 @@ func (s *server) run() {
 		return c.SendString("Hallo, dari server KUA Ciemas")
 	})
 
-	public := api.Group("/public")
-	{
-		public.Use(s.middlewares.Limiter.LimiterByDevice(rate.Limit(5), 20))
-		public.Get("/situs", s.handlers.SitusKeagamaan.GetAllSitusForPublic)
-		public.Get("/situs/:id", s.handlers.SitusKeagamaan.GetSitusDetailForPublic)
-		public.Get("/stats", s.handlers.SitusKeagamaan.GetLandingStats)
-	}
-
 	auth := api.Group("/auth")
 	{
 		auth.Use(s.middlewares.Limiter.LimiterByDevice(rate.Limit(1), 3))

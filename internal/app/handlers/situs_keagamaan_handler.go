@@ -2,12 +2,10 @@ package handlers
 
 import (
 	"fmt"
-	"log"
 	"mime/multipart"
 	apperror "sicemas/internal/app/appError"
 	"sicemas/internal/app/services"
 	"sicemas/internal/dto"
-	"strconv"
 
 	"github.com/go-playground/validator/v10"
 	"github.com/gofiber/fiber/v2"
@@ -23,11 +21,6 @@ type SitusKeagamaanHandler interface {
 	UploadFotoSitus(c *fiber.Ctx) error
 	DeleteFotoSitus(c *fiber.Ctx) error
 	VerifySitus(c *fiber.Ctx) error
-
-	GetAllSitusForPublic(c *fiber.Ctx) error
-	GetSitusDetailForPublic(c *fiber.Ctx) error
-	GetLandingStats(c *fiber.Ctx) error
-
 	ExportSitusToExcel(c *fiber.Ctx) error
 }
 
@@ -231,49 +224,6 @@ func (h *situsKeagamaanHandlerImpl) DeleteFotoSitus(c *fiber.Ctx) error {
 		return c.Status(e.Status).SendString(e.Message)
 	}
 	return c.SendStatus(204)
-}
-
-func (h *situsKeagamaanHandlerImpl) GetAllSitusForPublic(c *fiber.Ctx) error {
-	var filter dto.PublicListFilter
-
-	latStr := c.Query("lat")
-	lngStr := c.Query("lng")
-
-	if latStr != "" && lngStr != "" {
-		lat, _ := strconv.ParseFloat(latStr, 64)
-		lng, _ := strconv.ParseFloat(lngStr, 64)
-		filter.UserLat = &lat
-		filter.UserLng = &lng
-	}
-	situs, err := h.situsService.GetAllSitusForPublic(c.Context(), filter)
-	if err != nil {
-		e := err.(*apperror.AppError)
-		return c.Status(e.Status).SendString(e.Message)
-	}
-	return c.JSON(situs)
-}
-
-func (h *situsKeagamaanHandlerImpl) GetSitusDetailForPublic(c *fiber.Ctx) error {
-	situsId, err := uuid.Parse(c.Params("id"))
-	if err != nil {
-		log.Print(err.Error())
-		return c.Status(400).SendString(err.Error())
-	}
-	situs, err := h.situsService.GetSitusDetailForPublic(c.Context(), situsId)
-	if err != nil {
-		e := err.(*apperror.AppError)
-		return c.Status(e.Status).SendString(e.Message)
-	}
-	return c.JSON(situs)
-}
-
-func (h *situsKeagamaanHandlerImpl) GetLandingStats(c *fiber.Ctx) error {
-	stats, err := h.situsService.GetLandingStats(c.Context())
-	if err != nil {
-		e := err.(*apperror.AppError)
-		return c.Status(e.Status).SendString(e.Message)
-	}
-	return c.JSON(stats)
 }
 
 func (h *situsKeagamaanHandlerImpl) ExportSitusToExcel(c *fiber.Ctx) error {
