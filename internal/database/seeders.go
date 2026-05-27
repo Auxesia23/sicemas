@@ -20,7 +20,6 @@ type seeder struct {
 
 type userSeed struct {
 	NIP          string
-	NIPIndex     []byte
 	NamaLengkap  string
 	Jabatan      string
 	UnitKerja    string
@@ -41,7 +40,6 @@ func (s *seeder) UserSeeder() error {
 	users := []*userSeed{
 		{
 			NIP:          "200308232022111001",
-			NIPIndex:     utils.HashIndex("200308232022111001"),
 			NamaLengkap:  "Fajar Gustiana",
 			Jabatan:      "Developer",
 			UnitKerja:    "Universitas Komputer Indonesia",
@@ -51,12 +49,17 @@ func (s *seeder) UserSeeder() error {
 	}
 
 	query := `
-		INSERT INTO users (nip_index,nama_lengkap,nip,jabatan,unit_kerja,email,nomor_telepon)
-		VALUES($1,$2,$3,$4,$5,$6,$7) RETURNING id;
+		INSERT INTO users (nip_index,password_hash,nama_lengkap,nip,jabatan,unit_kerja,email,nomor_telepon)
+		VALUES($1,$2,$3,$4,$5,$6,$7,$8) RETURNING id;
 	`
 	for _, u := range users {
 		var id uuid.UUID
 
+		nipIndex := utils.HashIndex(u.NIP)
+		passwordHash, err := utils.HashPassword(u.NomorTelepon)
+		if err != nil {
+			return err
+		}
 		encryptedNIP, err := utils.Encrypt(u.NIP)
 		if err != nil {
 			return err
@@ -71,7 +74,8 @@ func (s *seeder) UserSeeder() error {
 		}
 
 		err = s.db.GetContext(ctx, &id, query,
-			u.NIPIndex,
+			nipIndex,
+			passwordHash,
 			u.NamaLengkap,
 			encryptedNIP,
 			u.Jabatan,

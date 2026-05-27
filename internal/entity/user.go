@@ -9,6 +9,7 @@ import (
 type User struct {
 	ID           uuid.UUID `db:"id"`
 	NIPIndex     []byte    `db:"nip_index"`
+	PasswordHash string    `db:"password_hash"`
 	NamaLengkap  string    `db:"nama_lengkap"`
 	Jabatan      string    `db:"jabatan"`
 	UnitKerja    string    `db:"unit_kerja"`

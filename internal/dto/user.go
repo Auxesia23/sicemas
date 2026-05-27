@@ -30,7 +30,8 @@ type UserResponse struct {
 }
 
 type UserLogin struct {
-	NIP string `json:"nip" validate:"required"`
+	NIP      string `json:"nip" validate:"required"`
+	Password string `json:"password" validate:"required"`
 }
 
 type UserVerifyOTP struct {

@@ -52,10 +52,15 @@ func (s *authServiceImpl) Login(ctx context.Context, in *dto.UserLogin) error {
 	if err != nil {
 		if err == sql.ErrNoRows {
 			s.logger.Warn("user not found for login", "user_index", index)
-			return apperror.NewNotFound("User dengan NIP ini tidak ditemukan.")
+			return apperror.NewNotFound("NIP atau password anda salah")
 		}
 		s.logger.Error("failed to read user from database", "user_index", index, "error", err)
 		return apperror.NewInternal("Terjadi Kesalahan.")
+	}
+
+	if !utils.ComparePassword(user.PasswordHash, in.Password) {
+		s.logger.Warn("invalid credentials for user", "user_id", user.ID)
+		return apperror.NewUnauthorized("NIP atau password anda salah")
 	}
 
 	otp := utils.GenerateOTP6()

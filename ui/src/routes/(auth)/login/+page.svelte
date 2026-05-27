@@ -2,9 +2,13 @@
     import { auth } from "$lib/states/auth.svelte";
     import { goto } from "$app/navigation";
     import * as v from "valibot";
-    import { nipSchema, otpSchema } from "$lib/schemas/auth";
+    import { loginSchema, otpSchema } from "$lib/schemas/auth";
 
-    let nip = $state("");
+    let credentials = $state({
+        nip: "",
+        password: "",
+    });
+
     let otp = $state("");
     let isOtpSent = $state(false);
     let isLoading = $state(false);
@@ -14,16 +18,16 @@
     const sendOTP = async (e?: Event) => {
         if (e) e.preventDefault();
 
-        const nipValidation = v.safeParse(nipSchema, nip);
-        if (!nipValidation.success) {
-            errorMessage = nipValidation.issues[0].message;
+        const loginValidation = v.safeParse(loginSchema, credentials);
+        if (!loginValidation.success) {
+            errorMessage = loginValidation.issues[0].message;
             return;
         }
 
         isLoading = true;
         errorMessage = "";
 
-        const err = await auth.login(nip);
+        const err = await auth.login(credentials.nip, credentials.password);
 
         if (err) {
             errorMessage = err;
@@ -52,7 +56,7 @@
         isLoading = true;
         errorMessage = "";
 
-        const err = await auth.verifyOtp(otp, nip);
+        const err = await auth.verifyOtp(otp, credentials.nip);
 
         isLoading = false;
 
@@ -65,7 +69,9 @@
     };
 
     const resetForm = () => {
-        nip = "";
+        // Reset melalui object credentials
+        credentials.nip = "";
+        credentials.password = "";
         otp = "";
         isOtpSent = false;
         errorMessage = "";
@@ -234,9 +240,29 @@
                                         type="text"
                                         placeholder="Masukkan NIP/NIK Anda"
                                         class="input input-bordered w-full rounded-xl bg-base-200/30 transition-colors focus:bg-base-100"
-                                        bind:value={nip}
+                                        bind:value={credentials.nip}
                                         maxlength="18"
                                         disabled={isLoading}
+                                        autocomplete="off"
+                                    />
+
+                                    <label
+                                        class="label pb-1.5 mt-2"
+                                        for="password"
+                                    >
+                                        <span
+                                            class="label-text text-xs font-bold uppercase tracking-wider text-base-content/80"
+                                            >Password</span
+                                        >
+                                    </label>
+                                    <input
+                                        id="password"
+                                        type="password"
+                                        placeholder="Masukkan Password Anda"
+                                        class="input input-bordered w-full rounded-xl bg-base-200/30 transition-colors focus:bg-base-100"
+                                        bind:value={credentials.password}
+                                        disabled={isLoading}
+                                        autocomplete="off"
                                     />
                                 </div>
                             {/if}
@@ -246,8 +272,9 @@
                                     type="submit"
                                     class="btn btn-primary mb-6 w-full rounded-xl shadow-lg shadow-primary/20 transition-transform hover:-translate-y-0.5"
                                     disabled={isLoading ||
-                                        (nip.length !== 16 &&
-                                            nip.length !== 18)}
+                                        (credentials.nip.length !== 16 &&
+                                            credentials.nip.length !== 18) ||
+                                        credentials.password.length === 0}
                                 >
                                     {#if isLoading}
                                         <span class="loading loading-spinner"

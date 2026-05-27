@@ -38,21 +38,32 @@ func (s *dashboardServiceImpl) GetDashboardData(ctx context.Context) (*dto.Dashb
 		s.logger.Error("failed to get activities for dashboard", "error", err)
 		return nil, apperror.NewInternal("Terjadi kesalahan.")
 	}
+	if recentActivities == nil {
+		recentActivities = make([]dto.ActivityResponse, 0)
+	}
 
 	stats, err := s.dashboardRepo.GetDashboardStats(ctx)
 	if err != nil {
 		s.logger.Error("failed to get dashboard stats", "error", err)
 		return nil, apperror.NewInternal("Terjadi kesalahan.")
 	}
+
 	recentSites, err := s.dashboardRepo.GetRecentSites(ctx)
 	if err != nil {
 		s.logger.Error("failed to get recent sites", "error", err)
 		return nil, apperror.NewInternal("Terjadi kesalahan.")
 	}
+	if recentSites == nil {
+		recentSites = make([]dto.SitusKeagamaanResponse, 0)
+	}
+
 	statistikJenis, err := s.dashboardRepo.GetStatistikJenis(ctx)
 	if err != nil {
 		s.logger.Error("failed to get statistik jenis", "error", err)
 		return nil, apperror.NewInternal("Terjadi kesalahan.")
+	}
+	if statistikJenis == nil {
+		statistikJenis = make([]dto.StatistikJenis, 0)
 	}
 
 	response := &dto.DashboardResponse{

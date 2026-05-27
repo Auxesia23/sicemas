@@ -1,4 +1,5 @@
 import type { User } from "$lib/schemas/user";
+import type { UserLogin } from "$lib/schemas/auth";
 import { UserSchema } from "$lib/schemas/user";
 import * as v from "valibot";
 import { apiFetch } from "$lib/api";
@@ -45,12 +46,12 @@ class AuthState {
     );
   }
 
-  async login(nip: string): Promise<string | null> {
+  async login(nip: string, password: string): Promise<string | null> {
     try {
       const res = await apiFetch("/api/auth/login", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ nip }),
+        body: JSON.stringify({ nip, password }),
       });
 
       if (!res.ok) return await res.text();

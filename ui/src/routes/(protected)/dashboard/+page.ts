@@ -25,6 +25,7 @@ export const load: PageLoad = async ({ parent, depends, fetch }) => {
   }
 
   const rawData = await res.json();
+  console.log(rawData);
 
   const parsed = v.safeParse(DashboardResponseSchema, rawData);
 
