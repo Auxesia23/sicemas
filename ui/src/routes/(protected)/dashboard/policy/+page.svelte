@@ -18,7 +18,10 @@
 
     const resources = [
         { name: "dashboard", actions: ["read"] },
-        { name: "user", actions: ["create", "read", "update", "delete"] },
+        {
+            name: "user",
+            actions: ["create", "read", "update", "delete", "reset_password"],
+        },
         {
             name: "situs",
             actions: [
@@ -47,6 +50,7 @@
             read_all: "Read All",
             read_own: "Read Own",
             update: "Update",
+            reset_password: "Reset Password",
             update_all: "Update All",
             update_own: "Update Own",
             delete: "Delete",

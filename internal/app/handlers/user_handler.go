@@ -14,6 +14,8 @@ type UserHandler interface {
 	Register(c *fiber.Ctx) error
 	GetAllUser(c *fiber.Ctx) error
 	UpdateUser(c *fiber.Ctx) error
+	ChangePassword(c *fiber.Ctx) error
+	ResetPassword(c *fiber.Ctx) error
 	DeleteUser(c *fiber.Ctx) error
 	Profile(c *fiber.Ctx) error
 	Me(c *fiber.Ctx) error
@@ -87,6 +89,49 @@ func (h *userHandlerImpl) UpdateUser(c *fiber.Ctx) error {
 	}
 
 	return c.SendStatus(200)
+}
+
+func (h *userHandlerImpl) ChangePassword(c *fiber.Ctx) error {
+	claim := c.Locals("claim").(*dto.AccessToken)
+	userId, err := uuid.Parse(claim.Subject)
+	if err != nil {
+		return c.Status(fiber.StatusInternalServerError).SendString(err.Error())
+	}
+
+	var body dto.UserChangePassword
+	if err := c.BodyParser(&body); err != nil {
+		return c.Status(fiber.StatusBadRequest).SendString(err.Error())
+	}
+	if err := h.validate.Struct(&body); err != nil {
+		return c.Status(400).SendString(err.Error())
+	}
+
+	if err := h.userService.ChangePassword(c.Context(), userId, &body); err != nil {
+		e := err.(*apperror.AppError)
+		return c.Status(e.Status).SendString(e.Error())
+	}
+
+	return c.SendStatus(fiber.StatusOK)
+}
+
+func (h *userHandlerImpl) ResetPassword(c *fiber.Ctx) error {
+	claim := c.Locals("claim").(*dto.AccessToken)
+	actorId, err := uuid.Parse(claim.Subject)
+	if err != nil {
+		return c.Status(fiber.StatusInternalServerError).SendString(err.Error())
+	}
+
+	id := c.Params("userId")
+	userUuid, err := uuid.Parse(id)
+	if err != nil {
+		return c.Status(fiber.StatusBadRequest).SendString(err.Error())
+	}
+
+	if err := h.userService.ResetPassword(c.Context(), userUuid, actorId); err != nil {
+		e := err.(*apperror.AppError)
+		return c.Status(e.Status).SendString(e.Error())
+	}
+	return c.SendStatus(fiber.StatusOK)
 }
 
 func (h *userHandlerImpl) DeleteUser(c *fiber.Ctx) error {

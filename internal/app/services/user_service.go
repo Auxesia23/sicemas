@@ -22,6 +22,8 @@ type UserService interface {
 	Register(ctx context.Context, in *dto.UserRequest, actorId uuid.UUID) error
 	GetAllUser(ctx context.Context) ([]dto.UserResponse, error)
 	UpdateUser(ctx context.Context, id, actorId uuid.UUID, in *dto.UserRequest) error
+	ChangePassword(ctx context.Context, userId uuid.UUID, in *dto.UserChangePassword) error
+	ResetPassword(ctx context.Context, userId, actorId uuid.UUID) error
 	DeleteUser(ctx context.Context, id, actorId uuid.UUID) error
 	GetProfile(ctx context.Context, id string) (*dto.UserResponse, error)
 	GetPermissions(ctx context.Context, id string) (*dto.UserPermission, error)
@@ -56,20 +58,25 @@ func (s *userServiceImpl) Register(ctx context.Context, in *dto.UserRequest, act
 
 	var err error
 	index := utils.HashIndex(in.NIP)
+	passwordHash, err := utils.HashPassword(in.NomorTelepon)
+	if err != nil {
+		s.logger.Error("failed to hash passowrd during registration", "error", err)
+		return apperror.NewInternal("Terjadi kesalahan")
+	}
 	in.Email, err = utils.Encrypt(in.Email)
 	if err != nil {
 		s.logger.Error("failed to encrypt email during registration", "error", err)
-		return err
+		return apperror.NewInternal("Terjadi kesalahan")
 	}
 	in.NomorTelepon, err = utils.Encrypt(in.NomorTelepon)
 	if err != nil {
 		s.logger.Error("failed to encrypt phone number during registration", "error", err)
-		return err
+		return apperror.NewInternal("Terjadi kesalahan")
 	}
 	in.NIP, err = utils.Encrypt(in.NIP)
 	if err != nil {
 		s.logger.Error("failed to encrypt NIP during registration", "error", err)
-		return err
+		return apperror.NewInternal("Terjadi kesalahan")
 	}
 
 	if in.UnitKerja == nil || *in.UnitKerja == "" {
@@ -77,7 +84,7 @@ func (s *userServiceImpl) Register(ctx context.Context, in *dto.UserRequest, act
 		in.UnitKerja = &defaultUnit
 	}
 
-	userID, err := s.userRepo.Create(ctx, in, index)
+	userID, err := s.userRepo.Create(ctx, in, index, passwordHash)
 	if err != nil {
 		if e, ok := err.(*pq.Error); ok && e.Code == "23505" {
 			s.logger.Warn("user with this NIP already exists", "user_index", index)
@@ -220,6 +227,75 @@ func (s *userServiceImpl) UpdateUser(ctx context.Context, id, actorId uuid.UUID,
 	})
 
 	s.logger.Info("user updated successfully", "user_id", id)
+	return nil
+}
+
+func (s *userServiceImpl) ChangePassword(ctx context.Context, userId uuid.UUID, in *dto.UserChangePassword) error {
+	s.logger.Info("updating user's password", "user_id", userId)
+
+	user, err := s.userRepo.ReadById(ctx, userId.String())
+	if err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			s.logger.Warn("user not found for password change", "user_id", userId)
+			return apperror.NewNotFound("User tidak ditemukan")
+		}
+		s.logger.Error("failed to read user for password change", "error", err)
+		return apperror.NewInternal("Terjadi kesalahan saat mencari data user")
+	}
+	if !utils.ComparePassword(user.PasswordHash, in.PasswordLama) {
+		s.logger.Warn("invalid credentials for user", "user_id", user.ID)
+		return apperror.NewBadRequest("Password anda salah")
+	}
+	newPasswordHash, err := utils.HashPassword(in.PasswordBaru)
+	if err != nil {
+		s.logger.Error("failed to hash new password for user", "user_id", user.ID, "error", err)
+		return apperror.NewInternal("Terjadi kesalahan")
+	}
+	if err := s.userRepo.ChangePassword(ctx, newPasswordHash, userId); err != nil {
+		s.logger.Error("failed save new password for user", "user_id", user.ID, "error", err)
+		return apperror.NewInternal("Terjadi kesalahan")
+	}
+	s.logger.Info("user password chnaged successfully", "user_id", user.ID)
+	return nil
+}
+
+func (s *userServiceImpl) ResetPassword(ctx context.Context, userId, actorId uuid.UUID) error {
+	user, err := s.userRepo.ReadById(ctx, userId.String())
+	if err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			s.logger.Warn("user not found for password reset", "user_id", userId)
+			return apperror.NewNotFound("User tidak ditemukan")
+		}
+		s.logger.Error("failed to read user for password reset", "error", err)
+		return apperror.NewInternal("Terjadi kesalahan saat mencari data user")
+	}
+
+	decryptedNomorTelpon, err := utils.Decrypt(user.NomorTelepon)
+	if err != nil {
+		s.logger.Error("failed to decrypt nomor_telpon for user", "user_id", user.ID, "error", err)
+		return apperror.NewInternal("Terjadi kesalahan")
+	}
+
+	defaultPasswordHash, err := utils.HashPassword(decryptedNomorTelpon)
+	if err != nil {
+		s.logger.Error("failed to hash new password for user", "user_id", user.ID, "error", err)
+		return apperror.NewInternal("Terjadi kesalahan")
+	}
+
+	if err := s.userRepo.ChangePassword(ctx, defaultPasswordHash, user.ID); err != nil {
+		s.logger.Error("failed save new password for user", "user_id", user.ID, "error", err)
+		return apperror.NewInternal("Terjadi kesalahan")
+	}
+
+	_ = s.activityRepo.InsertActivity(ctx, &entity.Activity{
+		UserID:     actorId,
+		ActionType: "Reset password petugas",
+		EntityType: "USER",
+		EntityID:   actorId.String(),
+		TargetName: user.NamaLengkap,
+	})
+
+	s.logger.Info("user password reseted successfully", "user_id", user.ID)
 	return nil
 }
 

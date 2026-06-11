@@ -115,13 +115,14 @@ func (s *server) run() {
 	users := api.Group("/users")
 	{
 		users.Use(s.middlewares.Auth.JWTAuthenticator)
-		users.Use(s.middlewares.Auth.CSRFDoubleSubmit())
-		users.Use(s.middlewares.Auth.ZeroTrustValidator)
-
 		users.Use(s.middlewares.Limiter.LimiterByDevice(rate.Limit(5), 20))
 		users.Use(s.middlewares.Limiter.LimiterByUser(rate.Limit(5), 20))
 
 		users.Get("/me", s.handlers.User.Me)
+
+		users.Use(s.middlewares.Auth.CSRFDoubleSubmit())
+		users.Use(s.middlewares.Auth.ZeroTrustValidator)
+
 		users.Get("/profile", s.handlers.User.Profile)
 		users.Get("/",
 			s.middlewares.Auth.CasbinAuthz().RequiresPermissions([]string{"user:read"}, casbin.WithValidationRule(casbin.MatchAllRule)),
@@ -139,6 +140,14 @@ func (s *server) run() {
 			s.middlewares.Auth.CasbinAuthz().RequiresPermissions([]string{"user:update"}, casbin.WithValidationRule(casbin.MatchAllRule)),
 			s.handlers.User.DeleteUser,
 		)
+		users.Post("/:userId/reset-password",
+			s.middlewares.Auth.CasbinAuthz().RequiresPermissions([]string{"user:reset_password"}, casbin.WithValidationRule(casbin.MatchAllRule)),
+			s.handlers.User.ResetPassword,
+		)
+		users.Post("/change-password",
+			s.handlers.User.ChangePassword,
+		)
+
 	}
 
 	roles := api.Group("/roles")

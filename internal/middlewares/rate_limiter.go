@@ -114,8 +114,8 @@ func (rl *rateLimiterImpl) LimiterByIP(r rate.Limit, burst int) fiber.Handler {
 func (rl *rateLimiterImpl) LimiterByUser(r rate.Limit, burst int) fiber.Handler {
 	state := newLimiterState(r, burst)
 	return func(c *fiber.Ctx) error {
-		claim := c.Locals("claim").(*dto.AccessToken)
-		if claim == nil {
+		claim, ok := c.Locals("claim").(*dto.AccessToken)
+		if !ok || claim == nil {
 			return fiber.ErrUnauthorized
 		}
 		limiter := state.getLimiter(claim.Subject)

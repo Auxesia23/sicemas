@@ -13,16 +13,10 @@ type StatistikJenis struct {
 }
 
 type DashboardResponse struct {
-	Stats *Stats `json:"stats"`
-
-	// Ini untuk grafik (Pakai DTO jenis situs yang udah lu punya)
-	StatistikJenis []StatistikJenis `json:"statistik_jenis"`
-
-	// Ini untuk list Aktivitas (Maksimal 5)
-	RecentActivities []ActivityResponse `json:"recent_activities"`
-
-	// Ini untuk list tabel Situs Terbaru (Maksimal 5)
-	RecentSites []SitusKeagamaanResponse `json:"recent_sites"`
+	Stats            *Stats                   `json:"stats"`
+	StatistikJenis   []StatistikJenis         `json:"statistik_jenis"`
+	RecentActivities []ActivityResponse       `json:"recent_activities"`
+	RecentSites      []SitusKeagamaanResponse `json:"recent_sites"`
 }
 
 type LandingStatsResponse struct {

@@ -20,8 +20,8 @@ type MockUserRepo struct {
 	mock.Mock
 }
 
-func (m *MockUserRepo) Create(ctx context.Context, in *dto.UserRequest, index []byte) (string, error) {
-	args := m.Called(ctx, in, index)
+func (m *MockUserRepo) Create(ctx context.Context, in *dto.UserRequest, index []byte, passwordHash string) (string, error) {
+	args := m.Called(ctx, in, index, passwordHash)
 	return args.String(0), args.Error(1)
 }
 
@@ -48,6 +48,16 @@ func (m *MockUserRepo) ReadById(ctx context.Context, id string) (*entity.User, e
 
 func (m *MockUserRepo) Update(ctx context.Context, id uuid.UUID, in *dto.UserRequest, newIndex []byte) error {
 	args := m.Called(ctx, id, in, newIndex)
+	return args.Error(0)
+}
+
+func (m *MockUserRepo) ResetPassword(ctx context.Context, userId uuid.UUID) error {
+	args := m.Called(ctx, userId)
+	return args.Error(0)
+}
+
+func (m *MockUserRepo) ChangePassword(ctx context.Context, newPasswordHash string, userId uuid.UUID) error {
+	args := m.Called(ctx, newPasswordHash, userId)
 	return args.Error(0)
 }
 

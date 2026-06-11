@@ -71,3 +71,33 @@ export const ProfileResponseSchema = v.object({
 });
 
 export type ProfileResponse = v.InferOutput<typeof ProfileResponseSchema>;
+
+export const PasswordSchema = v.pipe(
+  v.object({
+    passwordLama: v.pipe(
+      v.string(),
+      v.minLength(1, "Password saat ini wajib diisi."),
+    ),
+    passwordBaru: v.pipe(
+      v.string(),
+      v.minLength(8, "Password baru minimal 8 karakter."),
+    ),
+    konfirmasiPassword: v.string(),
+  }),
+  v.forward(
+    v.partialCheck(
+      [["passwordBaru"], ["konfirmasiPassword"]],
+      (input) => input.passwordBaru === input.konfirmasiPassword,
+      "Konfirmasi password tidak cocok.",
+    ),
+    ["konfirmasiPassword"],
+  ),
+  v.forward(
+    v.partialCheck(
+      [["passwordLama"], ["passwordBaru"]],
+      (input) => input.passwordLama !== input.passwordBaru,
+      "Password baru tidak boleh sama dengan password saat ini.",
+    ),
+    ["passwordBaru"],
+  ),
+);

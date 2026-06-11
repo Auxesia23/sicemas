@@ -1,11 +1,11 @@
-FROM oven/bun:alpine AS frontend-builder
+FROM docker.io/denoland/deno:latest AS frontend-builder
 WORKDIR /app/ui
 
-COPY ui/package.json ui/bun.lock ./
-RUN bun install --frozen-lockfile
+COPY ui/package.json ui/deno.lock ./
+RUN deno install
 
 COPY ui/ .
-RUN bun --bun run build
+RUN deno task build
 
 FROM golang:1.25-alpine AS backend-builder
 

@@ -41,6 +41,11 @@
     let showDeleteModal = $state(false);
     let userToDelete = $state<UserResponse | null>(null);
     let isDeleting = $state(false);
+
+    let showResetModal = $state(false);
+    let userToReset = $state<UserResponse | null>(null);
+    let isResetting = $state(false);
+
     let showToast = $state(false);
     let toastMessage = $state("");
     let toastType = $state<"success" | "error" | "warning" | "info">("success");
@@ -224,6 +229,49 @@
             userToDelete = null;
         }
     };
+
+    const confirmResetPassword = (user: UserResponse) => {
+        userToReset = user;
+        showResetModal = true;
+    };
+
+    const executeResetPassword = async () => {
+        if (!userToReset) return;
+        isResetting = true;
+
+        try {
+            const response = await apiFetch(
+                `/api/users/${userToReset.id}/reset-password`,
+                {
+                    method: "POST",
+                },
+            );
+
+            if (!response.ok) {
+                const textError = await response.text();
+                throw new Error(textError || "Gagal mereset password petugas");
+            }
+
+            showResetModal = false;
+            toastMessage = `Password ${userToReset.nama_lengkap} berhasil direset`;
+            toastType = "success";
+            showToast = true;
+
+            setTimeout(() => {
+                showToast = false;
+            }, 3000);
+        } catch (error: any) {
+            toastMessage = error.message;
+            toastType = "error";
+            showToast = true;
+            setTimeout(() => {
+                showToast = false;
+            }, 4000);
+        } finally {
+            isResetting = false;
+            userToReset = null;
+        }
+    };
 </script>
 
 <svelte:head>
@@ -247,6 +295,17 @@
         isProcessing={isDeleting}
         onConfirm={deleteUser}
         onCancel={() => (showDeleteModal = false)}
+    />
+
+    <ConfirmModal
+        show={showResetModal}
+        title="Reset Password Pegawai"
+        message="Apakah Anda yakin ingin mereset password {userToReset?.nama_lengkap} ke default? Pegawai dapat langsung login menggunakan password tersebut."
+        type="warning"
+        confirmText="Ya, Reset Password"
+        isProcessing={isResetting}
+        onConfirm={executeResetPassword}
+        onCancel={() => (showResetModal = false)}
     />
 
     <UserFormModal
@@ -453,6 +512,8 @@
                                                 openEditModal(staff)}
                                             onDelete={() =>
                                                 confirmDelete(staff)}
+                                            onResetPassword={() =>
+                                                confirmResetPassword(staff)}
                                         />
                                     </div>
                                 </td>

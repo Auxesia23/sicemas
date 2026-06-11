@@ -47,3 +47,8 @@ type UserPermission struct {
 	NamaLengkap string   `json:"nama_lengkap"`
 	Permissions []string `json:"permissions"`
 }
+
+type UserChangePassword struct {
+	PasswordLama string `json:"password_lama" validate:"required"`
+	PasswordBaru string `json:"password_baru" validate:"required,min=8,nefield=PasswordLama"`
+}

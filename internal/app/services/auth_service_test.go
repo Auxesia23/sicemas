@@ -5,6 +5,7 @@ import (
 	"database/sql"
 	"encoding/base64"
 	"errors"
+	"fmt"
 	"io"
 	"log/slog"
 	"net/http"
@@ -62,6 +63,8 @@ func TestAuthServiceImpl_Login(t *testing.T) {
 	ctx := context.Background()
 	mockUserRepo, mockCache, svc := setupAuthService()
 
+	validBcryptHash, _ := utils.HashPassword("password123")
+
 	tests := []struct {
 		name      string
 		input     *dto.UserLogin
@@ -71,7 +74,8 @@ func TestAuthServiceImpl_Login(t *testing.T) {
 		{
 			name: "Success - Login",
 			input: &dto.UserLogin{
-				NIP: "1234567890123456",
+				NIP:      "1234567890123456",
+				Password: "password123",
 			},
 			setupMock: func(mu *MockUserRepo, mc *MockCache) {
 				encryptedNIP, _ := utils.Encrypt("1234567890123456")
@@ -80,6 +84,7 @@ func TestAuthServiceImpl_Login(t *testing.T) {
 					ID:           uuid.New(),
 					NIP:          encryptedNIP,
 					NamaLengkap:  "Test User",
+					PasswordHash: validBcryptHash,
 					NomorTelepon: encryptedPhone,
 				}
 				mu.On("ReadOne", mock.Anything, mock.Anything).Return(user, nil).Once()
@@ -88,9 +93,29 @@ func TestAuthServiceImpl_Login(t *testing.T) {
 			expectErr: false,
 		},
 		{
+			name: "Error - Invalid Password",
+			input: &dto.UserLogin{
+				NIP:      "1234567890123456",
+				Password: "password_yang_salah", // Sengaja disalahkan
+			},
+			setupMock: func(mu *MockUserRepo, mc *MockCache) {
+				encryptedNIP, _ := utils.Encrypt("1234567890123456")
+				user := &entity.User{
+					ID:           uuid.New(),
+					NIP:          encryptedNIP,
+					NamaLengkap:  "Test User",
+					PasswordHash: validBcryptHash,
+				}
+				mu.On("ReadOne", mock.Anything, mock.Anything).Return(user, nil).Once()
+				// Tidak perlu mock Cache Set karena harusnya return error duluan saat compare password
+			},
+			expectErr: true,
+		},
+		{
 			name: "Error - User Not Found",
 			input: &dto.UserLogin{
-				NIP: "1234567890123456",
+				NIP:      "1234567890123456",
+				Password: "password123",
 			},
 			setupMock: func(mu *MockUserRepo, mc *MockCache) {
 				mu.On("ReadOne", mock.Anything, mock.Anything).
@@ -101,7 +126,8 @@ func TestAuthServiceImpl_Login(t *testing.T) {
 		{
 			name: "Error - Cache Set Failed",
 			input: &dto.UserLogin{
-				NIP: "1234567890123456",
+				NIP:      "1234567890123456",
+				Password: "password123",
 			},
 			setupMock: func(mu *MockUserRepo, mc *MockCache) {
 				encryptedNIP, _ := utils.Encrypt("1234567890123456")
@@ -110,6 +136,7 @@ func TestAuthServiceImpl_Login(t *testing.T) {
 					ID:           uuid.New(),
 					NIP:          encryptedNIP,
 					NamaLengkap:  "Test User",
+					PasswordHash: validBcryptHash,
 					NomorTelepon: encryptedPhone,
 				}
 				mu.On("ReadOne", mock.Anything, mock.Anything).Return(user, nil).Once()
@@ -452,6 +479,172 @@ func TestAuthServiceImpl_Logout(t *testing.T) {
 		})
 	}
 }
+
+func TestAuthServiceImpl_TriggerStepUpOTP(t *testing.T) {
+	defer func() {
+		os.Unsetenv("AES_256_KEY")
+		os.Unsetenv("PEPPER")
+		os.Unsetenv("JWT_SECRET")
+		os.Unsetenv("GOWA_URL")
+	}()
+
+	mockServer := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusOK)
+	}))
+	defer mockServer.Close()
+	os.Setenv("GOWA_URL", mockServer.URL)
+
+	ctx := context.Background()
+	mockUserRepo, mockCache, svc := setupAuthService()
+
+	userID := uuid.New()
+	userIDStr := userID.String()
+
+	tests := []struct {
+		name      string
+		userId    string
+		setupMock func(*MockUserRepo, *MockCache)
+		expectErr bool
+	}{
+		{
+			name:   "Success - Trigger StepUp OTP",
+			userId: userIDStr,
+			setupMock: func(mu *MockUserRepo, mc *MockCache) {
+				encryptedPhone, _ := utils.Encrypt("628123456789")
+				user := &entity.User{
+					ID:           userID,
+					NomorTelepon: encryptedPhone,
+				}
+				mu.On("ReadById", mock.Anything, userIDStr).Return(user, nil).Once()
+				mc.On("Set", mock.Anything, fmt.Sprintf("stepup_otp:%v", userIDStr), mock.Anything, 5*time.Minute).Return(nil).Once()
+			},
+			expectErr: false,
+		},
+		{
+			name:   "Error - User Not Found",
+			userId: userIDStr,
+			setupMock: func(mu *MockUserRepo, mc *MockCache) {
+				mu.On("ReadById", mock.Anything, userIDStr).Return((*entity.User)(nil), sql.ErrNoRows).Once()
+			},
+			expectErr: true,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			mockUserRepo.ExpectedCalls = nil
+			mockCache.ExpectedCalls = nil
+
+			tt.setupMock(mockUserRepo, mockCache)
+
+			err := svc.TriggerStepUpOTP(ctx, tt.userId)
+
+			if tt.expectErr {
+				assert.Error(t, err)
+			} else {
+				assert.NoError(t, err)
+			}
+
+			mockUserRepo.AssertExpectations(t)
+			mockCache.AssertExpectations(t)
+		})
+	}
+}
+
+func TestAuthServiceImpl_VerifyStepUpOTP(t *testing.T) {
+	ctx := context.Background()
+	mockUserRepo, mockCache, svc := setupAuthService()
+
+	userID := uuid.New().String()
+	sid := uuid.New()
+
+	loginCtx := &dto.SessionRequest{
+		IPAddress: "127.0.0.1",
+		UserAgent: "TestAgent/1.0",
+	}
+
+	tests := []struct {
+		name      string
+		userId    string
+		sid       uuid.UUID
+		userOtp   string
+		loginCtx  *dto.SessionRequest
+		setupMock func(*MockUserRepo, *MockCache)
+		expectErr bool
+	}{
+		{
+			name:     "Success - Verify StepUp OTP",
+			userId:   userID,
+			sid:      sid,
+			userOtp:  "123456",
+			loginCtx: loginCtx,
+			setupMock: func(mu *MockUserRepo, mc *MockCache) {
+				mc.On("Get", mock.Anything, fmt.Sprintf("stepup_otp:%v", userID), mock.Anything).Run(func(args mock.Arguments) {
+					ptr := args.Get(2).(*string)
+					*ptr = "123456"
+				}).Return(nil).Once()
+
+				mc.On("Get", mock.Anything, fmt.Sprintf("rt:%v:%v", userID, sid), mock.Anything).Run(func(args mock.Arguments) {
+					ptr := args.Get(2).(*dto.SessionValue)
+					*ptr = dto.SessionValue{
+						UserID: uuid.MustParse(userID),
+						SID:    sid,
+					}
+				}).Return(nil).Once()
+
+				mc.On("Set", mock.Anything, fmt.Sprintf("rt:%v:%v", userID, sid), mock.Anything, 7*24*time.Hour).Return(nil).Once()
+				mc.On("Delete", mock.Anything, fmt.Sprintf("stepup_otp:%v", userID)).Return(nil).Once()
+			},
+			expectErr: false,
+		},
+		{
+			name:     "Error - OTP Expired or Not Found",
+			userId:   userID,
+			sid:      sid,
+			userOtp:  "123456",
+			loginCtx: loginCtx,
+			setupMock: func(mu *MockUserRepo, mc *MockCache) {
+				mc.On("Get", mock.Anything, fmt.Sprintf("stepup_otp:%v", userID), mock.Anything).Return(redis.Nil).Once()
+			},
+			expectErr: true,
+		},
+		{
+			name:     "Error - Incorrect OTP",
+			userId:   userID,
+			sid:      sid,
+			userOtp:  "wrong",
+			loginCtx: loginCtx,
+			setupMock: func(mu *MockUserRepo, mc *MockCache) {
+				mc.On("Get", mock.Anything, fmt.Sprintf("stepup_otp:%v", userID), mock.Anything).Run(func(args mock.Arguments) {
+					ptr := args.Get(2).(*string)
+					*ptr = "123456"
+				}).Return(nil).Once()
+			},
+			expectErr: true,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			mockUserRepo.ExpectedCalls = nil
+			mockCache.ExpectedCalls = nil
+
+			tt.setupMock(mockUserRepo, mockCache)
+
+			err := svc.VerifyStepUpOTP(ctx, tt.userId, tt.sid, tt.userOtp, tt.loginCtx)
+
+			if tt.expectErr {
+				assert.Error(t, err)
+			} else {
+				assert.NoError(t, err)
+			}
+
+			mockUserRepo.AssertExpectations(t)
+			mockCache.AssertExpectations(t)
+		})
+	}
+}
+
 func strPtr(s string) *string {
 	return &s
 }

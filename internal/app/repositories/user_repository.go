@@ -12,11 +12,12 @@ import (
 )
 
 type UserRepo interface {
-	Create(ctx context.Context, in *dto.UserRequest, index []byte) (string, error)
+	Create(ctx context.Context, in *dto.UserRequest, index []byte, passwordHash string) (string, error)
 	ReadAll(ctx context.Context) ([]entity.User, error)
 	ReadOne(ctx context.Context, index []byte) (*entity.User, error)
 	ReadById(ctx context.Context, id string) (*entity.User, error)
 	Update(ctx context.Context, id uuid.UUID, in *dto.UserRequest, newIndex []byte) error
+	ChangePassword(ctx context.Context, newPasswordHash string, userId uuid.UUID) error
 	Delete(ctx context.Context, id uuid.UUID) error
 }
 
@@ -30,16 +31,17 @@ func NewUserRepo(db *sqlx.DB) UserRepo {
 	}
 }
 
-func (r *userRepiImpl) Create(ctx context.Context, in *dto.UserRequest, index []byte) (string, error) {
+func (r *userRepiImpl) Create(ctx context.Context, in *dto.UserRequest, index []byte, passwordHash string) (string, error) {
 	var newID string
 	query := `
-        INSERT INTO users (nip_index, nama_lengkap, nip, jabatan, unit_kerja, email, nomor_telepon)
-        VALUES($1, $2, $3, $4, $5, $6, $7)
+        INSERT INTO users (nip_index, password_hash, nama_lengkap, nip, jabatan, unit_kerja, email, nomor_telepon)
+        VALUES($1, $2, $3, $4, $5, $6, $7, $8)
         RETURNING id;
     `
 
 	err := r.DB.QueryRowContext(ctx, query,
 		index,
+		passwordHash,
 		in.NamaLengkap,
 		in.NIP,
 		in.Jabatan,
@@ -127,6 +129,25 @@ func (r *userRepiImpl) Update(ctx context.Context, id uuid.UUID, in *dto.UserReq
 	)
 	if err != nil {
 		log.Println(err.Error())
+		return err
+	}
+
+	rows, _ := result.RowsAffected()
+	if rows == 0 {
+		return sql.ErrNoRows
+	}
+
+	return nil
+}
+
+func (r *userRepiImpl) ChangePassword(ctx context.Context, newPasswordHash string, userId uuid.UUID) error {
+	query := `
+	UPDATE users
+		SET password_hash = $1, updated_at = CURRENT_TIMESTAMP
+		WHERE id = $2;
+	`
+	result, err := r.DB.ExecContext(ctx, query, newPasswordHash, userId)
+	if err != nil {
 		return err
 	}
 

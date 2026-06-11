@@ -19,6 +19,7 @@ import (
 	"github.com/casbin/casbin/v2"
 	casbinModel "github.com/casbin/casbin/v2/model"
 	"github.com/google/uuid"
+	"github.com/lib/pq"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
 )
@@ -70,8 +71,8 @@ func TestUserServiceImpl_Register(t *testing.T) {
 	ctx := context.Background()
 
 	tests := []struct {
-		name          string
-		input        *dto.UserRequest
+		name        string
+		input       *dto.UserRequest
 		mockSetup   func()
 		expectedErr bool
 	}{
@@ -87,7 +88,7 @@ func TestUserServiceImpl_Register(t *testing.T) {
 				Jabatan:      "Staff",
 			},
 			mockSetup: func() {
-				mockUser.On("Create", mock.Anything, mock.AnythingOfType("*dto.UserRequest"), mock.Anything).
+				mockUser.On("Create", mock.Anything, mock.AnythingOfType("*dto.UserRequest"), mock.Anything, mock.Anything).
 					Return(uuid.New().String(), nil).Once()
 				mockAct.On("InsertActivity", mock.Anything, mock.AnythingOfType("*entity.Activity")).
 					Return(nil).Once()
@@ -106,8 +107,8 @@ func TestUserServiceImpl_Register(t *testing.T) {
 				Jabatan:      "Staff",
 			},
 			mockSetup: func() {
-				mockUser.On("Create", mock.Anything, mock.Anything, mock.Anything).
-					Return("", errors.New("duplicate key value violates unique constraint")).Once()
+				mockUser.On("Create", mock.Anything, mock.Anything, mock.Anything, mock.Anything).
+					Return("", &pq.Error{Code: "23505"}).Once()
 			},
 			expectedErr: true,
 		},
@@ -123,7 +124,7 @@ func TestUserServiceImpl_Register(t *testing.T) {
 				Jabatan:      "Staff",
 			},
 			mockSetup: func() {
-				mockUser.On("Create", mock.Anything, mock.Anything, mock.Anything).
+				mockUser.On("Create", mock.Anything, mock.Anything, mock.Anything, mock.Anything).
 					Return("", errors.New("database connection failed")).Once()
 			},
 			expectedErr: true,
@@ -162,9 +163,9 @@ func TestUserServiceImpl_GetAllUser(t *testing.T) {
 	ctx := context.Background()
 
 	tests := []struct {
-		name          string
-		mockSetup    func()
-		expectedErr  bool
+		name        string
+		mockSetup   func()
+		expectedErr bool
 		expectedCnt int
 	}{
 		{
@@ -204,7 +205,7 @@ func TestUserServiceImpl_GetAllUser(t *testing.T) {
 				}
 				mockUser.On("ReadAll", mock.Anything).Return(users, nil).Once()
 			},
-			expectedErr:  false,
+			expectedErr: false,
 			expectedCnt: 2,
 		},
 		{
@@ -212,7 +213,7 @@ func TestUserServiceImpl_GetAllUser(t *testing.T) {
 			mockSetup: func() {
 				mockUser.On("ReadAll", mock.Anything).Return([]entity.User{}, nil).Once()
 			},
-			expectedErr:  false,
+			expectedErr: false,
 			expectedCnt: 0,
 		},
 		{
@@ -221,7 +222,7 @@ func TestUserServiceImpl_GetAllUser(t *testing.T) {
 				mockUser.On("ReadAll", mock.Anything).
 					Return([]entity.User(nil), errors.New("database error")).Once()
 			},
-			expectedErr:  true,
+			expectedErr: true,
 			expectedCnt: 0,
 		},
 	}
@@ -257,9 +258,9 @@ func TestUserServiceImpl_UpdateUser(t *testing.T) {
 	actorId := uuid.New()
 
 	tests := []struct {
-		name          string
-		input        *dto.UserRequest
-		setupMock    func(*MockUserRepo, *MockActivityRepo, services.UserService)
+		name        string
+		input       *dto.UserRequest
+		setupMock   func(*MockUserRepo, *MockActivityRepo, services.UserService)
 		expectedErr bool
 	}{
 		{
@@ -308,7 +309,7 @@ func TestUserServiceImpl_UpdateUser(t *testing.T) {
 			},
 			setupMock: func(mu *MockUserRepo, ma *MockActivityRepo, svc services.UserService) {
 				mu.On("Update", mock.Anything, userId, mock.Anything, mock.Anything).
-					Return(errors.New("duplicate key value violates unique constraint")).Once()
+					Return(&pq.Error{Code: "23505"}).Once()
 			},
 			expectedErr: true,
 		},
@@ -334,7 +335,7 @@ func TestUserServiceImpl_UpdateUser(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			mockUser, mockAct, mockCache, svc := setupUserService()
 			_ = mockCache
-			
+
 			tt.setupMock(mockUser, mockAct, svc)
 
 			inputCopy := *tt.input
@@ -349,7 +350,171 @@ func TestUserServiceImpl_UpdateUser(t *testing.T) {
 
 			mockUser.AssertExpectations(t)
 			mockAct.AssertExpectations(t)
-})
+		})
+	}
+}
+
+func TestUserServiceImpl_ChangePassword(t *testing.T) {
+	defer os.Unsetenv("AES_256_KEY")
+	defer os.Unsetenv("PEPPER")
+
+	ctx := context.Background()
+	userId := uuid.New()
+
+	tests := []struct {
+		name        string
+		input       *dto.UserChangePassword
+		setupMock   func(*MockUserRepo)
+		expectedErr bool
+	}{
+		{
+			name: "Success - Change Password",
+			input: &dto.UserChangePassword{
+				PasswordLama: "oldpassword",
+				PasswordBaru: "newpassword",
+			},
+			setupMock: func(mu *MockUserRepo) {
+				hashedOld, _ := utils.HashPassword("oldpassword")
+				user := &entity.User{
+					ID:           userId,
+					PasswordHash: hashedOld,
+				}
+				mu.On("ReadById", mock.Anything, userId.String()).Return(user, nil).Once()
+				mu.On("ChangePassword", mock.Anything, mock.Anything, userId).Return(nil).Once()
+			},
+			expectedErr: false,
+		},
+		{
+			name: "Error - User Not Found",
+			input: &dto.UserChangePassword{
+				PasswordLama: "oldpassword",
+				PasswordBaru: "newpassword",
+			},
+			setupMock: func(mu *MockUserRepo) {
+				mu.On("ReadById", mock.Anything, userId.String()).Return((*entity.User)(nil), sql.ErrNoRows).Once()
+			},
+			expectedErr: true,
+		},
+		{
+			name: "Error - Invalid Old Password",
+			input: &dto.UserChangePassword{
+				PasswordLama: "wrongpassword",
+				PasswordBaru: "newpassword",
+			},
+			setupMock: func(mu *MockUserRepo) {
+				hashedOld, _ := utils.HashPassword("oldpassword")
+				user := &entity.User{
+					ID:           userId,
+					PasswordHash: hashedOld,
+				}
+				mu.On("ReadById", mock.Anything, userId.String()).Return(user, nil).Once()
+			},
+			expectedErr: true,
+		},
+		{
+			name: "Error - Database Error on Update",
+			input: &dto.UserChangePassword{
+				PasswordLama: "oldpassword",
+				PasswordBaru: "newpassword",
+			},
+			setupMock: func(mu *MockUserRepo) {
+				hashedOld, _ := utils.HashPassword("oldpassword")
+				user := &entity.User{
+					ID:           userId,
+					PasswordHash: hashedOld,
+				}
+				mu.On("ReadById", mock.Anything, userId.String()).Return(user, nil).Once()
+				mu.On("ChangePassword", mock.Anything, mock.Anything, userId).Return(errors.New("db error")).Once()
+			},
+			expectedErr: true,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			mockUser, _, _, svc := setupUserService()
+			tt.setupMock(mockUser)
+
+			err := svc.ChangePassword(ctx, userId, tt.input)
+
+			if tt.expectedErr {
+				assert.Error(t, err)
+			} else {
+				assert.NoError(t, err)
+			}
+
+			mockUser.AssertExpectations(t)
+		})
+	}
+}
+
+func TestUserServiceImpl_ResetPassword(t *testing.T) {
+	defer os.Unsetenv("AES_256_KEY")
+	defer os.Unsetenv("PEPPER")
+
+	ctx := context.Background()
+	userId := uuid.New()
+	actorId := uuid.New()
+
+	tests := []struct {
+		name        string
+		setupMock   func(*MockUserRepo, *MockActivityRepo)
+		expectedErr bool
+	}{
+		{
+			name: "Success - Reset Password",
+			setupMock: func(mu *MockUserRepo, ma *MockActivityRepo) {
+				encPhone, _ := utils.Encrypt("08123456789")
+				user := &entity.User{
+					ID:           userId,
+					NomorTelepon: encPhone,
+					NamaLengkap:  "Test User",
+				}
+				mu.On("ReadById", mock.Anything, userId.String()).Return(user, nil).Once()
+				mu.On("ChangePassword", mock.Anything, mock.Anything, userId).Return(nil).Once()
+				ma.On("InsertActivity", mock.Anything, mock.AnythingOfType("*entity.Activity")).Return(nil).Once()
+			},
+			expectedErr: false,
+		},
+		{
+			name: "Error - User Not Found",
+			setupMock: func(mu *MockUserRepo, ma *MockActivityRepo) {
+				mu.On("ReadById", mock.Anything, userId.String()).Return((*entity.User)(nil), sql.ErrNoRows).Once()
+			},
+			expectedErr: true,
+		},
+		{
+			name: "Error - Database Error on Update",
+			setupMock: func(mu *MockUserRepo, ma *MockActivityRepo) {
+				encPhone, _ := utils.Encrypt("08123456789")
+				user := &entity.User{
+					ID:           userId,
+					NomorTelepon: encPhone,
+					NamaLengkap:  "Test User",
+				}
+				mu.On("ReadById", mock.Anything, userId.String()).Return(user, nil).Once()
+				mu.On("ChangePassword", mock.Anything, mock.Anything, userId).Return(errors.New("db error")).Once()
+			},
+			expectedErr: true,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			mockUser, mockAct, _, svc := setupUserService()
+			tt.setupMock(mockUser, mockAct)
+
+			err := svc.ResetPassword(ctx, userId, actorId)
+
+			if tt.expectedErr {
+				assert.Error(t, err)
+			} else {
+				assert.NoError(t, err)
+			}
+
+			mockUser.AssertExpectations(t)
+			mockAct.AssertExpectations(t)
+		})
 	}
 }
 
@@ -364,8 +529,8 @@ func TestUserServiceImpl_DeleteUser(t *testing.T) {
 	actorId := uuid.New()
 
 	tests := []struct {
-		name          string
-		mockSetup    func()
+		name        string
+		mockSetup   func()
 		expectedErr bool
 	}{
 		{
@@ -384,7 +549,7 @@ func TestUserServiceImpl_DeleteUser(t *testing.T) {
 					Email:        encEmail,
 					NomorTelepon: encPhone,
 					CreatedAt:    time.Now(),
-					UpdatedAt:   time.Now(),
+					UpdatedAt:    time.Now(),
 				}
 				mockUser.On("ReadById", mock.Anything, userId.String()).Return(user, nil).Once()
 				mockUser.On("Delete", mock.Anything, userId).Return(nil).Once()
@@ -417,7 +582,7 @@ func TestUserServiceImpl_DeleteUser(t *testing.T) {
 					Email:        encEmail,
 					NomorTelepon: encPhone,
 					CreatedAt:    time.Now(),
-					UpdatedAt:   time.Now(),
+					UpdatedAt:    time.Now(),
 				}
 				mockUser.On("ReadById", mock.Anything, userId.String()).Return(user, nil).Once()
 				mockUser.On("Delete", mock.Anything, userId).
@@ -441,7 +606,7 @@ func TestUserServiceImpl_DeleteUser(t *testing.T) {
 					Email:        encEmail,
 					NomorTelepon: encPhone,
 					CreatedAt:    time.Now(),
-					UpdatedAt:   time.Now(),
+					UpdatedAt:    time.Now(),
 				}
 				mockUser.On("ReadById", mock.Anything, userId.String()).Return(user, nil).Once()
 				mockUser.On("Delete", mock.Anything, userId).Return(sql.ErrNoRows).Once()
@@ -483,8 +648,8 @@ func TestUserServiceImpl_GetProfile(t *testing.T) {
 	userId := uuid.New()
 
 	tests := []struct {
-		name          string
-		userID       string
+		name        string
+		userID      string
 		mockSetup   func()
 		expectedErr bool
 		expectedNm  string
@@ -507,7 +672,7 @@ func TestUserServiceImpl_GetProfile(t *testing.T) {
 					Email:        encEmail,
 					NomorTelepon: encPhone,
 					CreatedAt:    time.Now(),
-					UpdatedAt:   time.Now(),
+					UpdatedAt:    time.Now(),
 				}
 				mockUser.On("ReadById", mock.Anything, userId.String()).
 					Return(dummyUser, nil).Once()
@@ -575,10 +740,10 @@ func TestUserServiceImpl_GetPermissions(t *testing.T) {
 	userId := uuid.New()
 
 	tests := []struct {
-		name          string
-		userID       string
+		name        string
+		userID      string
 		mockSetup   func()
-		expectedErr  bool
+		expectedErr bool
 		expectedPrs int
 	}{
 		{
@@ -598,11 +763,11 @@ func TestUserServiceImpl_GetPermissions(t *testing.T) {
 					Email:        encEmail,
 					NomorTelepon: encPhone,
 					CreatedAt:    time.Now(),
-					UpdatedAt:   time.Now(),
+					UpdatedAt:    time.Now(),
 				}
 				mockUser.On("ReadById", mock.Anything, userId.String()).Return(user, nil).Once()
 			},
-			expectedErr:  false,
+			expectedErr: false,
 			expectedPrs: 0,
 		},
 		{
@@ -612,7 +777,7 @@ func TestUserServiceImpl_GetPermissions(t *testing.T) {
 				mockUser.On("ReadById", mock.Anything, userId.String()).
 					Return((*entity.User)(nil), sql.ErrNoRows).Once()
 			},
-			expectedErr:  true,
+			expectedErr: true,
 			expectedPrs: 0,
 		},
 		{
@@ -622,7 +787,7 @@ func TestUserServiceImpl_GetPermissions(t *testing.T) {
 				mockUser.On("ReadById", mock.Anything, userId.String()).
 					Return((*entity.User)(nil), errors.New("database error")).Once()
 			},
-			expectedErr:  true,
+			expectedErr: true,
 			expectedPrs: 0,
 		},
 	}
