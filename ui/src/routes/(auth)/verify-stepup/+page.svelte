@@ -39,27 +39,6 @@
         }
     }
 
-    async function resendOtp() {
-        resending = true;
-        errorMessage = "";
-        successMessage = "";
-
-        try {
-            const res = await apiFetch("/api/auth/resend-stepup", {
-                method: "POST",
-            });
-            if (res.ok) {
-                successMessage = "OTP baru telah dikirim ke WhatsApp Anda.";
-            } else {
-                errorMessage = "Gagal mengirim ulang OTP.";
-            }
-        } catch {
-            errorMessage = "Terjadi kesalahan jaringan.";
-        } finally {
-            resending = false;
-        }
-    }
-
     const cancel = async () => {
         auth.isStepUpRequired = false;
         await auth.logout();
@@ -157,33 +136,6 @@
                     onkeydown={(e) =>
                         e.key === "Enter" && otp.length === 6 && verifyStepUp()}
                 />
-            </div>
-
-            <div class="mt-4 flex justify-center">
-                <button
-                    onclick={resendOtp}
-                    disabled={resending || loading}
-                    class="flex items-center gap-1.5 text-xs font-bold text-base-content/50 transition-colors hover:text-primary disabled:opacity-50"
-                >
-                    <svg
-                        xmlns="http://www.w3.org/2000/svg"
-                        width="14"
-                        height="14"
-                        viewBox="0 0 24 24"
-                        fill="none"
-                        stroke="currentColor"
-                        stroke-width="2"
-                        stroke-linecap="round"
-                        stroke-linejoin="round"
-                        class={resending ? "animate-spin" : ""}
-                    >
-                        <path
-                            d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"
-                        />
-                        <path d="M3 3v5h5" />
-                    </svg>
-                    {resending ? "Mengirim ulang..." : "Kirim ulang OTP"}
-                </button>
             </div>
 
             <div class="card-actions mt-8 flex items-center justify-end gap-3">

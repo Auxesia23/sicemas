@@ -17,7 +17,6 @@ type AuthHandler interface {
 	Refresh(c *fiber.Ctx) error
 	Logout(c *fiber.Ctx) error
 	VerifyStepUpOTP(c *fiber.Ctx) error
-	ResendStepUpOTP(c *fiber.Ctx) error
 }
 
 type authHandlerImpl struct {
@@ -233,17 +232,35 @@ func (h *authHandlerImpl) VerifyStepUpOTP(c *fiber.Ctx) error {
 
 	if err := h.authService.VerifyStepUpOTP(c.Context(), user.Subject, SID, body.OTP, requestContext); err != nil {
 		e := err.(*apperror.AppError)
+		c.Cookie(&fiber.Cookie{
+			Name:     "refresh_token",
+			Value:    "",
+			Path:     "/",
+			Expires:  time.Now().Add(-time.Hour),
+			HTTPOnly: true,
+			Secure:   true,
+			SameSite: "Strict",
+		})
+		c.Cookie(&fiber.Cookie{
+			Name:     "access_token",
+			Value:    "",
+			Path:     "/",
+			Expires:  time.Now().Add(-time.Hour),
+			HTTPOnly: true,
+			Secure:   true,
+			SameSite: "Strict",
+		})
+		c.Cookie(&fiber.Cookie{
+			Name:     "csrf_token",
+			Value:    "",
+			Path:     "/",
+			Expires:  time.Now().Add(-time.Hour),
+			HTTPOnly: false,
+			Secure:   true,
+			SameSite: "Strict",
+		})
 		return c.Status(e.Status).SendString(e.Error())
 	}
 
-	return c.SendStatus(200)
-}
-
-func (h *authHandlerImpl) ResendStepUpOTP(c *fiber.Ctx) error {
-	user := c.Locals("claim").(*dto.AccessToken)
-	if err := h.authService.TriggerStepUpOTP(c.Context(), user.Subject); err != nil {
-		e := err.(*apperror.AppError)
-		return c.Status(e.Status).SendString(e.Error())
-	}
 	return c.SendStatus(200)
 }

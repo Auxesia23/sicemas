@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"encoding/json"
 	"fmt"
+	"math/rand"
 	"net/http"
 	"os"
 	"strings"
@@ -15,9 +16,21 @@ func SendWhatsAppOTP(phone string, otp string) error {
 	formattedPhone := formatPhoneNumber(phone)
 	apiURL := os.Getenv("GOWA_URL")
 
+	templates := []string{
+		"Halo! Kode OTP Anda untuk KUA Kecamatan Ciemas adalah: *%s*.\n\nMohon jangan berikan kode ini kepada siapapun.",
+		"KUA Kecamatan Ciemas: JANGAN berikan kode ini ke siapapun. Kode verifikasi Anda: *%s*.",
+		"Ini adalah kode OTP KUA Kecamatan Ciemas Anda: *%s*. Jaga kerahasiaan kode ini.",
+		"Permintaan autentikasi KUA Kecamatan Ciemas diterima. Kode OTP Anda: *%s*. Bersifat rahasia.",
+		"Kode akses KUA Kecamatan Ciemas Anda adalah *%s*. Jangan bagikan kode ini kepada staf atau pihak manapun.",
+	}
+
+	randomIndex := rand.Intn(len(templates))
+	selectedTemplate := templates[randomIndex]
+	messageBody := fmt.Sprintf(selectedTemplate, otp)
+
 	payload := map[string]any{
 		"phone":        fmt.Sprintf("%s@s.whatsapp.net", formattedPhone),
-		"message":      fmt.Sprintf("Halo! Kode OTP Anda untuk KUA Kecamatan Ciemas adalah: *%s*.\n\nMohon jangan berikan kode ini kepada siapapun.", otp),
+		"message":      messageBody,
 		"is_forwarded": false,
 	}
 
@@ -32,7 +45,8 @@ func SendWhatsAppOTP(phone string, otp string) error {
 	}
 
 	req.Header.Set("Content-Type", "application/json")
-	req.Header.Set("X-Devic-Id", os.Getenv("GOWA_DEVICE_ID"))
+
+	req.Header.Set("X-Device-Id", os.Getenv("GOWA_DEVICE_ID"))
 
 	req.SetBasicAuth("kuaci_emas", "kuaci_emas")
 

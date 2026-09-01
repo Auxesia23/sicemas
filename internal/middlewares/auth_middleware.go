@@ -116,7 +116,7 @@ func (m *authMiddlewareImpl) ZeroTrustValidator(c *fiber.Ctx) error {
 	}
 
 	trustScore := utils.CalculateTrustScore(requestContect, &curentSession)
-	if trustScore < 85 && trustScore > 60 {
+	if trustScore >= 60.0 && trustScore < 100.0 {
 		m.logger.Warn("medium trust score detected, session need to be verified",
 			"user_id", jwtClaim.Subject,
 			"trust_score", trustScore,

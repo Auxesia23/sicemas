@@ -13,18 +13,15 @@ type DashboardService interface {
 }
 
 type dashboardServiceImpl struct {
-	activityRepo  repositories.ActivityRepository
 	dashboardRepo repositories.DashboardRepository
 	logger        *slog.Logger
 }
 
 func NewDashboardService(
-	activityRepo repositories.ActivityRepository,
 	dashboardRepo repositories.DashboardRepository,
 	logger *slog.Logger,
 ) DashboardService {
 	return &dashboardServiceImpl{
-		activityRepo:  activityRepo,
 		dashboardRepo: dashboardRepo,
 		logger:        logger,
 	}

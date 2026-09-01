@@ -120,16 +120,7 @@
             const initialLat = coords.latitude || -6.2088;
             const initialLng = coords.longitude || 106.8456;
 
-            map = L.map(node, {
-                dragging: true,
-                touchZoom: true,
-                scrollWheelZoom: false,
-                doubleClickZoom: false,
-                boxZoom: false,
-                keyboard: false,
-                zoomControl: true,
-                attributionControl: true,
-            }).setView([initialLat, initialLng], 15);
+            map = L.map(node).setView([initialLat, initialLng], 15);
 
             L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
                 attribution: "© OpenStreetMap contributors",
@@ -1027,8 +1018,7 @@
                                     rows="3"
                                     oninput={() =>
                                         (validationErrors.alamat_lengkap =
-                                            null)}
-                                ></textarea>
+                                            null)}></textarea>
                                 {#if validationErrors.alamat_lengkap}
                                     <span
                                         class="mt-1.5 text-xs font-medium text-error"

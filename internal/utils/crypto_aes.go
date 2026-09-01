@@ -48,7 +48,7 @@ func Encrypt(plain string) (string, error) {
 	// Hasilnya adalah byte-array tunggal berbentuk [nonce || ciphertext || tag].
 	cipherByte := gcm.Seal(nonce, nonce, []byte(plain), nil)
 
-	// Baris 6 – Array byte di-encode ke string heksadesimal agar mudah disimpan di database
+	// Array byte di-encode ke string heksadesimal agar mudah disimpan di database
 	return hex.EncodeToString(cipherByte), nil
 }
 

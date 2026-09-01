@@ -52,17 +52,13 @@
             const lat = Number(situs.latitude);
             const lng = Number(situs.longitude);
 
-            map = L.map(node, {
-                scrollWheelZoom: false,
-                zoomControl: true,
-                attributionControl: false,
-            }).setView([lat, lng], 15);
+            map = L.map(node).setView([lat, lng], 15);
 
             L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
                 attribution: "© OpenStreetMap contributors",
             }).addTo(map);
 
-            marker = L.marker([lat, lng]).addTo(map);
+            marker = L.marker([lat, lng], { draggable: true }).addTo(map);
 
             setTimeout(() => {
                 if (map) map.invalidateSize();

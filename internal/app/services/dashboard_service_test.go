@@ -23,7 +23,6 @@ func setupDashboardService() (*MockActivityRepo, *MockDashboardRepo, services.Da
 	logger := slog.New(slog.NewTextHandler(io.Discard, nil))
 
 	svc := services.NewDashboardService(
-		mockActivityRepo,
 		mockDashboardRepo,
 		logger,
 	)

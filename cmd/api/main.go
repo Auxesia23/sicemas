@@ -83,7 +83,7 @@ func main() {
 	policyService := services.NewPolicyService(enforcer, activityRepo, appLog)
 	jenisSitusService := services.NewJenisSitusService(jenisSitusRepo, activityRepo, appLog)
 	situsKeagamaanService := services.NewSitusKeagamaanService(situsKeagamaanRepo, fotoSitusRepo, activityRepo, cld, enforcer, appLog)
-	dashboardService := services.NewDashboardService(activityRepo, dashboardRepo, appLog)
+	dashboardService := services.NewDashboardService(dashboardRepo, appLog)
 	activityService := services.NewActivityService(activityRepo, appLog)
 
 	// Initiate handler layer

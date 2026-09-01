@@ -315,14 +315,19 @@ func (s *authServiceImpl) TriggerStepUpOTP(ctx context.Context, userId string) e
 
 func (s *authServiceImpl) VerifyStepUpOTP(ctx context.Context, userId string, sid uuid.UUID, userOtp string, loginContext *dto.SessionRequest) error {
 	s.logger.Info("verifying StepUp OTP", "user_id", userId)
-
+	sessionKey := fmt.Sprintf("rt:%v:%v", userId, sid)
 	otpKey := fmt.Sprintf("stepup_otp:%v", userId)
 	var otp string
 
 	if err := s.cache.Get(ctx, otpKey, &otp); err != nil {
 		if err == redis.Nil {
 			s.logger.Warn("no StepUp OTP found for user or expired", "user_id", userId)
-			return apperror.NewUnauthorized("OTP tidak ditemukan atau sudah kadaluarsa. Silakan minta ulang.")
+			err = s.cache.Delete(ctx, sessionKey)
+			if err != nil {
+				s.logger.Error("failed to delete session from cache during logout", "user_id", userId, "error", err)
+				return apperror.NewInternal("Terjadi Kesalahan saat menghapus sesi Redis")
+			}
+			return apperror.NewUnauthorized("OTP tidak ditemukan atau sudah kadaluarsa. Silakan login ulang.")
 		}
 		s.logger.Error("failed to get OTP from cache", "user_id", userId, "error", err)
 		return apperror.NewInternal("Terjadi Kesalahan sistem.")
@@ -330,10 +335,14 @@ func (s *authServiceImpl) VerifyStepUpOTP(ctx context.Context, userId string, si
 
 	if otp != userOtp {
 		s.logger.Warn("incorrect StepUp OTP provided", "user_id", userId, "ip_address", loginContext.IPAddress)
-		return apperror.NewBadRequest("Kode OTP salah.")
+		err := s.cache.Delete(ctx, sessionKey)
+		if err != nil {
+			s.logger.Error("failed to delete session from cache during logout", "user_id", userId, "error", err)
+			return apperror.NewInternal("Terjadi Kesalahan saat menghapus sesi Redis")
+		}
+		return apperror.NewUnauthorized("Kode OTP salah. ilakan login ulang.")
 	}
 
-	sessionKey := fmt.Sprintf("rt:%v:%v", userId, sid)
 	var currentSession dto.SessionValue
 
 	if err := s.cache.Get(ctx, sessionKey, &currentSession); err != nil {
